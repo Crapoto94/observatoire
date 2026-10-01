@@ -110,7 +110,17 @@ export default function Donnees() {
   const lab = (dim: string, code: string) => data?.labels?.[dim]?.values?.[code] ?? (code === '_T' ? 'Total' : code);
   const dimLabel = (dim: string) => (dim === '@PERIOD' ? 'Période' : data?.labels?.[dim]?.label ?? dim);
   const geoName = (code: string) => geos.find((g) => g.code === code)?.nom ?? code;
-  const popOf = (code: string) => geos.find((g) => g.code === code)?.population || null;
+  // population du territoire au millésime du recensement le plus proche de la période (sinon la plus récente)
+  const popOf = (code: string, per?: string | null) => {
+    const g = geos.find((x) => x.code === code);
+    if (!g) return null;
+    const s = g.pop_series ?? {};
+    const years = Object.keys(s);
+    const y = Number(String(per ?? '').slice(0, 4));
+    if (!years.length || !y) return g.population || null;
+    const best = years.reduce((a, b) => (Math.abs(Number(b) - y) < Math.abs(Number(a) - y) ? b : a));
+    return s[best];
+  };
   const hier = vcfg.hier && vcfg.hier.every((h) => dimNames.includes(h)) ? vcfg.hier : null;
   const measureDim = dimNames.find(isMeasureDim);
 

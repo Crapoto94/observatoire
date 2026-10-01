@@ -15,6 +15,9 @@ const d = (id, ds, label, description, themes, link, extra = {}) => ({
 });
 
 const MELODI_DATASETS = [
+  d('rp_serie_historique', 'DS_RP_SERIE_HISTORIQUE', 'Série historique du recensement (1968-2023)',
+    'Recensement : population, logements, naissances et décès entre deux recensements, superficie. Disponible pour les communes, intercommunalités, départements et régions : sert de dénominateur commun (population) pour comparer des territoires.',
+    ['demographie', 'logement'], [{ theme: 'demographie', re: /population totale|evolution annuelle de la population|solde naturel|solde migratoire/ }]),
   d('pop_hist', 'DS_POPULATIONS_HISTORIQUES', 'Populations municipales 1968-2023',
     'Population municipale par commune, séries historiques des recensements.',
     ['demographie'], [{ theme: 'demographie', re: /population totale|evolution annuelle de la population|projection de population/ }]),

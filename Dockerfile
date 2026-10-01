@@ -19,6 +19,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY server ./server
+COPY CATALOGUE_DONNEES_OUVERTES.md ./
 COPY --from=build /app/client/dist ./client/dist
 
 # Base SQLite et données importées : volume à monter sur /app/data

@@ -3,11 +3,11 @@
 Exploration menée le 01/10/2026 : catalogue INSEE Melodi (147 jeux), data.gouv.fr (recherche par thème), portails Opendatasoft (Île-de-France Mobilités, Région Île-de-France, DREES, CAF, Éducation nationale) et API publiques.
 Chaque source retenue a été **interrogée pour Ivry-sur-Seine (94041)** avant intégration. Les valeurs ci-dessous sont celles lues à l'import.
 
-## 1. Jeux intégrés à l'application (30)
+## 1. Jeux intégrés à l'application (31)
 
-### INSEE, API Melodi (19 jeux, communes + département, métropole, région)
+### INSEE, API Melodi (20 jeux, communes + département, métropole, région)
 
-Population municipale 1968-2023 · population par sexe et âge (POP1) · naissances · décès · ménages par taille (MEN4) et par type (MEN5/6) · nationalité (NAT1) · immigration (IMG1) · migrations résidentielles · scolarisation (FOR1) · population active et chômage · CSP (POP6) · emploi au lieu de travail · Filosofi 2023 · stocks Sirene · créations d'entreprises · base permanente des équipements · logements (dossier complet) · déplacements domicile-travail (NAV2).
+Série historique du recensement 1968-2023 (population de tous les niveaux géographiques : dénominateur du calcul « pour 1 000 habitants ») · population municipale 1968-2023 · population par sexe et âge (POP1) · naissances · décès · ménages par taille (MEN4) et par type (MEN5/6) · nationalité (NAT1) · immigration (IMG1) · migrations résidentielles · scolarisation (FOR1) · population active et chômage · CSP (POP6) · emploi au lieu de travail · Filosofi 2023 · stocks Sirene · créations d'entreprises · base permanente des équipements · logements (dossier complet) · déplacements domicile-travail (NAV2).
 Ivry : 65 064 habitants (2023), niveau de vie médian 22 210 €, taux de pauvreté 28 %.
 
 ### Open data hors INSEE (11 jeux)

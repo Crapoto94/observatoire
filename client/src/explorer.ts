@@ -21,7 +21,7 @@ export interface Ctx {
   hier: string[] | null;
   label: (dim: string, code: string) => string;
   geoName: (code: string) => string;
-  popOf: (code: string) => number | null;
+  popOf: (code: string, period?: string | null) => number | null;
 }
 
 export const MAX_CATEGORIES = 30;
@@ -71,7 +71,7 @@ export function selectRows(rows: DataRow[], sel: Sel, ctx: Ctx): DataRow[] {
 export function cellValue(r: DataRow, mode: Mode, ctx: Ctx): number | null {
   if (r.value == null) return null;
   if (mode !== 'pop') return r.value;
-  const p = ctx.popOf(r.geo);
+  const p = ctx.popOf(r.geo, r.period);
   return p ? (r.value / p) * 1000 : null;
 }
 

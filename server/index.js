@@ -3,10 +3,11 @@ const path = require('path');
 const fs = require('fs');
 const { all, get, run, tx } = require('./db');
 const { seed, REF_GEO } = require('./seed');
-const { startImport, jobs, currentJob } = require('./importer');
+const { startImport, jobs, currentJob, syncPopulations, populationSeries } = require('./importer');
 const { buildWorkbook } = require('./export');
 
 seed();
+syncPopulations();
 
 const app = express();
 app.use(express.json({ limit: '5mb' }));
@@ -200,7 +201,17 @@ app.get('/api/import-log', (req, res) => {
 });
 
 // ---------------- Territoires (communes, département, EPCI, région) ----------------
-app.get('/api/geos', (req, res) => res.json(all("SELECT * FROM geos ORDER BY fixed DESC, CASE level WHEN 'COM' THEN 1 ELSE 0 END, nom")));
+app.get('/api/geos', (req, res) => {
+  const series = populationSeries();
+  res.json(all("SELECT * FROM geos ORDER BY fixed DESC, CASE level WHEN 'COM' THEN 1 ELSE 0 END, nom").map((g) => ({ ...g, pop_series: series[g.code] || {} })));
+});
+
+// ---------------- Catalogue des données ouvertes (document Markdown) ----------------
+app.get('/api/catalogue', (req, res) => {
+  const file = path.join(__dirname, '..', 'CATALOGUE_DONNEES_OUVERTES.md');
+  if (!fs.existsSync(file)) return res.status(404).json({ error: 'catalogue introuvable' });
+  res.type('text/markdown; charset=utf-8').send(fs.readFileSync(file, 'utf8'));
+});
 
 app.get('/api/geos/search', wrap(async (req, res) => {
   const q = String(req.query.q || '').trim();
@@ -248,9 +259,16 @@ app.listen(PORT, '0.0.0.0', () => {
   // Import automatique des territoires sans données (premier démarrage : commune de référence et territoires de comparaison)
   if (process.env.AUTO_IMPORT !== 'false') {
     const missing = all('SELECT code FROM geos WHERE code NOT IN (SELECT DISTINCT geo FROM data_rows)').map((g) => g.code);
-    if (missing.length) {
+    const emptyDatasets = all('SELECT id FROM datasets WHERE id NOT IN (SELECT DISTINCT dataset_id FROM data_rows)').map((d) => d.id);
+    if (missing.length && emptyDatasets.length) {
+      console.log('[import] territoires et jeux sans données : import complet en cours');
+      startImport({});
+    } else if (missing.length) {
       console.log(`[import] ${missing.length} territoire(s) sans données : import initial en cours`);
       startImport({ geoCodes: missing });
+    } else if (emptyDatasets.length) {
+      console.log(`[import] ${emptyDatasets.length} jeu(x) sans données : import initial en cours`);
+      startImport({ datasetIds: emptyDatasets });
     }
   }
 });

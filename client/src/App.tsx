@@ -3,6 +3,7 @@ import Indicateurs from './pages/Indicateurs';
 import Carte from './pages/Carte';
 import Donnees from './pages/Donnees';
 import Pilotage from './pages/Pilotage';
+import Catalogue from './pages/Catalogue';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
           <NavLink to="/pilotage">Pilotage</NavLink>
           <NavLink to="/carte">Carte mentale</NavLink>
           <NavLink to="/donnees">Données</NavLink>
+          <NavLink to="/catalogue">Catalogue</NavLink>
         </nav>
       </header>
       <main>
@@ -25,6 +27,7 @@ export default function App() {
           <Route path="/pilotage" element={<Pilotage />} />
           <Route path="/carte" element={<Carte />} />
           <Route path="/donnees" element={<Donnees />} />
+          <Route path="/catalogue" element={<Catalogue />} />
         </Routes>
       </main>
     </div>

@@ -104,6 +104,7 @@ export interface Geo {
   population: number | null;
   fixed: number;
   level: 'COM' | 'DEP' | 'EPCI' | 'REG';
+  pop_series?: Record<string, number>; // population par millésime du recensement
 }
 
 export const LEVEL_LABEL: Record<string, string> = { COM: 'commune', DEP: 'département', EPCI: 'intercommunalité', REG: 'région' };

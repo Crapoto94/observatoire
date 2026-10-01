@@ -19,6 +19,7 @@ export interface View {
 const OVERLAP = 'Les modalités peuvent s\'emboîter (une catégorie peut en contenir d\'autres) : ne pas les additionner.';
 
 export const VIEWS: Record<string, View> = {
+  rp_serie_historique: { x: '@PERIOD', pins: { RP_MEASURE: 'POP', OCS: '_T' }, note: 'Les millésimes sont ceux des recensements (1968, 1975, 1982, 1990, 1999, 2007, 2012, 2017, 2023). Cette série fournit les populations utilisées pour le calcul « pour 1 000 habitants » de tous les territoires.' },
   pop_hist: { x: '@PERIOD', pins: { POPREF_MEASURE: 'PMUN' } },
   rp_pop_agesex: { x: 'AGE', series: 'SEX', note: 'Âge par année : la somme des barres donne la population totale (recensement).' },
   etat_civil_nais: { x: '@PERIOD' },

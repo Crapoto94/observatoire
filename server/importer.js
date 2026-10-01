@@ -50,7 +50,31 @@ async function importOne(dataset, geo, log) {
   }
 }
 
+// Population de chaque territoire (commune, département, EPCI, région) : série historique du recensement (même source pour tous les niveaux,
+// donc comparable). Sert au calcul « pour 1 000 habitants » ; la population retenue pour une période est celle du millésime le plus proche.
+const POP_SQL = `SELECT geo, period, value FROM data_rows WHERE dataset_id = 'rp_serie_historique'
+  AND json_extract(dims, '$.RP_MEASURE') = 'POP' AND json_extract(dims, '$.OCS') = '_T' AND value IS NOT NULL`;
+
+function populationSeries() {
+  const out = {};
+  for (const r of all(POP_SQL)) (out[r.geo] ||= {})[r.period] = Math.round(r.value);
+  return out;
+}
+
+// met à jour geos.population avec le dernier millésime disponible
+function syncPopulations() {
+  const series = populationSeries();
+  let n = 0;
+  for (const [geo, s] of Object.entries(series)) {
+    const last = Object.keys(s).sort().pop();
+    run('UPDATE geos SET population = ? WHERE code = ?', s[last], geo);
+    n++;
+  }
+  return n;
+}
+
 function refreshStats(datasetId) {
+  if (datasetId === 'rp_serie_historique') syncPopulations();
   const n = get('SELECT COUNT(*) AS n FROM data_rows WHERE dataset_id = ?', datasetId).n;
   const last = get(`SELECT MAX(finished) AS d FROM import_log WHERE dataset_id = ? AND status = 'ok'`, datasetId)?.d;
   const err = get(`SELECT message FROM import_log WHERE dataset_id = ? ORDER BY id DESC LIMIT 1`, datasetId);
@@ -100,4 +124,4 @@ function startImport({ datasetIds, geoCodes } = {}) {
   return job;
 }
 
-module.exports = { startImport, jobs, refreshStats, currentJob };
+module.exports = { startImport, jobs, refreshStats, currentJob, syncPopulations, populationSeries };
