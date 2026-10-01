@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import Indicateurs from './pages/Indicateurs';
 import Carte from './pages/Carte';
@@ -6,6 +7,10 @@ import Pilotage from './pages/Pilotage';
 import Catalogue from './pages/Catalogue';
 
 export default function App() {
+  const [build, setBuild] = useState('');
+  useEffect(() => {
+    fetch('/api/status').then((r) => r.json()).then((s) => setBuild(s.build ? new Date(s.build).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '')).catch(() => undefined);
+  }, []);
   return (
     <div className="app">
       <header className="topbar">
@@ -30,6 +35,7 @@ export default function App() {
           <Route path="/catalogue" element={<Catalogue />} />
         </Routes>
       </main>
+      {build && <footer className="build">Version du {build}</footer>}
     </div>
   );
 }

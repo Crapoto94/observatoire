@@ -96,6 +96,7 @@ module.exports = [
     config: {
       base: 'https://data.iledefrance.fr', dataset: 'mos-occupation-du-sol-2025-and-2021-en-79-postes-de-la-region-ile-de-france',
       levels: { COM: 'insee' }, geoQuote: false,
+      marginals: true,
       columns: [{ field: 'surface', measure: 'SURFACE_HA', scale: 0.0001 }],
       queries: [
         { select: '`2025poste`, sum(st_area_sh) as surface', groupBy: '`2025poste`', period: '2025', dimFields: [{ field: '`2025poste`', dim: 'POSTE' }] },
@@ -131,7 +132,8 @@ module.exports = [
     config: {
       base: 'https://data.education.gouv.fr', dataset: 'fr-en-annuaire-education', levels: { COM: 'code_commune' },
       columns: [{ field: 'n', measure: 'NB_ETABLISSEMENTS' }],
-      queries: [{ select: 'type_etablissement, statut_public_prive, count(*) as n', groupBy: 'type_etablissement, statut_public_prive', period: '$YEAR', dimFields: [{ field: 'type_etablissement', dim: 'TYPE' }, { field: 'statut_public_prive', dim: 'STATUT' }] }],
+      marginals: true,
+      queries: [{ select: 'type_etablissement, statut_public_prive, count(*) as n', groupBy: 'type_etablissement, statut_public_prive', where: 'type_etablissement is not null and statut_public_prive is not null', period: '$YEAR', dimFields: [{ field: 'type_etablissement', dim: 'TYPE' }, { field: 'statut_public_prive', dim: 'STATUT' }] }],
       labels: { ...mesure('Mesure', { NB_ETABLISSEMENTS: 'Nombre d\'établissements' }), TYPE: { label: 'Type d\'établissement', values: {} }, STATUT: { label: 'Statut', values: {} } },
     },
   },
@@ -142,6 +144,7 @@ module.exports = [
     link: [{ theme: 'demographie', re: /besoins scolaires|moins de 18/ }],
     config: {
       base: 'https://data.education.gouv.fr', dataset: 'fr-en-ecoles-effectifs-nb_classes', levels: { COM: 'commune' }, byName: { deptField: 'code_departement' },
+      marginals: true,
       columns: [{ field: 'eleves', measure: 'ELEVES' }, { field: 'classes', measure: 'CLASSES' }],
       queries: [{ select: 'rentree_scolaire, secteur, sum(nombre_total_eleves) as eleves, sum(nombre_total_classes) as classes', groupBy: 'rentree_scolaire, secteur', periodField: 'rentree_scolaire', periodYear: true, dimFields: [{ field: 'secteur', dim: 'SECTEUR' }] }],
       labels: { ...mesure('Mesure', { ELEVES: 'Nombre d\'élèves', CLASSES: 'Nombre de classes' }), SECTEUR: { label: 'Secteur', values: {} } },
@@ -154,7 +157,7 @@ module.exports = [
     link: [{ groupe: 'conditions-vie', re: /aides sociales|pauvrete/ }, { theme: 'emploi', re: /minima sociaux/ }],
     config: {
       base: 'https://data.caf.fr', dataset: 'rsa_s_type_com_f-copy', levels: { COM: 'numcomdo' },
-      periodField: 'dtreffre',
+      periodField: 'dtreffre', marginals: true,
       columns: [{ field: 'indfoy_rsa', measure: 'FOYERS_RSA' }, { field: 'indnbp_rsa', measure: 'PERSONNES_RSA' }],
       dimFields: [{ field: 'rsa_type', dim: 'TYPE_RSA' }],
       queries: [{}],

@@ -47,6 +47,8 @@ Une autre commune s'ajoute depuis la page Données (recherche par nom ou code IN
 - Base : `data/observatoire.sqlite` (ignorée par git). Les données sont **importées**, jamais lues en direct par l'interface.
 - Connecteurs : API Melodi de l'INSEE (`server/connectors/melodi.js`) ; API tabulaire data.gouv.fr, portails Opendatasoft, fichiers geo-dvf et API Recherche d'entreprises (`server/connectors/open.js`).
 - Catalogue des jeux : `server/datasets.js` (INSEE) et `server/datasets_open.js` (open data). 31 jeux, voir `CATALOGUE_DONNEES_OUVERTES.md` pour les sources, les valeurs vérifiées, les pistes et les limites.
+- Chaque jeu s'ouvre sur des **préréglages** (119 au total) : évolution, répartition, comparaison de territoires, ratios calculés (taux de chômage, part d'étrangers, taux de motorisation…), indice base 100, tranches d'âge de 5 ans. Les catégories qui s'emboîtent ne sont jamais additionnées. Définition : `client/src/datasetViews.ts`.
+- Le pied de page affiche la date de la version déployée (utile pour repérer une image Docker périmée) ; `GET /api/status` la renvoie aussi.
 - Présentation de chaque jeu dans l'explorateur : `client/src/datasetViews.ts` ; logique de sélection testable : `client/src/explorer.ts` (`node tools/test-explorer.mjs` avec le serveur lancé).
 - Pour ajouter un jeu : ajouter une entrée dans `server/datasets.js` (identifiant Melodi + règles de rattachement aux indicateurs), puis redémarrer le serveur.
 - Les liens vers d'autres portails (CAF, France Travail, Airparif, etc.) dans la colonne « Lien données » sont des pages d'accueil ou de recherche à confirmer ; aucun connecteur n'existe encore pour ces sources.

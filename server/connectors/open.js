@@ -12,6 +12,25 @@ function parseNum(v) {
 
 const basePeriodOf = (v) => (v == null || v === '' ? null : String(v).slice(0, 7).replace(/^(\d{4})-?00$/, '$1'));
 
+// Ajoute les totaux (modalité _T) pour chaque sous-ensemble de dimensions : le cube devient complet et les graphiques
+// n'ont plus à additionner des lignes. À n'utiliser que pour des mesures additives (comptages, surfaces, effectifs).
+function withMarginals(rows, dimNames) {
+  if (!dimNames.length) return rows;
+  const acc = new Map();
+  const masks = (1 << dimNames.length) - 1;
+  for (const r of rows) {
+    for (let m = 1; m <= masks; m++) {
+      const dims = { ...r.dims };
+      dimNames.forEach((d, k) => { if (m & (1 << k)) dims[d] = '_T'; });
+      const key = `${r.period}|${JSON.stringify(dims)}`;
+      const cur = acc.get(key) ?? { period: r.period, dims, measure: r.measure, value: 0 };
+      cur.value += r.value ?? 0;
+      acc.set(key, cur);
+    }
+  }
+  return [...rows, ...acc.values()];
+}
+
 // Transforme des enregistrements bruts en lignes selon la description du jeu :
 //   columns   : [{ field, measure, period?, periodField? }]  une ligne par colonne numérique (dimension MESURE)
 //   dimFields : [{ field, dim }]                              dimensions lues dans l'enregistrement
@@ -34,14 +53,8 @@ function mapRecords(records, spec, constDims = {}, constPeriod = null) {
       const cur = acc.get(key) ?? { period, dims, measure: 'valeur', value: 0 };
       cur.value += 1;
       acc.set(key, cur);
-      // ligne de total (toutes modalités = _T) pour éviter d'avoir à additionner les combinaisons
-      const totalDims = { MESURE: spec.count.measure, ...Object.fromEntries((spec.dimFields || []).map((f) => [f.dim, '_T'])), ...constDims };
-      const tk = `${period}|${JSON.stringify(totalDims)}`;
-      const t = acc.get(tk) ?? { period, dims: totalDims, measure: 'valeur', value: 0 };
-      t.value += 1;
-      acc.set(tk, t);
     }
-    return [...acc.values()];
+    return withMarginals([...acc.values()], (spec.dimFields || []).map((f) => f.dim));
   }
   for (const r of records) {
     for (const c of spec.columns || []) {
@@ -51,7 +64,7 @@ function mapRecords(records, spec, constDims = {}, constPeriod = null) {
       out.push({ period, dims: { MESURE: c.measure, ...dimsOf(r) }, measure: 'valeur', value: c.scale ? v * c.scale : v });
     }
   }
-  return out;
+  return spec.marginals ? withMarginals(out, (spec.dimFields || []).map((f) => f.dim)) : out;
 }
 
 // ---------------- API tabulaire data.gouv.fr ----------------

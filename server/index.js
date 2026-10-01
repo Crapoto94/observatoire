@@ -23,11 +23,27 @@ const ORIGINES = ['externe', 'interne', 'mixte'];
 const CARTOS = ['oui', 'possible', 'non'];
 const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => res.status(500).json({ error: e.message }));
 
+// Date de la version déployée : fichier le plus récent du serveur et du client (permet de repérer une image Docker périmée)
+function buildDate() {
+  const roots = [__dirname, path.join(__dirname, 'connectors'), path.join(__dirname, '..', 'client', 'dist')];
+  let latest = 0;
+  for (const dir of roots) {
+    try {
+      for (const f of fs.readdirSync(dir)) {
+        const st = fs.statSync(path.join(dir, f));
+        if (st.isFile()) latest = Math.max(latest, st.mtimeMs);
+      }
+    } catch { /* dossier absent */ }
+  }
+  return latest ? new Date(latest).toISOString() : null;
+}
+const BUILD = buildDate();
+
 // État de l'application et de sa base (utilisé par le HEALTHCHECK Docker et la supervision)
 const status = (req, res) => {
   try {
     get('SELECT 1');
-    res.json({ ok: true, status: 'ok', db: 'ok', uptime: Math.round(process.uptime()) });
+    res.json({ ok: true, status: 'ok', db: 'ok', uptime: Math.round(process.uptime()), build: BUILD, version: require('../package.json').version });
   } catch (e) {
     res.status(503).json({ ok: false, status: 'erreur', db: e.message });
   }

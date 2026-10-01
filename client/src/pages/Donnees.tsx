@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api, fmtDate } from '../api';
 import { VIEWS } from '../datasetViews';
-import { Mode, MAX_CATEGORIES, Sel, buildChart, cellValue, distinct, initialSelection, isMeasureDim, natCompare, pinnedDims, selectRows } from '../explorer';
+import { Mode, MAX_CATEGORIES, Ratio, Sel, buildChart, buildSelection, cellValue, distinct, initialSelection, isMeasureDim, natCompare, pinnedDims, selectRows } from '../explorer';
 import { DataRow, Dataset, DatasetData, Geo, Indicator, Job, LEVEL_LABEL } from '../types';
 
 const REF = '94041';
@@ -38,6 +38,10 @@ export default function Donnees() {
   const [parents, setParents] = useState<Record<string, string>>({});
   const [mode, setMode] = useState<Mode>('brut');
   const [withTotals, setWithTotals] = useState(false);
+  const [keep, setKeep] = useState<Record<string, string[]>>({});
+  const [ratio, setRatio] = useState<Ratio | null>(null);
+  const [band5, setBand5] = useState(false);
+  const [presetIdx, setPresetIdx] = useState<number | null>(null);
   const initFor = useRef('');
 
   // tableau brut
@@ -107,7 +111,7 @@ export default function Donnees() {
     dimNames.forEach((d) => { m[d] = distinct(rows, d); });
     return m;
   }, [rows, dimNames]);
-  const lab = (dim: string, code: string) => data?.labels?.[dim]?.values?.[code] ?? (code === '_T' ? 'Total' : code);
+  const lab = (dim: string, code: string) => data?.labels?.[dim]?.values?.[code] ?? (code === '_T' ? 'Total' : code === '_Z' ? 'Non renseigné' : code);
   const dimLabel = (dim: string) => (dim === '@PERIOD' ? 'Période' : data?.labels?.[dim]?.label ?? dim);
   const geoName = (code: string) => geos.find((g) => g.code === code)?.nom ?? code;
   // population du territoire au millésime du recensement le plus proche de la période (sinon la plus récente)
@@ -125,25 +129,30 @@ export default function Donnees() {
   const measureDim = dimNames.find(isMeasureDim);
 
   const ctx = useMemo(() => ({ dimNames, hier, label: lab, geoName, popOf }), [dimNames, hier, data, geos]); // eslint-disable-line react-hooks/exhaustive-deps
-  const sel: Sel = { x, series, pins, period, level, parents, mode, withTotals };
+  const sel: Sel = { x, series, pins, period, level, parents, mode, withTotals, keep, ratio, band5 };
+  const applySel = (s: Sel, idx: number | null) => {
+    setX(s.x); setSeries(s.series); setPins(s.pins); setPeriod(s.period); setLevel(s.level); setParents({}); setMode(s.mode);
+    setWithTotals(false); setKeep(s.keep); setRatio(s.ratio); setBand5(s.band5); setPresetIdx(idx);
+  };
 
   // initialisation de la sélection à l'ouverture d'un jeu
   useEffect(() => {
     if (!data || initFor.current === dsId || !rows.length) return;
     initFor.current = dsId;
-    const s0 = initialSelection(rows, ctx, vcfg);
-    setX(s0.x); setSeries(s0.series); setPins(s0.pins); setPeriod(s0.period);
+    applySel(initialSelection(rows, ctx, vcfg), vcfg.presets?.length ? 0 : null);
     setView(vcfg.keyfigures ? 'key' : 'chart');
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- sélection de lignes ----------
-  const pinned = useMemo(() => pinnedDims(sel, ctx), [x, series, ctx]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pinned = useMemo(() => pinnedDims(sel, ctx), [x, series, ratio, ctx]); // eslint-disable-line react-hooks/exhaustive-deps
   const basePeriods = useMemo(() => [...new Set(rows.map((r) => r.period ?? ''))].sort(), [rows]);
-  const selected = useMemo(() => selectRows(rows, sel, ctx), [rows, x, series, pins, period, level, parents, withTotals, ctx]); // eslint-disable-line react-hooks/exhaustive-deps
+  const selected = useMemo(() => selectRows(rows, sel, ctx), [rows, x, series, pins, period, level, parents, withTotals, keep, ratio, ctx]); // eslint-disable-line react-hooks/exhaustive-deps
   const value = (r: DataRow) => cellValue(r, mode, ctx);
   const noPop = mode === 'pop' ? [...new Set(selected.map((r) => r.geo))].filter((g) => !popOf(g)) : [];
-  const measureText = measureDim && pins[measureDim] ? lab(measureDim, pins[measureDim]) : vcfg.measure ?? '';
-  const chart = useMemo(() => buildChart(selected, sel, ctx), [selected, mode, ctx]); // eslint-disable-line react-hooks/exhaustive-deps
+  const preset = presetIdx != null ? vcfg.presets?.[presetIdx] : undefined;
+  const measureText = ratio?.label ?? (measureDim && pins[measureDim] && ![x, series].includes(measureDim) ? lab(measureDim, pins[measureDim]) : '');
+  const chart = useMemo(() => buildChart(selected, sel, ctx), [selected, mode, band5, ratio, keep, x, series, level, ctx]); // eslint-disable-line react-hooks/exhaustive-deps
+  const suffix = chart.unit === '%' ? ' %' : chart.unit === 'idx' ? ' (base 100)' : '';
 
   // ---------- chiffres clés : une ligne par mesure ----------
   const keyTable = useMemo(() => {
@@ -331,32 +340,54 @@ export default function Donnees() {
                     <button className="secondary" onClick={exportCsv}>Exporter CSV</button>
                   </div>
 
+                  {view === 'chart' && vcfg.presets && (
+                    <div className="presets">
+                      {vcfg.presets.map((p, i) => (
+                        <button key={i} className={presetIdx === i ? 'on' : ''} onClick={() => applySel(buildSelection(rows, ctx, p), i)}>{p.label}</button>
+                      ))}
+                    </div>
+                  )}
+                  {view === 'chart' && preset?.note && <div className="note-box small">{preset.note}</div>}
                   {vcfg.note && <div className="note-box small">{vcfg.note}</div>}
+                  {view === 'chart' && x === '@GEO' && shownGeos.length < 2 && (
+                    <div className="warn small">Ce graphique compare des territoires : décochez « Ivry-sur-Seine uniquement » (et choisissez un territoire, ou laissez « tous les territoires importés »).</div>
+                  )}
 
                   {view !== 'table' && (
                     <div className="filters">
                       {view === 'chart' && (
                         <>
                           <label className="field small"><span>Axe horizontal</span>
-                            <select value={x} onChange={(e) => { setX(e.target.value); if (series === e.target.value) setSeries(''); }}>
+                            <select value={x} onChange={(e) => { setX(e.target.value); setPresetIdx(null); if (series === e.target.value) setSeries(''); }}>
                               <option value="@PERIOD">Période</option>
+                              <option value="@GEO">Territoire</option>
                               {hier && <option value="@HIER">{hier.map(dimLabel).join(' › ')}</option>}
-                              {dimNames.filter((d) => !isMeasureDim(d) && d !== 'UNIT_MEASURE' && !(hier ?? []).includes(d)).map((d) => <option key={d} value={d}>{dimLabel(d)}</option>)}
+                              {dimNames.filter((d) => d !== 'UNIT_MEASURE' && !(hier ?? []).includes(d)).map((d) => <option key={d} value={d}>{dimLabel(d)}{isMeasureDim(d) ? ' (mesure)' : ''}</option>)}
                             </select>
                           </label>
                           <label className="field small"><span>Séries</span>
-                            <select value={series} onChange={(e) => setSeries(e.target.value)}>
+                            <select value={series} onChange={(e) => { setSeries(e.target.value); setPresetIdx(null); }}>
                               <option value="">(aucune)</option>
-                              {dimNames.filter((d) => d !== x && d !== 'UNIT_MEASURE' && !(hier ?? []).includes(d)).map((d) => <option key={d} value={d}>{dimLabel(d)}</option>)}
+                              {x !== '@PERIOD' && <option value="@PERIOD">Période</option>}
+                              {dimNames.filter((d) => d !== x && d !== 'UNIT_MEASURE' && !(hier ?? []).includes(d)).map((d) => <option key={d} value={d}>{dimLabel(d)}{isMeasureDim(d) ? ' (mesure)' : ''}</option>)}
                             </select>
                           </label>
                           <label className="field small"><span>Valeurs</span>
-                            <select value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
+                            <select value={mode} disabled={!!ratio} onChange={(e) => { setMode(e.target.value as Mode); setPresetIdx(null); }}>
                               <option value="brut">Valeurs brutes</option>
                               <option value="pop">Pour 1 000 habitants</option>
                               <option value="part" disabled={x === '@PERIOD'}>Répartition en %</option>
+                              <option value="idx" disabled={x !== '@PERIOD'}>Indice (base 100 à la 1re période)</option>
                             </select>
                           </label>
+                          {x === 'AGE' && dimValues.AGE?.some((v) => /^Y\d+$/.test(v)) && (
+                            <label className="inline small"><input type="checkbox" checked={band5} onChange={(e) => setBand5(e.target.checked)} /> Tranches de 5 ans</label>
+                          )}
+                          {ratio && (
+                            <span className="chip ds" title="Calcul d'un ratio entre deux groupes de modalités">
+                              Calcul : {ratio.label} <button className="icon" onClick={() => { setRatio(null); setPresetIdx(null); }}>✕</button>
+                            </span>
+                          )}
                         </>
                       )}
                       {x === '@HIER' && hier && view === 'chart' && (
@@ -398,7 +429,7 @@ export default function Donnees() {
 
                   {view === 'chart' && (
                     <div className="chart">
-                      {measureText && <div className="chart-title">{measureText}</div>}
+                      {(preset || measureText) && <div className="chart-title">{preset?.label}{preset && measureText ? ' : ' : ''}<span className="muted">{measureText}</span></div>}
                       {chart.data.length === 0 ? <div className="empty">Aucune donnée pour cette sélection (essayez une autre combinaison de filtres).</div> : (
                         <ResponsiveContainer width="100%" height={chart.horizontal ? Math.max(380, chart.data.length * (chart.names.length * 16 + 10)) : 400}>
                           {x === '@PERIOD' ? (
@@ -406,7 +437,7 @@ export default function Donnees() {
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis dataKey="x" />
                               <YAxis tickFormatter={fmt} width={70} />
-                              <Tooltip formatter={(v) => fmt(Number(v))} />
+                              <Tooltip formatter={(v) => fmt(Number(v)) + suffix} />
                               <Legend />
                               {chart.names.map((s, k) => <Line key={s} type="monotone" dataKey={s} stroke={COLORS[k % COLORS.length]} strokeWidth={2} dot connectNulls />)}
                             </LineChart>
@@ -415,7 +446,7 @@ export default function Donnees() {
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis type="number" tickFormatter={fmt} />
                               <YAxis type="category" dataKey="x" width={230} interval={0} tick={{ fontSize: 12 }} />
-                              <Tooltip formatter={(v) => fmt(Number(v)) + (mode === 'part' ? ' %' : '')} />
+                              <Tooltip formatter={(v) => fmt(Number(v)) + suffix} />
                               <Legend />
                               {chart.names.map((s, k) => <Bar key={s} dataKey={s} fill={COLORS[k % COLORS.length]} />)}
                             </BarChart>
@@ -424,7 +455,7 @@ export default function Donnees() {
                               <CartesianGrid strokeDasharray="3 3" />
                               <XAxis dataKey="x" interval={x === 'AGE' ? 4 : 0} angle={x === 'AGE' ? 0 : -25} textAnchor={x === 'AGE' ? 'middle' : 'end'} height={x === 'AGE' ? 40 : 90} />
                               <YAxis tickFormatter={fmt} width={70} />
-                              <Tooltip formatter={(v) => fmt(Number(v)) + (mode === 'part' ? ' %' : '')} />
+                              <Tooltip formatter={(v) => fmt(Number(v)) + suffix} />
                               <Legend />
                               {chart.names.map((s, k) => <Bar key={s} dataKey={s} fill={COLORS[k % COLORS.length]} />)}
                             </BarChart>
