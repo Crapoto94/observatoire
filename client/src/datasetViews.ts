@@ -41,7 +41,7 @@ export const VIEWS: Record<string, View> = {
   sru: { x: '@PERIOD', pins: { MESURE: 'TAUX_SRU' }, note: 'Seuil légal : 25 % de logements sociaux (20 % pour certaines communes) ; le taux cible est fixé à la commune.' },
   loyers: { x: '@PERIOD', series: 'TYPE_BIEN', pins: { MESURE: 'LOYER_M2' }, note: 'Loyers d\'annonce (charges comprises) prédits par modèle statistique, pas des loyers constatés.' },
   dvf: { x: '@PERIOD', series: 'TYPE_LOCAL', pins: { MESURE: 'PRIX_M2_MEDIAN' }, note: 'Calculé à l\'import à partir des mutations à titre onéreux d\'un seul logement ; la dernière année est partielle.' },
-  artificialisation: { x: '@PERIOD', pins: { MESURE: 'PART_ARTIF' } },
+  artificialisation: { x: '@PERIOD', pins: { MESURE: 'PART_ARTIF' }, note: 'La part artificialisée des départements et des régions est illisible dans le fichier source (des dates apparaissent à la place des pourcentages) : pour ces niveaux, seules les surfaces sont disponibles (choisir la mesure « Surface artificialisée »).' },
   mos: { x: 'POSTE', pins: { MESURE: 'SURFACE_HA' } },
   multiexposition: { keyfigures: true },
   education_annuaire: { x: 'TYPE', series: 'STATUT', pins: { MESURE: 'NB_ETABLISSEMENTS' } },

@@ -414,6 +414,9 @@ export default function Donnees() {
                         </div>
                       )}
                       {noPop.length > 0 && <div className="warn small">Population inconnue pour {noPop.map(geoName).join(', ')} : exclu du calcul « pour 1 000 habitants ».</div>}
+                      {chart.data.length > 0 && shownGeos.filter((g) => current.geo_counts[g] && !chart.geos.includes(g)).map((g) => (
+                        <div key={g} className="warn small">Aucune valeur pour {geoName(g)} avec cette sélection : changez la mesure ou les filtres (cette mesure n'est peut-être pas disponible pour ce territoire).</div>
+                      ))}
                       {chart.truncated > 0 && <div className="warn small">Seules les {MAX_CATEGORIES} premières catégories (sur {MAX_CATEGORIES + chart.truncated}) sont affichées : restreignez avec les filtres ou le niveau de détail.</div>}
                       {chart.dupes > 0 && <div className="warn small">Plusieurs lignes correspondent à la même barre : leurs valeurs sont additionnées. Précisez les filtres pour éviter les doubles comptes.</div>}
                     </div>

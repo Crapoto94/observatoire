@@ -10,7 +10,7 @@ function parseNum(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-const periodOf = (v) => (v == null || v === '' ? null : String(v).slice(0, 7).replace(/^(\d{4})-?00$/, '$1'));
+const basePeriodOf = (v) => (v == null || v === '' ? null : String(v).slice(0, 7).replace(/^(\d{4})-?00$/, '$1'));
 
 // Transforme des enregistrements bruts en lignes selon la description du jeu :
 //   columns   : [{ field, measure, period?, periodField? }]  une ligne par colonne numérique (dimension MESURE)
@@ -19,6 +19,7 @@ const periodOf = (v) => (v == null || v === '' ? null : String(v).slice(0, 7).re
 function mapRecords(records, spec, constDims = {}, constPeriod = null) {
   if (constPeriod === '$YEAR') constPeriod = String(new Date().getFullYear());
   const out = [];
+  const periodOf = (v) => (spec.periodYear && v != null && v !== '' ? String(v).slice(0, 4) : basePeriodOf(v));
   const dimsOf = (r) => {
     const d = { ...constDims };
     for (const f of spec.dimFields || []) d[f.dim] = r[f.field] == null ? '_Z' : String(r[f.field]);

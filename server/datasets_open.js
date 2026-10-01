@@ -35,12 +35,12 @@ module.exports = [
   },
   {
     id: 'loyers', provider: 'tabular', label: 'Carte des loyers : loyers d\'annonce par commune',
-    description: 'Ministère de la Transition écologique : loyer d\'annonce prédit au m² (charges comprises) par commune, avec intervalle de prédiction, selon le type de bien. Communes uniquement.',
+    description: 'Ministère de la Transition écologique : loyer d\'annonce prédit au m² (charges comprises) par commune, avec intervalle de prédiction, selon le type de bien. Millésimes 2022, 2023 et 2025 (le fichier 2024 n\'est pas accessible par l\'API tabulaire). Communes uniquement.',
     themes: ['logement'], doc_url: DG('693aa2feed1bf4da603faa49'),
     link: [{ theme: 'logement', re: /prix|loyers/ }],
     config: {
       sources: [
-        ['2025', '693aa2feed1bf4da603faa49'], ['2024', '6751be987c09f4be821c6934'], ['2023', '65808cdcf9c212f5f056e2fa'], ['2022', '639c7cf4969f3318338df9a8'],
+        ['2025', '693aa2feed1bf4da603faa49'], ['2023', '65808cdcf9c212f5f056e2fa'], ['2022', '639c7cf4969f3318338df9a8'],
       ].flatMap(([period, dataset]) => [
         ['APPARTEMENT', '^Indicateurs? de loyers? appartement$'], ['APPARTEMENT_1_2P', 'appartement de 1 ou 2'],
         ['APPARTEMENT_3P_PLUS', 'appartement de 3 pi'], ['MAISON', '^Indicateurs? de loyers? maison$'],
@@ -70,7 +70,7 @@ module.exports = [
   },
   {
     id: 'artificialisation', provider: 'tabular', label: 'Artificialisation des sols',
-    description: 'Mon diagnostic artificialisation (Cerema / portail de l\'artificialisation) : part et surface de sols artificialisés par millésime, et flux entre deux millésimes. Commune, intercommunalité, département, région.',
+    description: 'Mon diagnostic artificialisation (Cerema / portail de l\'artificialisation) : part et surface de sols artificialisés par millésime, et flux entre deux millésimes. Commune, intercommunalité, département, région (pour les départements et régions, la part en % est illisible dans le fichier source : seules les surfaces sont exploitables).',
     themes: ['environnement'], doc_url: DG('697b4f4d51a9d53976e5a8c9'),
     link: [{ theme: 'environnement', re: /imperm|artificialis|espaces naturels|etalement/ }],
     config: {
@@ -143,7 +143,7 @@ module.exports = [
     config: {
       base: 'https://data.education.gouv.fr', dataset: 'fr-en-ecoles-effectifs-nb_classes', levels: { COM: 'commune' }, byName: { deptField: 'code_departement' },
       columns: [{ field: 'eleves', measure: 'ELEVES' }, { field: 'classes', measure: 'CLASSES' }],
-      queries: [{ select: 'rentree_scolaire, secteur, sum(nombre_total_eleves) as eleves, sum(nombre_total_classes) as classes', groupBy: 'rentree_scolaire, secteur', periodField: 'rentree_scolaire', dimFields: [{ field: 'secteur', dim: 'SECTEUR' }] }],
+      queries: [{ select: 'rentree_scolaire, secteur, sum(nombre_total_eleves) as eleves, sum(nombre_total_classes) as classes', groupBy: 'rentree_scolaire, secteur', periodField: 'rentree_scolaire', periodYear: true, dimFields: [{ field: 'secteur', dim: 'SECTEUR' }] }],
       labels: { ...mesure('Mesure', { ELEVES: 'Nombre d\'élèves', CLASSES: 'Nombre de classes' }), SECTEUR: { label: 'Secteur', values: {} } },
     },
   },
@@ -182,16 +182,15 @@ module.exports = [
   },
   {
     id: 'entreprises', provider: 'entreprises', label: 'Associations, ESS et entreprises (stock du jour)',
-    description: 'API Recherche d\'entreprises (DINUM / INSEE / INPI) : nombre d\'associations, de structures de l\'économie sociale et solidaire et d\'entreprises actives de la commune, à la date de l\'import (pas d\'historique : réimporter régulièrement). Communes uniquement.',
+    description: 'API Recherche d\'entreprises (DINUM / INSEE / INPI) : nombre d\'associations et de structures de l\'économie sociale et solidaire de la commune, à la date de l\'import (pas d\'historique : réimporter régulièrement). Communes uniquement.',
     themes: ['cohesion', 'emploi'], doc_url: 'https://recherche-entreprises.api.gouv.fr/docs/',
     link: [{ groupe: 'vie-associative', re: /nb d associations/ }, { groupe: 'commerces', re: /ess/ }],
     config: {
       counts: [
         { measure: 'ASSOCIATIONS', query: 'est_association=true' },
         { measure: 'ESS', query: 'est_ess=true' },
-        { measure: 'ENTREPRISES_ACTIVES', query: 'etat_administratif=A' },
       ],
-      labels: mesure('Mesure', { ASSOCIATIONS: 'Associations', ESS: 'Structures de l\'économie sociale et solidaire', ENTREPRISES_ACTIVES: 'Entreprises actives (hors associations incluses)' }),
+      labels: mesure('Mesure', { ASSOCIATIONS: 'Associations', ESS: 'Structures de l\'économie sociale et solidaire' }),
     },
   },
 ];
