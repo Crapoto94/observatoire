@@ -58,6 +58,8 @@ function refreshStats(datasetId) {
     n, last || null, err?.message ? 'erreur' : n ? 'ok' : null, datasetId);
 }
 
+const currentJob = () => [...jobs.values()].find((j) => j.status === 'en cours') || null;
+
 /** Lance un import en tâche de fond. datasetIds / geoCodes vides = tout. */
 function startImport({ datasetIds, geoCodes } = {}) {
   const datasets = datasetIds?.length
@@ -66,6 +68,9 @@ function startImport({ datasetIds, geoCodes } = {}) {
   const geos = geoCodes?.length
     ? all(`SELECT * FROM geos WHERE code IN (${geoCodes.map(() => '?').join(',')})`, ...geoCodes)
     : all('SELECT * FROM geos');
+  // un seul import à la fois : si un import tourne déjà, on renvoie celui-ci
+  const running = currentJob();
+  if (running) return { ...running, already: true };
   const id = ++jobSeq;
   const job = { id, status: 'en cours', total: datasets.length * geos.length, done: 0, errors: 0, log: [], started: now() };
   jobs.set(id, job);
@@ -95,4 +100,4 @@ function startImport({ datasetIds, geoCodes } = {}) {
   return job;
 }
 
-module.exports = { startImport, jobs, refreshStats };
+module.exports = { startImport, jobs, refreshStats, currentJob };

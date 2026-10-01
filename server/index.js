@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { all, get, run, tx } = require('./db');
 const { seed, REF_GEO } = require('./seed');
-const { startImport, jobs } = require('./importer');
+const { startImport, jobs, currentJob } = require('./importer');
 const { buildWorkbook } = require('./export');
 
 seed();
@@ -187,6 +187,8 @@ app.post('/api/datasets/:id/import', (req, res) => {
 app.post('/api/import', (req, res) => {
   res.status(202).json(startImport({ datasetIds: req.body?.datasets, geoCodes: req.body?.geos }));
 });
+
+app.get('/api/jobs/current', (req, res) => res.json(currentJob()));
 
 app.get('/api/jobs/:id', (req, res) => {
   const j = jobs.get(Number(req.params.id));

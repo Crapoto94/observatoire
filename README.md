@@ -35,7 +35,7 @@ L'application est alors sur http://localhost:2508.
 | Conception des indicateurs | Liste du classeur Excel (209 indicateurs), recherche, filtres, édition. Colonnes : lien d'origine, lien corrigé, proposition, lien données, jeux importés rattachés, statut, faisabilité. Fiche complète par indicateur (définition, formule, unité, périmètre, porteur, cible, indicateur de contexte associé, décision), historique des modifications, export Excel et CSV. |
 | Pilotage | Couverture par thème (source, jeu importé, définition, porteur, validation), matrice priorité × faisabilité, doublons possibles, indicateurs de suivi sans indicateur de contexte. |
 | Carte mentale | Générée à partir de la base, géométrie relevée sur la carte PDF (cadres, pastilles, couleurs par niveau et par priorité). Export SVG, versions enregistrées (par exemple une par CODIR), pastille verte sur les indicateurs validés, indicateurs abandonnés masqués. |
-| Données | Jeux importés dans la base (SQLite) : tableau brut, graphique, comparaison avec un territoire au choix, valeurs pour 1 000 habitants, écart à la dernière période commune, bouton de mise à jour (réimport). |
+| Données | Jeux importés dans la base (SQLite) : tableau brut, graphique, comparaison avec un territoire au choix, valeurs pour 1 000 habitants, écart à la dernière période commune, bouton de mise à jour par jeu et bouton « Tout mettre à jour » (réimporte tous les jeux publics pour tous les territoires, avec progression et bilan ; un seul import à la fois). |
 
 ## Territoires de comparaison
 

@@ -57,6 +57,8 @@ export default function Donnees() {
 
   useEffect(() => {
     loadMeta().then((d) => { if (!params.get('ds') && d.length) setParams({ ds: d[0].id }, { replace: true }); }).catch((e) => setError(e.message));
+    // reprise du suivi si un import est déjà en cours (page rechargée, autre onglet)
+    api<Job | null>('/jobs/current').then((j) => { if (j) follow(j); }).catch(() => undefined);
     return () => window.clearInterval(poll.current);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -89,6 +91,7 @@ export default function Donnees() {
     }, 1000);
   };
   const refresh = async (all: boolean) => {
+    if (all && !confirm(`Mettre à jour les ${datasets.length} jeux de données publics pour les ${geos.length} territoires importés ?\nL'opération réinterroge toutes les sources (quelques minutes).`)) return;
     try { follow(await api<Job>(all ? '/import' : `/datasets/${dsId}/import`, { body: {} })); } catch (e) { setError((e as Error).message); }
   };
 
@@ -219,15 +222,27 @@ export default function Donnees() {
       <div className="page-head">
         <h1>Données</h1>
         <div className="actions">
-          <button className="secondary" onClick={() => refresh(true)} disabled={job?.status === 'en cours'}>Tout rafraîchir</button>
+          <button onClick={() => refresh(true)} disabled={job?.status === 'en cours'} title="Réinterroge toutes les sources publiques et remplace les données stockées">
+            {job?.status === 'en cours' ? 'Mise à jour en cours…' : '⟳ Tout mettre à jour'}
+          </button>
         </div>
       </div>
       {error && <div className="error">{error}</div>}
       {job && (
         <div className={`job ${job.status === 'en cours' ? 'run' : job.errors ? 'bad' : 'ok'}`}>
-          Import : {job.status} — {job.done}/{job.total}{job.errors ? ` · ${job.errors} erreur(s)` : ''}
-          {job.status !== 'en cours' && <button className="icon" onClick={() => setJob(null)}>✕</button>}
-          {job.errors > 0 && <div className="small">{job.log.filter((l) => l.includes('ERREUR')).slice(-3).join(' | ')}</div>}
+          <div className="job-line">
+            <strong>{job.status === 'en cours' ? 'Mise à jour en cours' : job.errors ? 'Mise à jour terminée avec erreurs' : 'Mise à jour terminée'}</strong>
+            <span>{job.done} / {job.total} ({job.total ? Math.round((100 * job.done) / job.total) : 0} %){job.errors ? ` · ${job.errors} erreur(s)` : ''}</span>
+            {job.status !== 'en cours' && <button className="icon" onClick={() => setJob(null)}>✕</button>}
+          </div>
+          <div className="progress"><div style={{ width: `${job.total ? (100 * job.done) / job.total : 0}%` }} /></div>
+          {job.status === 'en cours' && job.log.length > 0 && <div className="small">{job.log[job.log.length - 1]}</div>}
+          {job.errors > 0 && (
+            <details className="small">
+              <summary>Voir les erreurs</summary>
+              <ul>{job.log.filter((l) => l.includes('ERREUR')).map((l, k) => <li key={k}>{l}</li>)}</ul>
+            </details>
+          )}
         </div>
       )}
 
