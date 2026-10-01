@@ -1,0 +1,14 @@
+node_modules
+client/node_modules
+client/dist
+data
+_tmp
+.git
+.claude
+*.log
+*.pdf
+*.xlsx
+tools
+Dockerfile
+docker-compose.yml
+.dockerignore

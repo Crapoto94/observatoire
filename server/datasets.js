@@ -1,0 +1,88 @@
+// Catalogue des jeux de données importables (API Melodi de l'INSEE).
+// `link` : règles de rattachement automatique aux indicateurs ({ groupe?, theme?, re }) testées sur le libellé
+// normalisé (minuscules, sans accents, ponctuation -> espaces). Modifiable ensuite depuis la fiche indicateur.
+const MELODI = 'https://api.insee.fr/melodi';
+
+const d = (id, ds, label, description, themes, link, extra = {}) => ({
+  id,
+  provider: 'melodi',
+  config: { ds, geoPrefix: '2025-COM-', ...extra },
+  label,
+  description,
+  themes,
+  doc_url: `${MELODI}/catalog/${ds}`,
+  link,
+});
+
+const MELODI_DATASETS = [
+  d('pop_hist', 'DS_POPULATIONS_HISTORIQUES', 'Populations municipales 1968-2023',
+    'Population municipale par commune, séries historiques des recensements.',
+    ['demographie'], [{ theme: 'demographie', re: /population totale|evolution annuelle de la population|projection de population/ }]),
+  d('rp_pop_agesex', 'DS_RP_TD_POPULATION_AGESEX_PRINC', 'Population par sexe et âge (POP1)',
+    'Recensement : population par sexe et âge quinquennal (pyramide des âges).',
+    ['demographie'], [{ theme: 'demographie', re: /pyramide|tranche d age|vieillissement|dependance|moins de 18|65 ans|jeunesse|personnes agees|besoins scolaires/ }]),
+  d('etat_civil_nais', 'DS_ETAT_CIVIL_NAIS_COMMUNES', 'Naissances annuelles par commune',
+    'État civil : naissances domiciliées, annuelles, niveau communal.',
+    ['demographie'], [{ theme: 'demographie', re: /natalite|solde naturel/ }]),
+  d('etat_civil_deces', 'DS_ETAT_CIVIL_DECES_COMMUNES', 'Décès annuels par commune',
+    'État civil : décès domiciliés, annuels, niveau communal.',
+    ['demographie'], [{ theme: 'demographie', re: /mortalite|solde naturel/ }]),
+  d('rp_menages_taille', 'DS_RP_TD_MENAGES_NOC_COMP', 'Ménages selon la taille (MEN4)',
+    'Recensement : ménages selon la taille du ménage, le sexe et l\'âge de la personne de référence.',
+    ['demographie'], [{ theme: 'demographie', re: /taille des menages/ }]),
+  d('rp_menages_type', 'DS_RP_TD_MENAGES_TPH_COMP', 'Ménages selon le type (MEN5/MEN6)',
+    'Recensement : ménages selon l\'âge de la personne de référence et le type de ménage (dont familles monoparentales).',
+    ['demographie'], [{ theme: 'demographie', re: /monoparentaux|monoparentales/ }]),
+  d('rp_nationalite', 'DS_RP_TD_NAT_AGESEX_PRINC', 'Population par sexe, âge et nationalité (NAT1)',
+    'Recensement : population par nationalité (étrangers / Français). À utiliser pour la part d\'étrangers.',
+    ['demographie'], [{ theme: 'demographie', re: /etrangers/ }]),
+  d('rp_immigration', 'DS_RP_TD_IMMI_AGESEXEMPSTA_PRINC', 'Immigration (IMG1)',
+    'Recensement : population par sexe, âge et situation quant à l\'immigration (immigrés, distincts des étrangers).',
+    ['demographie'], []),
+  d('rp_migrations', 'DS_RP_MIGRES_PRINC', 'Migrations résidentielles',
+    'Recensement : lieu de résidence un an auparavant (arrivées), pour le solde migratoire et l\'attractivité.',
+    ['demographie'], [{ theme: 'demographie', re: /solde migratoire|attractivite/ }]),
+  d('rp_scolarisation', 'DS_RP_TD_EDUCATION_PRINC', 'Scolarisation (FOR1)',
+    'Recensement : population scolarisée par âge, sexe et lieu d\'études.',
+    ['demographie'], [{ theme: 'demographie', re: /non scolarises|besoins scolaires/ }]),
+
+  d('rp_activite_chomage', 'DS_RP_EMPLOI_LR_PRINC', 'Population active et chômage',
+    'Recensement : population active, emploi, chômage au sens du recensement (lieu de résidence).',
+    ['emploi'], [{ theme: 'emploi', re: /taux d activite|taux de chomage|nombre d actifs|nombre de chomeurs|chomage/ }]),
+  d('rp_csp', 'DS_RP_TD_POPULATION_PCSAGESEX_COMP', 'Population par CSP (POP6)',
+    'Recensement : population de 15 ans ou plus selon le groupe socioprofessionnel, le sexe et l\'âge.',
+    ['emploi'], [{ theme: 'emploi', re: /categorie socio|csp|profils/ }]),
+  d('rp_emploi_lt', 'DS_RP_EMPLOI_LT_PRINC', 'Emploi au lieu de travail',
+    'Recensement : emplois au lieu de travail (densité d\'emplois, évolution du nombre d\'emplois).',
+    ['emploi'], [{ theme: 'emploi', re: /densite d emplois|nombre d emplois|emplois occupes|adequation des emplois/ }]),
+  d('filosofi', 'DS_FILOSOFI_CC', 'Filosofi : niveau de vie et pauvreté',
+    'Revenus localisés sociaux et fiscaux : niveau de vie médian, taux de pauvreté, déciles (millésime 2023).',
+    ['emploi', 'cohesion'], [
+      { theme: 'emploi', re: /revenu median|bas revenus|ecart de revenu/ },
+      { theme: 'cohesion', re: /taux de pauvrete|evolution du taux de pauvrete/ },
+    ]),
+  d('side_stocks', 'DS_SIDE_STOCKS_COM', 'Stocks d\'établissements par activité',
+    'Sirene (SIDE) : stocks d\'unités légales et d\'établissements par secteur d\'activité (A10).',
+    ['emploi'], [{ groupe: 'commerces', re: /nb de commerces|entreprises hors commerce|dynamique|ess/ }]),
+  d('side_creations', 'DS_SIDE_CREA_COM', 'Créations d\'entreprises et d\'établissements',
+    'Sirene (SIDE) : créations par secteur d\'activité et forme légale, niveau communal.',
+    ['emploi'], [{ theme: 'emploi', re: /creations fermetures|dynamique|activites implantees/ }]),
+  d('bpe', 'DS_BPE', 'Base permanente des équipements',
+    'Équipements et services (commerces, sport, santé, enseignement, culture), dénombrement par commune.',
+    ['cohesion', 'emploi'], [
+      { groupe: 'conditions-vie', re: /equipements/ },
+      { groupe: 'sante', re: /offre de soins|praticiens|densite medicale|offre demande/ },
+    ]),
+  d('rp_logement', 'DS_RP_LOGEMENT_PRINC', 'Logements (dossier complet)',
+    'Recensement : logements et résidences principales (statut d\'occupation, période de construction, vacance, voitures).',
+    ['logement', 'cohesion', 'mobilite'], [
+      { theme: 'logement', re: /parc de logements|vacance|logements vacants/ },
+      { groupe: 'conditions-vie', re: /logement social|sur occup/ },
+      { theme: 'mobilite', re: /motorisation/ },
+    ]),
+  d('rp_navettes', 'DS_RP_TD_NAVETTES_SEXTRANSPORT_COMP', 'Déplacements domicile-travail (NAV2)',
+    'Recensement : actifs selon le moyen de transport et le lieu de travail.',
+    ['mobilite'], [{ theme: 'mobilite', re: /part modale|deplacements par type|domicile travail/ }]),
+];
+
+module.exports = [...MELODI_DATASETS, ...require('./datasets_open')];

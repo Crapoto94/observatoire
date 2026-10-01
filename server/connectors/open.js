@@ -1,0 +1,198 @@
+// Connecteurs open data hors INSEE : API tabulaire data.gouv.fr, portails Opendatasoft, fichiers geo-dvf, API Recherche d'entreprises.
+// Chaque connecteur expose fetchGeo(config, geo) -> lignes { period, dims, measure, value } ou null si le niveau géographique n'est pas géré.
+const { fetchJson } = require('./melodi');
+
+// ---------------- outils communs ----------------
+function parseNum(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const n = Number(String(v).replace(/[%\s €]/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+}
+
+const periodOf = (v) => (v == null || v === '' ? null : String(v).slice(0, 7).replace(/^(\d{4})-?00$/, '$1'));
+
+// Transforme des enregistrements bruts en lignes selon la description du jeu :
+//   columns   : [{ field, measure, period?, periodField? }]  une ligne par colonne numérique (dimension MESURE)
+//   dimFields : [{ field, dim }]                              dimensions lues dans l'enregistrement
+//   count     : { measure }                                   mode comptage : une ligne par combinaison de dimensions
+function mapRecords(records, spec, constDims = {}, constPeriod = null) {
+  if (constPeriod === '$YEAR') constPeriod = String(new Date().getFullYear());
+  const out = [];
+  const dimsOf = (r) => {
+    const d = { ...constDims };
+    for (const f of spec.dimFields || []) d[f.dim] = r[f.field] == null ? '_Z' : String(r[f.field]);
+    return d;
+  };
+  if (spec.count) {
+    const acc = new Map();
+    for (const r of records) {
+      const period = periodOf(spec.periodField ? r[spec.periodField] : constPeriod) ?? constPeriod;
+      const dims = { MESURE: spec.count.measure, ...dimsOf(r) };
+      const key = `${period}|${JSON.stringify(dims)}`;
+      const cur = acc.get(key) ?? { period, dims, measure: 'valeur', value: 0 };
+      cur.value += 1;
+      acc.set(key, cur);
+      // ligne de total (toutes modalités = _T) pour éviter d'avoir à additionner les combinaisons
+      const totalDims = { MESURE: spec.count.measure, ...Object.fromEntries((spec.dimFields || []).map((f) => [f.dim, '_T'])), ...constDims };
+      const tk = `${period}|${JSON.stringify(totalDims)}`;
+      const t = acc.get(tk) ?? { period, dims: totalDims, measure: 'valeur', value: 0 };
+      t.value += 1;
+      acc.set(tk, t);
+    }
+    return [...acc.values()];
+  }
+  for (const r of records) {
+    for (const c of spec.columns || []) {
+      const period = periodOf(c.period ?? (c.periodField ? r[c.periodField] : undefined) ?? (spec.periodField ? r[spec.periodField] : undefined) ?? constPeriod);
+      const v = parseNum(r[c.field]);
+      if (v == null) continue; // valeur absente : pas de ligne
+      out.push({ period, dims: { MESURE: c.measure, ...dimsOf(r) }, measure: 'valeur', value: c.scale ? v * c.scale : v });
+    }
+  }
+  return out;
+}
+
+// ---------------- API tabulaire data.gouv.fr ----------------
+const TAB = 'https://tabular-api.data.gouv.fr/api/resources';
+
+const resourceCache = new Map();
+
+async function resolveResource(src) {
+  if (src.resource) return src.resource;
+  const key = `${src.dataset}|${src.title}`;
+  if (resourceCache.has(key)) return resourceCache.get(key);
+  const d = await fetchJson(`https://www.data.gouv.fr/api/1/datasets/${src.dataset}/`);
+  const re = new RegExp(src.title, 'i');
+  const hit = (d.resources || []).find((r) => /csv/i.test(r.format || '') && re.test(r.title || ''));
+  if (!hit) throw new Error(`ressource introuvable (${src.dataset} / ${src.title})`);
+  resourceCache.set(key, hit.id);
+  return hit.id;
+}
+
+async function tabularRecords(resource, geoField, code) {
+  const out = [];
+  for (let page = 1; page <= 50; page++) {
+    const j = await fetchJson(`${TAB}/${resource}/data/?${encodeURIComponent(geoField)}__exact=${encodeURIComponent(code)}&page_size=200&page=${page}`);
+    out.push(...(j.data || []));
+    if (!j.links?.next || (j.data || []).length < 200) break;
+  }
+  return out;
+}
+
+async function fetchTabular(config, geo) {
+  const sources = config.sources.filter((s) => (s.level || 'COM') === (geo.level || 'COM'));
+  if (!sources.length) return null;
+  const rows = [];
+  const errors = [];
+  for (const src of sources) {
+    try {
+      const resource = await resolveResource(src);
+      const recs = await tabularRecords(resource, src.geoField, geo.code);
+      rows.push(...mapRecords(recs, { ...config, ...(src.spec || {}) }, src.constDims || {}, src.period ?? null));
+    } catch (e) {
+      errors.push(e.message);
+    }
+  }
+  if (!rows.length && errors.length) throw new Error(errors[0]);
+  return rows;
+}
+
+// ---------------- Opendatasoft (explore v2.1) ----------------
+async function fetchOds(config, geo) {
+  const field = config.levels?.[geo.level || 'COM'];
+  if (!field) return null;
+  const rows = [];
+  for (const q of config.queries) {
+    // certains jeux n'ont pas de code INSEE exploitable : recherche par nom de commune + département
+    const byName = config.byName;
+    const upper = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+    const geoWhere = byName
+      ? `${field}="${upper(geo.nom)}" and ${byName.deptField}="${geo.code.slice(0, 2)}"`
+      : config.geoQuote === false ? `${field}=${geo.code}` : `${field}="${geo.code}"`;
+    const where = [geoWhere, q.where].filter(Boolean).join(' and ');
+    const recs = [];
+    for (let offset = 0; offset < 20000; offset += 100) {
+      const p = new URLSearchParams({ where, limit: '100', offset: String(offset) });
+      if (q.select) p.set('select', q.select);
+      if (q.groupBy) p.set('group_by', q.groupBy);
+      const j = await fetchJson(`${config.base}/api/explore/v2.1/catalog/datasets/${config.dataset}/records?${p}`);
+      recs.push(...(j.results || []));
+      if ((j.results || []).length < 100) break;
+    }
+    rows.push(...mapRecords(recs, { ...config, ...q }, q.constDims || {}, q.period ?? null));
+  }
+  return rows;
+}
+
+// ---------------- Demandes de valeurs foncières (fichiers geo-dvf par commune) ----------------
+function parseCsv(text) {
+  const rows = [];
+  let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; } else if (c !== '\r') cur += c;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  const head = rows.shift() || [];
+  return rows.filter((r) => r.length === head.length).map((r) => Object.fromEntries(head.map((h, k) => [h, r[k]])));
+}
+
+const median = (a) => {
+  if (!a.length) return null;
+  const s = [...a].sort((x, y) => x - y);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
+async function fetchGeoDvf(config, geo) {
+  if ((geo.level || 'COM') !== 'COM') return null;
+  const rows = [];
+  for (const year of config.years) {
+    const url = `https://files.data.gouv.fr/geo-dvf/latest/csv/${year}/communes/${geo.code.slice(0, 2)}/${geo.code}.csv`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(120000), redirect: 'follow' });
+    if (!r.ok) continue;
+    const recs = parseCsv(await r.text()).filter((x) => x.nature_mutation === 'Vente');
+    const byMut = new Map();
+    for (const x of recs) (byMut.get(x.id_mutation) || byMut.set(x.id_mutation, []).get(x.id_mutation)).push(x);
+    const stats = { Appartement: [], Maison: [] };
+    for (const [, list] of byMut) {
+      const locals = list.filter((x) => (x.type_local === 'Appartement' || x.type_local === 'Maison') && Number(x.surface_reelle_bati) > 0);
+      const unique = new Map(locals.map((x) => [`${x.id_parcelle}|${x.lot1_numero}|${x.type_local}|${x.surface_reelle_bati}`, x]));
+      const value = Number(list[0].valeur_fonciere);
+      if (unique.size !== 1 || !(value > 0)) continue;
+      const [x] = [...unique.values()];
+      const surf = Number(x.surface_reelle_bati);
+      stats[x.type_local].push({ value, surf, m2: value / surf });
+    }
+    rows.push({ period: String(year), dims: { MESURE: 'NB_MUTATIONS', TYPE_LOCAL: '_T' }, measure: 'valeur', value: byMut.size });
+    for (const [type, list] of Object.entries(stats)) {
+      const sane = list.filter((s) => s.m2 >= 500 && s.m2 <= 30000);
+      const add = (mesure, value) => rows.push({ period: String(year), dims: { MESURE: mesure, TYPE_LOCAL: type }, measure: 'valeur', value });
+      add('NB_VENTES', sane.length);
+      add('PRIX_M2_MEDIAN', median(sane.map((s) => s.m2)));
+      add('SURFACE_MEDIANE', median(sane.map((s) => s.surf)));
+      add('VALEUR_MEDIANE', median(sane.map((s) => s.value)));
+    }
+  }
+  return rows;
+}
+
+// ---------------- API Recherche d'entreprises (stock du jour : associations, ESS…) ----------------
+async function fetchEntreprises(config, geo) {
+  if ((geo.level || 'COM') !== 'COM') return null;
+  const year = String(new Date().getFullYear());
+  const rows = [];
+  for (const m of config.counts) {
+    const j = await fetchJson(`https://recherche-entreprises.api.gouv.fr/search?code_commune=${geo.code}&${m.query}&per_page=1`);
+    rows.push({ period: year, dims: { MESURE: m.measure }, measure: 'valeur', value: j.total_results ?? null });
+    await new Promise((r) => setTimeout(r, 250)); // l'API limite le débit
+  }
+  return rows;
+}
+
+module.exports = { fetchTabular, fetchOds, fetchGeoDvf, fetchEntreprises, parseNum };

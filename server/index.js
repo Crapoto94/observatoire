@@ -1,0 +1,254 @@
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const { all, get, run, tx } = require('./db');
+const { seed, REF_GEO } = require('./seed');
+const { startImport, jobs } = require('./importer');
+const { buildWorkbook } = require('./export');
+
+seed();
+
+const app = express();
+app.use(express.json({ limit: '5mb' }));
+
+const FIELDS = ['theme', 'theme_label', 'groupe', 'groupe_label', 'niveau', 'libelle', 'libelle_carte', 'priorite', 'source',
+  'lien_origine', 'lien_corrige', 'periodicite', 'proposition', 'lien_donnees', 'notes', 'ordre', 'sous_ligne', 'excel_sheet', 'excel_row',
+  'definition', 'formule', 'unite', 'perimetre', 'porteur', 'cible', 'statut', 'decision', 'faisabilite', 'parent_id', 'origine', 'cartographie'];
+const ROW_FIELDS = ['source', 'lien_origine', 'lien_corrige', 'periodicite', 'proposition', 'lien_donnees'];
+// champs dont les modifications sont historisées
+const TRACKED = FIELDS.filter((f) => !['ordre', 'sous_ligne', 'excel_sheet', 'excel_row', 'theme_label', 'groupe_label'].includes(f));
+const STATUTS = ['brouillon', 'valide', 'abandonne'];
+const ORIGINES = ['externe', 'interne', 'mixte'];
+const CARTOS = ['oui', 'possible', 'non'];
+const wrap = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch((e) => res.status(500).json({ error: e.message }));
+
+// État de l'application et de sa base (utilisé par le HEALTHCHECK Docker et la supervision)
+const status = (req, res) => {
+  try {
+    get('SELECT 1');
+    res.json({ ok: true, status: 'ok', db: 'ok', uptime: Math.round(process.uptime()) });
+  } catch (e) {
+    res.status(503).json({ ok: false, status: 'erreur', db: e.message });
+  }
+};
+app.get('/api/health', status);
+app.get('/api/status', status);
+
+// ---------------- Indicateurs ----------------
+function withDatasets(rows) {
+  const links = all('SELECT indicator_id, dataset_id FROM indicator_datasets');
+  const by = new Map();
+  for (const l of links) (by.get(l.indicator_id) || by.set(l.indicator_id, []).get(l.indicator_id)).push(l.dataset_id);
+  return rows.map((r) => ({ ...r, dataset_ids: by.get(r.id) || [] }));
+}
+
+app.get('/api/indicators', (req, res) => {
+  res.json(withDatasets(all('SELECT * FROM indicators ORDER BY theme, groupe, ordre, sous_ligne, id')));
+});
+
+function saveLinks(id, datasetIds) {
+  if (!Array.isArray(datasetIds)) return;
+  run('DELETE FROM indicator_datasets WHERE indicator_id = ?', id);
+  for (const d of datasetIds) run('INSERT OR IGNORE INTO indicator_datasets (indicator_id, dataset_id) VALUES (?,?)', id, d);
+}
+
+const checkStatut = (b) => {
+  if (b.statut != null && !STATUTS.includes(b.statut)) return 'statut inconnu';
+  if (b.origine != null && b.origine !== '' && !ORIGINES.includes(b.origine)) return 'origine inconnue';
+  if (b.cartographie != null && b.cartographie !== '' && !CARTOS.includes(b.cartographie)) return 'valeur de cartographie inconnue';
+  return null;
+};
+
+app.post('/api/indicators', (req, res) => {
+  const b = req.body || {};
+  if (!b.libelle || !b.niveau || !b.theme) return res.status(400).json({ error: 'theme, niveau et libelle sont obligatoires' });
+  if (checkStatut(b)) return res.status(400).json({ error: checkStatut(b) });
+  const cols = FIELDS.filter((f) => b[f] !== undefined);
+  const id = tx(() => {
+    const r = run(`INSERT INTO indicators (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`, ...cols.map((c) => b[c]));
+    const newId = Number(r.lastInsertRowid);
+    saveLinks(newId, b.dataset_ids);
+    run('INSERT INTO indicator_history (indicator_id, field, old_value, new_value) VALUES (?,?,?,?)', newId, 'création', null, b.libelle);
+    return newId;
+  });
+  res.status(201).json(withDatasets(all('SELECT * FROM indicators WHERE id = ?', id))[0]);
+});
+
+app.put('/api/indicators/:id', (req, res) => {
+  const id = Number(req.params.id);
+  const cur = get('SELECT * FROM indicators WHERE id = ?', id);
+  if (!cur) return res.status(404).json({ error: 'introuvable' });
+  const b = req.body || {};
+  if (checkStatut(b)) return res.status(400).json({ error: checkStatut(b) });
+  if (b.parent_id != null && Number(b.parent_id) === id) return res.status(400).json({ error: 'un indicateur ne peut pas être son propre parent' });
+  tx(() => {
+    const cols = FIELDS.filter((f) => b[f] !== undefined);
+    if (cols.length) {
+      run(`UPDATE indicators SET ${cols.map((c) => `${c} = ?`).join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, ...cols.map((c) => b[c]), id);
+      for (const c of cols.filter((f) => TRACKED.includes(f))) {
+        const o = cur[c] ?? null;
+        const n = b[c] === '' ? null : b[c] ?? null;
+        if (String(o ?? '') !== String(n ?? '')) {
+          run('INSERT INTO indicator_history (indicator_id, field, old_value, new_value) VALUES (?,?,?,?)', id, c, o == null ? null : String(o), n == null ? null : String(n));
+        }
+      }
+    }
+    if (b.apply_to_row && cur.excel_sheet != null) {
+      const sets = ROW_FIELDS.filter((f) => b[f] !== undefined);
+      if (sets.length) {
+        run(`UPDATE indicators SET ${sets.map((c) => `${c} = ?`).join(', ')}, updated_at = CURRENT_TIMESTAMP
+             WHERE excel_sheet = ? AND excel_row = ? AND id <> ?`, ...sets.map((c) => b[c]), cur.excel_sheet, cur.excel_row, id);
+      }
+    }
+    if (Array.isArray(b.dataset_ids)) {
+      const before = all('SELECT dataset_id FROM indicator_datasets WHERE indicator_id = ? ORDER BY dataset_id', id).map((r) => r.dataset_id).join(', ');
+      const after = [...b.dataset_ids].sort().join(', ');
+      if (before !== after) run('INSERT INTO indicator_history (indicator_id, field, old_value, new_value) VALUES (?,?,?,?)', id, 'jeux de données', before || null, after || null);
+      saveLinks(id, b.dataset_ids);
+    }
+  });
+  res.json(withDatasets(all('SELECT * FROM indicators WHERE id = ?', id))[0]);
+});
+
+app.delete('/api/indicators/:id', (req, res) => {
+  run('UPDATE indicators SET parent_id = NULL WHERE parent_id = ?', Number(req.params.id));
+  run('DELETE FROM indicators WHERE id = ?', Number(req.params.id));
+  run('DELETE FROM indicator_history WHERE indicator_id = ?', Number(req.params.id));
+  res.status(204).end();
+});
+
+app.get('/api/indicators/:id/history', (req, res) => {
+  res.json(all('SELECT * FROM indicator_history WHERE indicator_id = ? ORDER BY id DESC LIMIT 200', Number(req.params.id)));
+});
+
+// ---------------- Export Excel (même présentation que le classeur d'origine, colonnes de conception en plus) ----------------
+app.get('/api/export.xlsx', wrap(async (req, res) => {
+  const wb = buildWorkbook(withDatasets(all('SELECT * FROM indicators ORDER BY theme, groupe, ordre, sous_ligne, id')));
+  const stamp = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="indicateurs_${stamp}.xlsx"`);
+  await wb.xlsx.write(res);
+  res.end();
+}));
+
+// ---------------- Versions de la carte mentale ----------------
+app.get('/api/carte/versions', (req, res) => {
+  res.json(all('SELECT id, label, created_at FROM carte_versions ORDER BY id DESC'));
+});
+app.post('/api/carte/versions', (req, res) => {
+  const label = String(req.body?.label || '').trim();
+  if (!label) return res.status(400).json({ error: 'libellé requis' });
+  const snap = all('SELECT * FROM indicators ORDER BY theme, groupe, ordre, sous_ligne, id');
+  const r = run('INSERT INTO carte_versions (label, snapshot) VALUES (?,?)', label, JSON.stringify(snap));
+  res.status(201).json(get('SELECT id, label, created_at FROM carte_versions WHERE id = ?', Number(r.lastInsertRowid)));
+});
+app.get('/api/carte/versions/:id', (req, res) => {
+  const v = get('SELECT * FROM carte_versions WHERE id = ?', Number(req.params.id));
+  if (!v) return res.status(404).json({ error: 'introuvable' });
+  res.json({ id: v.id, label: v.label, created_at: v.created_at, indicators: JSON.parse(v.snapshot).map((i) => ({ ...i, dataset_ids: [] })) });
+});
+app.delete('/api/carte/versions/:id', (req, res) => {
+  run('DELETE FROM carte_versions WHERE id = ?', Number(req.params.id));
+  res.status(204).end();
+});
+
+// ---------------- Jeux de données ----------------
+app.get('/api/datasets', (req, res) => {
+  const rows = all(`SELECT d.id, d.label, d.provider, d.description, d.themes, d.doc_url, d.last_import, d.nb_rows, d.status,
+      (SELECT COUNT(*) FROM indicator_datasets l WHERE l.dataset_id = d.id) AS nb_indicateurs
+    FROM datasets d ORDER BY d.label`);
+  const perGeo = all('SELECT dataset_id, geo, COUNT(*) AS n FROM data_rows GROUP BY dataset_id, geo');
+  const links = all('SELECT dataset_id, indicator_id FROM indicator_datasets');
+  res.json(rows.map((d) => ({
+    ...d,
+    themes: JSON.parse(d.themes || '[]'),
+    geo_counts: Object.fromEntries(perGeo.filter((p) => p.dataset_id === d.id).map((p) => [p.geo, p.n])),
+    indicator_ids: links.filter((l) => l.dataset_id === d.id).map((l) => l.indicator_id),
+  })));
+});
+
+// Données brutes stockées pour un ou plusieurs territoires
+app.get('/api/datasets/:id/data', (req, res) => {
+  const d = get('SELECT id, label, description, doc_url, labels, last_import, nb_rows FROM datasets WHERE id = ?', req.params.id);
+  if (!d) return res.status(404).json({ error: 'introuvable' });
+  const geos = String(req.query.geos || REF_GEO.code).split(',').filter(Boolean);
+  const rows = all(
+    `SELECT geo, period, dims, measure, value, status FROM data_rows WHERE dataset_id = ? AND geo IN (${geos.map(() => '?').join(',')})`,
+    d.id, ...geos
+  ).map((r) => ({ ...r, dims: JSON.parse(r.dims || '{}') }));
+  res.json({ ...d, labels: d.labels ? JSON.parse(d.labels) : {}, rows });
+});
+
+app.post('/api/datasets/:id/import', (req, res) => {
+  if (!get('SELECT id FROM datasets WHERE id = ?', req.params.id)) return res.status(404).json({ error: 'introuvable' });
+  res.status(202).json(startImport({ datasetIds: [req.params.id], geoCodes: req.body?.geos }));
+});
+
+app.post('/api/import', (req, res) => {
+  res.status(202).json(startImport({ datasetIds: req.body?.datasets, geoCodes: req.body?.geos }));
+});
+
+app.get('/api/jobs/:id', (req, res) => {
+  const j = jobs.get(Number(req.params.id));
+  j ? res.json(j) : res.status(404).json({ error: 'introuvable' });
+});
+
+app.get('/api/import-log', (req, res) => {
+  res.json(all('SELECT * FROM import_log ORDER BY id DESC LIMIT 100'));
+});
+
+// ---------------- Territoires (communes, département, EPCI, région) ----------------
+app.get('/api/geos', (req, res) => res.json(all("SELECT * FROM geos ORDER BY fixed DESC, CASE level WHEN 'COM' THEN 1 ELSE 0 END, nom")));
+
+app.get('/api/geos/search', wrap(async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (q.length < 2) return res.json([]);
+  const url = `https://geo.api.gouv.fr/communes?${/^\d{5}$/.test(q) ? 'code' : 'nom'}=${encodeURIComponent(q)}&fields=nom,code,population,departement&boost=population&limit=8`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error(`geo.api.gouv.fr : HTTP ${r.status}`);
+  const j = await r.json();
+  res.json(j.map((c) => ({ code: c.code, nom: c.nom, dept: c.departement?.code, population: c.population })));
+}));
+
+app.post('/api/geos', (req, res) => {
+  const { code, nom, dept, population, level = 'COM', import: doImport } = req.body || {};
+  if (!['COM', 'DEP', 'EPCI', 'REG'].includes(level)) return res.status(400).json({ error: 'niveau inconnu' });
+  if (level === 'COM' && !/^\d[0-9AB]\d{3}$/.test(code || '')) return res.status(400).json({ error: 'code INSEE de commune invalide' });
+  if (!code || !nom) return res.status(400).json({ error: 'code et nom requis' });
+  run(`INSERT INTO geos (code, nom, dept, population, level) VALUES (?,?,?,?,?)
+       ON CONFLICT(code) DO UPDATE SET nom = excluded.nom, dept = excluded.dept, population = excluded.population, level = excluded.level`,
+    code, nom, dept, population, level);
+  const job = doImport ? startImport({ geoCodes: [code] }) : null;
+  res.status(201).json({ geo: get('SELECT * FROM geos WHERE code = ?', code), job });
+});
+
+app.delete('/api/geos/:code', (req, res) => {
+  const g = get('SELECT * FROM geos WHERE code = ?', req.params.code);
+  if (!g) return res.status(404).json({ error: 'introuvable' });
+  if (g.fixed) return res.status(400).json({ error: 'la commune de référence ne peut pas être retirée' });
+  tx(() => {
+    run('DELETE FROM data_rows WHERE geo = ?', g.code);
+    run('DELETE FROM geos WHERE code = ?', g.code);
+  });
+  res.status(204).end();
+});
+
+// ---------------- Client (build de production) ----------------
+const dist = path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(dist)) {
+  app.use(express.static(dist));
+  app.get(/^\/(?!api).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
+}
+
+const PORT = process.env.PORT || 2508;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Observatoire : http://localhost:${PORT}`);
+  // Import automatique des territoires sans données (premier démarrage : commune de référence et territoires de comparaison)
+  if (process.env.AUTO_IMPORT !== 'false') {
+    const missing = all('SELECT code FROM geos WHERE code NOT IN (SELECT DISTINCT geo FROM data_rows)').map((g) => g.code);
+    if (missing.length) {
+      console.log(`[import] ${missing.length} territoire(s) sans données : import initial en cours`);
+      startImport({ geoCodes: missing });
+    }
+  }
+});

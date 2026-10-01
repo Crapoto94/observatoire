@@ -1,0 +1,20 @@
+services:
+  observatoire:
+    build: .
+    image: observatoire-ville:latest
+    container_name: observatoire-ville
+    restart: always
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "${APP_PORT:-2508}:2508"
+    environment:
+      PORT: "2508"
+      TZ: Europe/Paris
+      AUTO_IMPORT: "true"   # import automatique des données INSEE des territoires sans données (1er démarrage)
+    volumes:
+      - observatoire-data:/app/data
+
+volumes:
+  observatoire-data:
