@@ -265,3 +265,68 @@ export function buildSelection(rows: DataRow[], ctx: Ctx, spec: Spec): Sel {
 }
 
 export const initialSelection = (rows: DataRow[], ctx: Ctx, view: View): Sel => buildSelection(rows, ctx, view.presets?.[0] ?? view);
+
+// ---------- carte : une valeur par commune ----------
+export interface MapPick { cat: string; seriesVal: string; period: string }
+export interface MapRow { geo: string; period: string | null; dims: Record<string, string>; value: number | null }
+
+// Modalités proposées pour une dimension portée par un axe (x ou séries) : liste explicite, sinon partition sans total
+export function categoryOptions(rows: DataRow[], dim: string, sel: Sel, ctx: Ctx): string[] {
+  const hier = ctx.hier;
+  if (dim === '@HIER' && hier) {
+    const d = hier[sel.level];
+    const ok = rows.filter((r) => hier.slice(sel.level + 1).every((h) => r.dims[h] === '_T'));
+    return distinct(ok, d).filter((c) => c !== '_T');
+  }
+  if (!isDim(dim)) return [];
+  const present = distinct(rows, dim).filter((c) => c !== '_T');
+  return sel.keep[dim] ? sel.keep[dim].filter((c) => present.includes(c)) : partition(present);
+}
+
+// Contraintes envoyées au serveur : on ne récupère que les lignes nécessaires à la carte
+export function mapConstraints(sel: Sel, ctx: Ctx, pick: MapPick): Record<string, string[]> {
+  const c: Record<string, string[]> = {};
+  for (const d of pinnedDims(sel, ctx)) if (sel.pins[d]) c[d] = [sel.pins[d]];
+  if (sel.ratio) c[sel.ratio.dim] = [...new Set([...sel.ratio.num, ...sel.ratio.den])];
+  if (isDim(sel.x) && pick.cat) c[sel.x] = [pick.cat];
+  if (sel.x === '@HIER' && ctx.hier && pick.cat) {
+    c[ctx.hier[sel.level]] = [pick.cat];
+    ctx.hier.slice(sel.level + 1).forEach((h) => { c[h] = ['_T']; });
+  }
+  if (isDim(sel.series) && pick.seriesVal) c[sel.series] = [pick.seriesVal];
+  return c;
+}
+
+// Valeur de chaque commune : ratio (numérateur / dénominateur) ou somme des lignes reçues (éventuellement pour 1 000 habitants)
+export function mapValues(rows: MapRow[], sel: Sel, ctx: Ctx): Map<string, number> {
+  const num = new Map<string, number>();
+  const den = new Map<string, number>();
+  for (const r of rows) {
+    if (r.value == null) continue;
+    if (sel.ratio) {
+      const c = r.dims[sel.ratio.dim];
+      if (sel.ratio.num.includes(c)) num.set(r.geo, (num.get(r.geo) ?? 0) + r.value);
+      if (sel.ratio.den.includes(c)) den.set(r.geo, (den.get(r.geo) ?? 0) + r.value);
+    } else {
+      const v = sel.mode === 'pop' ? cellValue({ geo: r.geo, period: r.period, dims: r.dims, measure: 'valeur', value: r.value }, 'pop', ctx) : r.value;
+      if (v != null) num.set(r.geo, (num.get(r.geo) ?? 0) + v);
+    }
+  }
+  const out = new Map<string, number>();
+  if (sel.ratio) {
+    for (const [g, n] of num) { const d = den.get(g); if (d) out.set(g, (n / d) * (sel.ratio.factor ?? 100)); }
+  } else for (const [g, v] of num) out.set(g, v);
+  return out;
+}
+
+// Classes par quantiles (valeurs égales regroupées) : bornes supérieures de chaque classe
+export function quantileBreaks(values: number[], classes = 6): number[] {
+  const v = [...values].sort((a, b) => a - b);
+  if (!v.length) return [];
+  const breaks: number[] = [];
+  for (let k = 1; k <= classes; k++) {
+    const b = v[Math.min(v.length - 1, Math.ceil((k * v.length) / classes) - 1)];
+    if (!breaks.length || b > breaks[breaks.length - 1]) breaks.push(b);
+  }
+  return breaks;
+}

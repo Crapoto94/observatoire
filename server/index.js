@@ -5,6 +5,7 @@ const { all, get, run, tx } = require('./db');
 const { seed, REF_GEO } = require('./seed');
 const { startImport, jobs, currentJob, syncPopulations, populationSeries } = require('./importer');
 const { buildWorkbook } = require('./export');
+const { shapes } = require('./idf');
 
 seed();
 syncPopulations();
@@ -170,14 +171,28 @@ app.delete('/api/carte/versions/:id', (req, res) => {
 });
 
 // ---------------- Jeux de données ----------------
+// Le jeu sait-il fournir des données communales ? (condition pour afficher une carte)
+function communalConfig(d) {
+  try {
+    const c = JSON.parse(d.config || '{}');
+    if (d.provider === 'tabular') return (c.sources || []).some((s) => (s.level || 'COM') === 'COM');
+    if (d.provider === 'ods' || d.provider === 'datafair') return !!c.levels?.COM;
+    return true;
+  } catch { return false; }
+}
+
 app.get('/api/datasets', (req, res) => {
-  const rows = all(`SELECT d.id, d.label, d.provider, d.description, d.themes, d.doc_url, d.last_import, d.nb_rows, d.status,
+  const rows = all(`SELECT d.id, d.label, d.provider, d.config, d.description, d.themes, d.doc_url, d.last_import, d.nb_rows, d.status,
       (SELECT COUNT(*) FROM indicator_datasets l WHERE l.dataset_id = d.id) AS nb_indicateurs
     FROM datasets d ORDER BY d.label`);
+  // communes d'Île-de-France disposant de données pour chaque jeu
+  const mapped = Object.fromEntries(all(`SELECT dataset_id, COUNT(DISTINCT geo) AS n FROM data_rows WHERE geo IN (SELECT code FROM geo_shapes) GROUP BY dataset_id`).map((r) => [r.dataset_id, r.n]));
   const perGeo = all('SELECT dataset_id, geo, COUNT(*) AS n FROM data_rows GROUP BY dataset_id, geo');
   const links = all('SELECT dataset_id, indicator_id FROM indicator_datasets');
-  res.json(rows.map((d) => ({
+  res.json(rows.map(({ config, ...d }) => ({
     ...d,
+    map_capable: communalConfig({ provider: d.provider, config }),
+    map_communes: mapped[d.id] || 0,
     themes: JSON.parse(d.themes || '[]'),
     geo_counts: Object.fromEntries(perGeo.filter((p) => p.dataset_id === d.id).map((p) => [p.geo, p.n])),
     indicator_ids: links.filter((l) => l.dataset_id === d.id).map((l) => l.indicator_id),
@@ -202,7 +217,7 @@ app.post('/api/datasets/:id/import', (req, res) => {
 });
 
 app.post('/api/import', (req, res) => {
-  res.status(202).json(startImport({ datasetIds: req.body?.datasets, geoCodes: req.body?.geos }));
+  res.status(202).json(startImport({ datasetIds: req.body?.datasets, geoCodes: req.body?.geos, scope: req.body?.scope }));
 });
 
 app.get('/api/jobs/current', (req, res) => res.json(currentJob()));
@@ -219,7 +234,44 @@ app.get('/api/import-log', (req, res) => {
 // ---------------- Territoires (communes, département, EPCI, région) ----------------
 app.get('/api/geos', (req, res) => {
   const series = populationSeries();
-  res.json(all("SELECT * FROM geos ORDER BY fixed DESC, CASE level WHEN 'COM' THEN 1 ELSE 0 END, nom").map((g) => ({ ...g, pop_series: series[g.code] || {} })));
+  const where = req.query.all ? '' : 'WHERE bulk = 0';
+  res.json(all(`SELECT * FROM geos ${where} ORDER BY fixed DESC, CASE level WHEN 'COM' THEN 1 ELSE 0 END, nom`).map((g) => ({ ...g, pop_series: series[g.code] || {} })));
+});
+
+// ---------------- Carte d'Île-de-France ----------------
+// Formes simplifiées des communes (périmètre : 'idf' ou code de département)
+app.get('/api/shapes', (req, res) => res.json(shapes(String(req.query.scope || 'idf'))));
+
+// Couverture de l'Île-de-France : nombre de communes chargées pour chaque jeu
+app.get('/api/idf/status', (req, res) => {
+  const communes = get('SELECT COUNT(*) AS n FROM geo_shapes').n;
+  const loaded = Object.fromEntries(all(`SELECT dataset_id, COUNT(DISTINCT geo) AS n FROM data_rows WHERE geo IN (SELECT code FROM geo_shapes) GROUP BY dataset_id`).map((r) => [r.dataset_id, r.n]));
+  res.json({ communes, loaded });
+});
+
+// Valeurs communales d'un jeu pour la carte : lignes filtrées par modalités (dims = { DIM: [codes] }) et période
+app.get('/api/datasets/:id/map', (req, res) => {
+  if (!get('SELECT id FROM datasets WHERE id = ?', req.params.id)) return res.status(404).json({ error: 'introuvable' });
+  let dims = {};
+  try { dims = JSON.parse(String(req.query.dims || '{}')); } catch { return res.status(400).json({ error: 'dims invalide' }); }
+  const scope = String(req.query.scope || 'idf');
+  const period = req.query.period != null ? String(req.query.period) : '';
+  const params = [req.params.id];
+  let sql = `SELECT r.geo, r.period, r.dims, r.value FROM data_rows r JOIN geos g ON g.code = r.geo
+    WHERE r.dataset_id = ? AND g.level = 'COM' AND r.geo IN (SELECT code FROM geo_shapes)`;
+  if (scope !== 'idf') { sql += ' AND g.dept = ?'; params.push(scope); }
+  for (const [dim, codes] of Object.entries(dims)) {
+    if (!/^[A-Z0-9_]+$/.test(dim) || !Array.isArray(codes) || !codes.length) return res.status(400).json({ error: 'dimension invalide' });
+    sql += ` AND json_extract(r.dims, '$.${dim}') IN (${codes.map(() => '?').join(',')})`;
+    params.push(...codes.map(String));
+  }
+  if (period) { sql += ' AND r.period = ?'; params.push(period); }
+  res.json({ rows: all(sql, ...params).map((r) => ({ ...r, dims: JSON.parse(r.dims || '{}') })) });
+});
+
+// Périodes disponibles d'un jeu pour les communes d'Île-de-France
+app.get('/api/datasets/:id/periods', (req, res) => {
+  res.json(all(`SELECT DISTINCT period FROM data_rows WHERE dataset_id = ? AND geo IN (SELECT code FROM geo_shapes) ORDER BY period`, req.params.id).map((r) => r.period ?? ''));
 });
 
 // ---------------- Catalogue des données ouvertes (document Markdown) ----------------
@@ -274,7 +326,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Observatoire : http://localhost:${PORT}`);
   // Import automatique des territoires sans données (premier démarrage : commune de référence et territoires de comparaison)
   if (process.env.AUTO_IMPORT !== 'false') {
-    const missing = all('SELECT code FROM geos WHERE code NOT IN (SELECT DISTINCT geo FROM data_rows)').map((g) => g.code);
+    const missing = all('SELECT code FROM geos WHERE bulk = 0 AND code NOT IN (SELECT DISTINCT geo FROM data_rows)').map((g) => g.code);
     const emptyDatasets = all('SELECT id FROM datasets WHERE id NOT IN (SELECT DISTINCT dataset_id FROM data_rows)').map((d) => d.id);
     if (missing.length && emptyDatasets.length) {
       console.log('[import] territoires et jeux sans données : import complet en cours');

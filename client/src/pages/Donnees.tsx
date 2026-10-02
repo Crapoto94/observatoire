@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api, fmtDate } from '../api';
+import CarteDonnees from './CarteDonnees';
 import { VIEWS } from '../datasetViews';
 import { Mode, MAX_CATEGORIES, Ratio, Sel, buildChart, buildSelection, cellValue, distinct, initialSelection, isMeasureDim, natCompare, pinnedDims, selectRows } from '../explorer';
 import { DataRow, Dataset, DatasetData, Geo, Indicator, Job, LEVEL_LABEL } from '../types';
@@ -24,7 +25,8 @@ export default function Donnees() {
   const [data, setData] = useState<DatasetData | null>(null);
   const [onlyRef, setOnlyRef] = useState(true);
   const [compare, setCompare] = useState('');
-  const [view, setView] = useState<'chart' | 'key' | 'table'>('chart');
+  const [view, setView] = useState<'chart' | 'key' | 'table' | 'map'>('chart');
+  const [idfCommunes, setIdfCommunes] = useState(0);
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
   const poll = useRef<number | undefined>(undefined);
@@ -54,8 +56,9 @@ export default function Donnees() {
   const vcfg = VIEWS[dsId] ?? {};
 
   const loadMeta = useCallback(async () => {
-    const [d, g, i] = await Promise.all([api<Dataset[]>('/datasets'), api<Geo[]>('/geos'), api<Indicator[]>('/indicators')]);
+    const [d, g, i] = await Promise.all([api<Dataset[]>('/datasets'), api<Geo[]>('/geos?all=1'), api<Indicator[]>('/indicators')]);
     setDatasets(d); setGeos(g); setIndicators(i);
+    api<{ communes: number }>('/idf/status').then((s) => setIdfCommunes(s.communes)).catch(() => undefined);
     return d;
   }, []);
 
@@ -69,7 +72,7 @@ export default function Donnees() {
   const shownGeos = useMemo(() => {
     if (onlyRef) return [REF];
     if (compare) return [REF, compare];
-    return geos.map((g) => g.code);
+    return geos.filter((g) => !g.bulk).map((g) => g.code);
   }, [onlyRef, compare, geos]);
 
   const loadData = useCallback(async () => {
@@ -94,6 +97,13 @@ export default function Donnees() {
       } catch { window.clearInterval(poll.current); }
     }, 1000);
   };
+  // import de toutes les communes d'Île-de-France (pour la carte) : un jeu ou tous les jeux
+  const importIdf = async (allDatasets: boolean) => {
+    const what = allDatasets ? `les ${datasets.length} jeux` : 'ce jeu';
+    if (!confirm(`Charger ${what} pour les ${idfCommunes || 1266} communes d'Île-de-France ?\nL'opération télécharge de gros volumes (plusieurs dizaines de minutes pour tous les jeux).`)) return;
+    try { follow(await api<Job>('/import', { body: { scope: 'idf', datasets: allDatasets ? undefined : [dsId] } })); } catch (e) { setError((e as Error).message); }
+  };
+  const pickCommune = (code: string) => { setOnlyRef(false); setCompare(code); };
   const refresh = async (all: boolean) => {
     if (all && !confirm(`Mettre à jour les ${datasets.length} jeux de données publics pour les ${geos.length} territoires importés ?\nL'opération réinterroge toutes les sources (quelques minutes).`)) return;
     try { follow(await api<Job>(all ? '/import' : `/datasets/${dsId}/import`, { body: {} })); } catch (e) { setError((e as Error).message); }
@@ -241,6 +251,9 @@ export default function Donnees() {
       <div className="page-head">
         <h1>Données</h1>
         <div className="actions">
+          <button className="secondary" onClick={() => importIdf(true)} disabled={job?.status === 'en cours'} title="Charge tous les jeux pour les 1 266 communes d'Île-de-France (carte) : plusieurs dizaines de minutes">
+            Charger l'Île-de-France
+          </button>
           <button onClick={() => refresh(true)} disabled={job?.status === 'en cours'} title="Réinterroge toutes les sources publiques et remplace les données stockées">
             {job?.status === 'en cours' ? 'Mise à jour en cours…' : '⟳ Tout mettre à jour'}
           </button>
@@ -273,7 +286,12 @@ export default function Donnees() {
               <li key={d.id} className={d.id === dsId ? 'active' : ''} onClick={() => setParams({ ds: d.id })}>
                 <span className={`dot ${d.nb_rows ? 'ok' : 'none'}`} title={d.nb_rows ? 'Importé' : 'Pas encore importé'} />
                 <div>
-                  <div>{d.label}</div>
+                  <div>{d.label}{d.map_capable && (
+                    <span
+                      className={`pill-map ${(d.map_communes ?? 0) >= 50 ? 'on' : 'off'}`}
+                      title={(d.map_communes ?? 0) >= 50 ? `Carte disponible : ${d.map_communes} communes d'Île-de-France` : 'Carte possible : données d\'Île-de-France à charger'}
+                    >🗺 carte</span>
+                  )}</div>
                   <div className="muted small">{d.nb_rows ? `${d.nb_rows} lignes · ${fmtDate(d.last_import)}` : 'non importé'} · {d.nb_indicateurs} indic.</div>
                 </div>
               </li>
@@ -306,15 +324,16 @@ export default function Donnees() {
                 <label className="inline">Comparer avec
                   <select value={compare} onChange={(e) => { setCompare(e.target.value); if (e.target.value) setOnlyRef(false); }}>
                     <option value="">— tous les territoires importés —</option>
+                    {compare && geos.find((g) => g.code === compare)?.bulk ? <option value={compare}>{geoName(compare)} (carte)</option> : null}
                     <optgroup label="Territoires de référence">
-                      {geos.filter((g) => !g.fixed && g.level !== 'COM').map((g) => <option key={g.code} value={g.code}>{g.nom} ({LEVEL_LABEL[g.level]})</option>)}
+                      {geos.filter((g) => !g.fixed && g.level !== 'COM' && !g.bulk).map((g) => <option key={g.code} value={g.code}>{g.nom} ({LEVEL_LABEL[g.level]})</option>)}
                     </optgroup>
                     <optgroup label="Communes">
-                      {geos.filter((g) => !g.fixed && g.level === 'COM').map((g) => <option key={g.code} value={g.code}>{g.nom} ({g.dept})</option>)}
+                      {geos.filter((g) => !g.fixed && g.level === 'COM' && !g.bulk).map((g) => <option key={g.code} value={g.code}>{g.nom} ({g.dept})</option>)}
                     </optgroup>
                   </select>
                 </label>
-                {compare && <button className="icon" title="Retirer ce territoire" onClick={() => removeGeo(compare)}>🗑</button>}
+                {compare && !geos.find((g) => g.code === compare)?.bulk && <button className="icon" title="Retirer ce territoire" onClick={() => removeGeo(compare)}>🗑</button>}
                 <div className="geo-search">
                   <input placeholder="Ajouter une commune (nom ou code INSEE)…" value={q} onChange={(e) => setQ(e.target.value)} />
                   {hits.length > 0 && (
@@ -335,19 +354,20 @@ export default function Donnees() {
                   <div className="tabs">
                     <button className={view === 'chart' ? 'on' : ''} onClick={() => setView('chart')}>Graphique</button>
                     {measureDim && (dimValues[measureDim]?.length ?? 0) > 1 && <button className={view === 'key' ? 'on' : ''} onClick={() => setView('key')}>Chiffres clés</button>}
+                    {current.map_capable && <button className={view === 'map' ? 'on' : ''} onClick={() => setView('map')}>Carte</button>}
                     <button className={view === 'table' ? 'on' : ''} onClick={() => setView('table')}>Données brutes ({rawRows.length})</button>
                     <span className="spacer" />
                     <button className="secondary" onClick={exportCsv}>Exporter CSV</button>
                   </div>
 
-                  {view === 'chart' && vcfg.presets && (
+                  {(view === 'chart' || view === 'map') && vcfg.presets && (
                     <div className="presets">
                       {vcfg.presets.map((p, i) => (
                         <button key={i} className={presetIdx === i ? 'on' : ''} onClick={() => applySel(buildSelection(rows, ctx, p), i)}>{p.label}</button>
                       ))}
                     </div>
                   )}
-                  {view === 'chart' && preset?.note && <div className="note-box small">{preset.note}</div>}
+                  {(view === 'chart' || view === 'map') && preset?.note && <div className="note-box small">{preset.note}</div>}
                   {vcfg.note && <div className="note-box small">{vcfg.note}</div>}
                   {view === 'chart' && x === '@GEO' && shownGeos.length < 2 && (
                     <div className="warn small">Ce graphique compare des territoires : décochez « Ivry-sur-Seine uniquement » (et choisissez un territoire, ou laissez « tous les territoires importés »).</div>
@@ -414,7 +434,7 @@ export default function Donnees() {
                           </select>
                         </label>
                       )}
-                      {pinned.filter((d) => view === 'chart' || d !== measureDim).map((d) => (
+                      {pinned.filter((d) => view === 'chart' || view === 'map' || d !== measureDim).map((d) => (
                         <label key={d} className="field small"><span title={d}>{dimLabel(d)}{isMeasureDim(d) ? ' (mesure)' : ''}</span>
                           <select value={pins[d] ?? ''} onChange={(e) => setPins({ ...pins, [d]: e.target.value })}>
                             {dimValues[d].map((v) => <option key={v} value={v}>{lab(d, v)}{lab(d, v) !== v && v !== '_T' ? ` [${v}]` : ''}</option>)}
@@ -425,6 +445,14 @@ export default function Donnees() {
                         <label className="inline small"><input type="checkbox" checked={withTotals} onChange={(e) => setWithTotals(e.target.checked)} /> Inclure les totaux</label>
                       )}
                     </div>
+                  )}
+
+                  {view === 'map' && current && (
+                    <CarteDonnees
+                      dsId={dsId} sel={sel} ctx={ctx} rows={rows} title={preset?.label ?? current.label} refCode={REF} compare={compare}
+                      coverage={current.map_communes ?? 0} totalCommunes={idfCommunes} importing={job?.status === 'en cours'}
+                      onImport={importIdf} onPick={pickCommune}
+                    />
                   )}
 
                   {view === 'chart' && (

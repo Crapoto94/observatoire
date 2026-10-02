@@ -112,7 +112,7 @@ module.exports = [
     link: [{ theme: 'environnement', re: /nuisances sonores|qualite de l air|ilots de chaleur|exposition/ }],
     config: {
       base: 'https://data.iledefrance.fr', dataset: 'scores-multiexposition-environnementale-communes',
-      levels: { COM: 'insee' }, geoQuote: false,
+      levels: { COM: 'insee' },
       columns: [1, 2, 3, 4, 5, 6].flatMap((k) => [
         { field: `cl${k}env_pop`, measure: `CLASSE_${k}` }, { field: `cl${k}envuln_pop`, measure: `CLASSE_VULN_${k}` },
       ]).concat([{ field: 's_sens_med_insee', measure: 'SCORE_SENSIBILITE' }, { field: 'svul_med_insee', measure: 'SCORE_VULNERABILITE' }, { field: 'qtx_patho_med_insee', measure: 'TAUX_PATHO' }]),

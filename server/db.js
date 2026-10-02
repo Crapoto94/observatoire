@@ -5,7 +5,7 @@ const fs = require('fs');
 const DIR = path.join(__dirname, '..', 'data');
 fs.mkdirSync(DIR, { recursive: true });
 const db = new DatabaseSync(path.join(DIR, 'observatoire.sqlite'));
-db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 15000;');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS indicators (
@@ -84,6 +84,16 @@ CREATE TABLE IF NOT EXISTS import_log (
 try { db.exec("ALTER TABLE geos ADD COLUMN level TEXT DEFAULT 'COM'"); } catch { /* colonne déjà présente */ }
 
 try { db.exec('ALTER TABLE data_rows ADD COLUMN status TEXT'); } catch { /* colonne déjà présente */ }
+
+// Carte d'Île-de-France : communes chargées en masse (bulk = 1, absentes des listes de comparaison) et contours simplifiés
+try { db.exec('ALTER TABLE geos ADD COLUMN bulk INTEGER DEFAULT 0'); } catch { /* colonne déjà présente */ }
+db.exec(`
+CREATE TABLE IF NOT EXISTS geo_shapes (
+  code TEXT PRIMARY KEY,
+  path TEXT NOT NULL,
+  x0 REAL, y0 REAL, x1 REAL, y1 REAL
+);
+`);
 
 // Migrations : fiche indicateur, validation, faisabilité, hiérarchie, historique, versions de la carte
 for (const col of [

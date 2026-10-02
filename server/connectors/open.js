@@ -12,6 +12,18 @@ function parseNum(v) {
 
 const basePeriodOf = (v) => (v == null || v === '' ? null : String(v).slice(0, 7).replace(/^(\d{4})-?00$/, '$1'));
 
+// Additionne les lignes qui ont la même période, la même mesure et les mêmes dimensions
+function mergeRows(rows) {
+  const acc = new Map();
+  for (const r of rows) {
+    const k = `${r.period}|${r.measure}|${JSON.stringify(r.dims)}`;
+    const cur = acc.get(k);
+    if (cur) cur.value = (cur.value ?? 0) + (r.value ?? 0);
+    else acc.set(k, { ...r });
+  }
+  return [...acc.values()];
+}
+
 // Ajoute les totaux (modalité _T) pour chaque sous-ensemble de dimensions : le cube devient complet et les graphiques
 // n'ont plus à additionner des lignes. À n'utiliser que pour des mesures additives (comptages, surfaces, effectifs).
 function withMarginals(rows, dimNames) {
@@ -59,12 +71,13 @@ function mapRecords(records, spec, constDims = {}, constPeriod = null) {
   for (const r of records) {
     for (const c of spec.columns || []) {
       const period = periodOf(c.period ?? (c.periodField ? r[c.periodField] : undefined) ?? (spec.periodField ? r[spec.periodField] : undefined) ?? constPeriod);
-      const v = parseNum(r[c.field]);
+      const v = c.field === '@ONE' ? 1 : parseNum(r[c.field]);
       if (v == null) continue; // valeur absente : pas de ligne
       out.push({ period, dims: { MESURE: c.measure, ...dimsOf(r) }, measure: 'valeur', value: c.scale ? v * c.scale : v });
     }
   }
-  return spec.marginals ? withMarginals(out, (spec.dimFields || []).map((f) => f.dim)) : out;
+  const merged = spec.sum ? mergeRows(out) : out;
+  return spec.marginals ? withMarginals(merged, (spec.dimFields || []).map((f) => f.dim)) : merged;
 }
 
 // ---------------- API tabulaire data.gouv.fr ----------------
@@ -163,6 +176,31 @@ const median = (a) => {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 
+// Statistiques annuelles d'une commune à partir de ses mutations (id_mutation -> lignes du fichier geo-dvf)
+function dvfRows(year, byMut) {
+  const rows = [];
+  const stats = { Appartement: [], Maison: [] };
+  for (const [, list] of byMut) {
+    const locals = list.filter((x) => (x.type_local === 'Appartement' || x.type_local === 'Maison') && Number(x.surface_reelle_bati) > 0);
+    const unique = new Map(locals.map((x) => [`${x.id_parcelle}|${x.lot1_numero}|${x.type_local}|${x.surface_reelle_bati}`, x]));
+    const value = Number(list[0].valeur_fonciere);
+    if (unique.size !== 1 || !(value > 0)) continue;
+    const [x] = [...unique.values()];
+    const surf = Number(x.surface_reelle_bati);
+    stats[x.type_local].push({ value, surf, m2: value / surf });
+  }
+  rows.push({ period: String(year), dims: { MESURE: 'NB_MUTATIONS', TYPE_LOCAL: '_T' }, measure: 'valeur', value: byMut.size });
+  for (const [type, list] of Object.entries(stats)) {
+    const sane = list.filter((x) => x.m2 >= 500 && x.m2 <= 30000);
+    const add = (mesure, value) => rows.push({ period: String(year), dims: { MESURE: mesure, TYPE_LOCAL: type }, measure: 'valeur', value });
+    add('NB_VENTES', sane.length);
+    add('PRIX_M2_MEDIAN', median(sane.map((x) => x.m2)));
+    add('SURFACE_MEDIANE', median(sane.map((x) => x.surf)));
+    add('VALEUR_MEDIANE', median(sane.map((x) => x.value)));
+  }
+  return rows;
+}
+
 async function fetchGeoDvf(config, geo) {
   if ((geo.level || 'COM') !== 'COM') return null;
   const rows = [];
@@ -173,25 +211,7 @@ async function fetchGeoDvf(config, geo) {
     const recs = parseCsv(await r.text()).filter((x) => x.nature_mutation === 'Vente');
     const byMut = new Map();
     for (const x of recs) (byMut.get(x.id_mutation) || byMut.set(x.id_mutation, []).get(x.id_mutation)).push(x);
-    const stats = { Appartement: [], Maison: [] };
-    for (const [, list] of byMut) {
-      const locals = list.filter((x) => (x.type_local === 'Appartement' || x.type_local === 'Maison') && Number(x.surface_reelle_bati) > 0);
-      const unique = new Map(locals.map((x) => [`${x.id_parcelle}|${x.lot1_numero}|${x.type_local}|${x.surface_reelle_bati}`, x]));
-      const value = Number(list[0].valeur_fonciere);
-      if (unique.size !== 1 || !(value > 0)) continue;
-      const [x] = [...unique.values()];
-      const surf = Number(x.surface_reelle_bati);
-      stats[x.type_local].push({ value, surf, m2: value / surf });
-    }
-    rows.push({ period: String(year), dims: { MESURE: 'NB_MUTATIONS', TYPE_LOCAL: '_T' }, measure: 'valeur', value: byMut.size });
-    for (const [type, list] of Object.entries(stats)) {
-      const sane = list.filter((s) => s.m2 >= 500 && s.m2 <= 30000);
-      const add = (mesure, value) => rows.push({ period: String(year), dims: { MESURE: mesure, TYPE_LOCAL: type }, measure: 'valeur', value });
-      add('NB_VENTES', sane.length);
-      add('PRIX_M2_MEDIAN', median(sane.map((s) => s.m2)));
-      add('SURFACE_MEDIANE', median(sane.map((s) => s.surf)));
-      add('VALEUR_MEDIANE', median(sane.map((s) => s.value)));
-    }
+    rows.push(...dvfRows(year, byMut));
   }
   return rows;
 }
@@ -209,4 +229,4 @@ async function fetchEntreprises(config, geo) {
   return rows;
 }
 
-module.exports = { fetchTabular, fetchOds, fetchGeoDvf, fetchEntreprises, parseNum };
+module.exports = { mergeRows, fetchTabular, fetchOds, fetchGeoDvf, fetchEntreprises, parseNum, mapRecords, resolveResource, dvfRows, TAB };

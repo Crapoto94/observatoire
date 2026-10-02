@@ -95,6 +95,8 @@ export interface Dataset {
   nb_indicateurs: number;
   geo_counts: Record<string, number>;
   indicator_ids: number[];
+  map_capable?: boolean; // le jeu peut fournir des données communales
+  map_communes?: number; // communes d'Île-de-France disposant de données
 }
 
 export interface Geo {
@@ -105,6 +107,7 @@ export interface Geo {
   fixed: number;
   level: 'COM' | 'DEP' | 'EPCI' | 'REG';
   pop_series?: Record<string, number>; // population par millésime du recensement
+  bulk?: number; // 1 = commune d'Île-de-France chargée en masse pour la carte
 }
 
 export const LEVEL_LABEL: Record<string, string> = { COM: 'commune', DEP: 'département', EPCI: 'intercommunalité', REG: 'région' };
