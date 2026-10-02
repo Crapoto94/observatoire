@@ -131,7 +131,7 @@ export default function Cartographie() {
   const showArrows = arrows;
   const deptCodes = useMemo(() => [...new Set(items.map((s) => s.dept))].sort(), [items]);
   const ivry = gosbShapes?.items.find((s) => s.code === '94041');
-  const inView = (c: [number, number] | undefined) => !!c && (!vb || (c[0] >= vb[0] && c[0] <= vb[0] + vb[2] && c[1] >= vb[1] && c[1] <= vb[1] + vb[3]));
+  const inView = (c: [number, number] | undefined) => !!c; // pas de filtrage sur le viewBox : la zone réellement visible déborde du viewBox selon le format de l’écran
 
   return (
     <section className="page cartographie">
