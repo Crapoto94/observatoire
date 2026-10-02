@@ -44,6 +44,7 @@ export default function Cartographie() {
   const [shapes, setShapes] = useState<Shapes | null>(null);
   const [arrows, setArrows] = useState(true);
   const [depts, setDepts] = useState(true);
+  const [gosbShapes, setGosbShapes] = useState<Shapes | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hover, setHover] = useState<{ code: string; x: number; y: number } | null>(null);
@@ -64,7 +65,6 @@ export default function Cartographie() {
   };
   useEffect(() => { if (scope === 'idf' && shapes && gosbShapes) setVb(gosbView() ?? shapes.viewBox); }, [shapes, gosbShapes]); // eslint-disable-line react-hooks/exhaustive-deps
   // contours du GOSB toujours disponibles, quel que soit le périmètre affiché
-  const [gosbShapes, setGosbShapes] = useState<Shapes | null>(null);
   useEffect(() => { api<Shapes>('/shapes?scope=gosb').then(setGosbShapes).catch(() => setGosbShapes(null)); }, []);
 
   useEffect(() => {
