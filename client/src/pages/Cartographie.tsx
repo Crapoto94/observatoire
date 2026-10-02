@@ -239,7 +239,7 @@ export default function Cartographie() {
                     const c = centers.get(s.code);
                     if (!t || !c || !inView(c)) return null;
                     return (
-                      <text key={`a-${s.code}`} x={c[0]} y={c[1]} textAnchor="middle" dominantBaseline="central" fontSize={(scope === 'gosb' ? 16 : scope === '94' ? 13 : vb && vb[2] < 300 ? 13 : 9) * u}
+                      <text key={`a-${s.code}`} x={c[0]} y={c[1]} textAnchor="middle" dominantBaseline="central" fontSize={(scope === 'gosb' ? 16 : scope === '94' ? 13 : vb && vb[2] < 300 ? 15 : vb && vb[2] < 600 ? 13 : 11) * u}
                         fill={arrowColor(t.dir, layer?.dir ?? 'none')} stroke="#fff" strokeWidth={2 * u} paintOrder="stroke" pointerEvents="none" fontWeight={700}>
                         {ARROW[t.dir]}
                       </text>
