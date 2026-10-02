@@ -79,7 +79,8 @@ export default function Cartographie() {
   const classOf = (v: number) => { const i = breaks.findIndex((b) => v <= b); return i < 0 ? breaks.length - 1 : i; };
   const unit = layer?.unit === '€' ? ' €' : layer?.unit === '%' ? ' %' : layer?.unit ? ` ${layer.unit}` : '';
   const gosbSummary = data?.summary.find((s) => s.code === 'GOSB');
-  const scale = vb && shapes ? vb[2] / shapes.viewBox[2] : 1;
+  // unité = 1 pixel d'écran environ, quel que soit le périmètre et le zoom (le viewBox rend ~900 unités sur la largeur de la carte)
+  const u = vb ? vb[2] / 900 : 1;
   const byTheme = useMemo(() => {
     const m = new Map<string, Layer[]>();
     for (const l of layers) (m.get(l.theme) ?? m.set(l.theme, []).get(l.theme)!).push(l);
@@ -196,26 +197,22 @@ export default function Cartographie() {
                     const val = values[s.code];
                     return (
                       <path
-                        key={s.code} d={s.path} fill={val ? PALETTE[classOf(val.v)] : NO_DATA} stroke="#fff" strokeWidth={0.35 * scale}
+                        key={s.code} d={s.path} fill={val ? PALETTE[classOf(val.v)] : NO_DATA} stroke="#fff" strokeWidth={0.6 * u}
                         onMouseEnter={(e) => { const r = box.current!.getBoundingClientRect(); setHover({ code: s.code, x: e.clientX - r.left, y: e.clientY - r.top }); }}
                         onMouseLeave={() => setHover(null)}
                       />
                     );
                   })}
                   <g mask="url(#gosb-outside)" pointerEvents="none">
-                    {outline.map((s) => <path key={`g-${s.code}`} d={s.path} fill="none" stroke="#111827" strokeWidth={5 * scale} />)}
+                    {outline.map((s) => <path key={`g-${s.code}`} d={s.path} fill="none" stroke="#111827" strokeWidth={4 * u} />)}
                   </g>
-                  {/* contour GOSB (traits fins sur le pourtour intérieur) */}
-                  <g pointerEvents="none">
-                    {outline.map((s) => <path key={`gi-${s.code}`} d={s.path} fill="none" stroke="#111827" strokeWidth={0.9 * scale} strokeDasharray={`${3 * scale} ${2 * scale}`} />)}
-                  </g>
-                  {showArrows && items.map((s) => {
+                                  {showArrows && items.map((s) => {
                     const t = values[s.code]?.trend;
                     const c = centers.get(s.code);
                     if (!t || !c) return null;
                     return (
-                      <text key={`a-${s.code}`} x={c[0]} y={c[1]} textAnchor="middle" dominantBaseline="central" fontSize={(gosbSet.has(s.code) ? 3.2 : 2.4) * scale * (scope === 'gosb' ? 2 : scope === '94' ? 1.4 : 1)}
-                        fill={arrowColor(t.dir, layer?.dir ?? 'none')} stroke="#fff" strokeWidth={0.25 * scale} paintOrder="stroke" pointerEvents="none" fontWeight={700}>
+                      <text key={`a-${s.code}`} x={c[0]} y={c[1]} textAnchor="middle" dominantBaseline="central" fontSize={(scope === 'gosb' ? 16 : scope === '94' ? 13 : 10) * u}
+                        fill={arrowColor(t.dir, layer?.dir ?? 'none')} stroke="#fff" strokeWidth={2 * u} paintOrder="stroke" pointerEvents="none" fontWeight={700}>
                         {ARROW[t.dir]}
                       </text>
                     );
