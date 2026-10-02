@@ -87,6 +87,8 @@ const KINDS = {
   },
   rpls: {
     geoField: 'DEPCOM',
+    // jusqu'au millésime 2024 la colonne s'appelle DEPCOM_CODE
+    legacy: { before: '2025', geoField: 'DEPCOM_CODE' },
     columns: ['DEPCOM', 'NBPIECE', 'CONSTRUCT', 'DPEENERGIE', 'QPV_CODE', 'FINAN_CODE', 'TYPECONST_LIBELLE'],
     millesimes: 3,
     accumulator: (millesime) => rplsAccumulator(String(millesime).slice(0, 4)),
@@ -121,19 +123,32 @@ function parseLine(line) {
 }
 
 // Lit le CSV filtré en flux ; onRecord reçoit un objet colonne -> valeur
+const legacyOf = (kind, millesime) => (kind.legacy && String(millesime) < kind.legacy.before ? kind.legacy : null);
+
 async function streamCsv(config, kind, millesime, filter, onRecord) {
-  const url = `${API}/datafiles/${config.rid}/csv?millesime=${millesime}&withColumnName=true&withColumnDescription=false&withColumnUnit=false&columns=${kind.columns.join(',')}&${filter}`;
+  const old = legacyOf(kind, millesime);
+  const rename = (c) => (old && c === kind.geoField ? old.geoField : c);
+  const url = `${API}/datafiles/${config.rid}/csv?millesime=${millesime}&withColumnName=true&withColumnDescription=false&withColumnUnit=false&columns=${kind.columns.map(rename).join(',')}&${filter.replace(new RegExp(`^${kind.geoField}=`), `${rename(kind.geoField)}=`)}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(1200000) });
   if (!res.ok) throw new Error(`DiDo HTTP ${res.status} (${config.rid})`);
   const rl = readline.createInterface({ input: Readable.fromWeb(res.body), crlfDelay: Infinity });
   let head = null;
   for await (const line of rl) {
     const cells = parseLine(line);
-    if (!head) { head = cells; continue; }
+    if (!head) { head = old ? cells.map((c) => (c === old.geoField ? kind.geoField : c)) : cells; continue; }
     const rec = {};
     head.forEach((h, k) => { rec[h] = cells[k] ?? ''; });
     onRecord(rec);
   }
+}
+
+// Le serveur DiDo répond parfois 502/504 sur les gros fichiers : on relance avec un accumulateur neuf
+async function retry(fn, tries = 5) {
+  let last;
+  for (let t = 1; t <= tries; t++) {
+    try { return await fn(); } catch (e) { last = e; await new Promise((r) => setTimeout(r, 3000 * t)); }
+  }
+  throw last;
 }
 
 const kindOf = (config) => KINDS[config.kind || 'sitadel'];
@@ -146,9 +161,11 @@ async function fetchGeo(config, geo) {
   if (!field) return null; // pas de niveau intercommunal dans ces fichiers
   const out = [];
   for (const m of await millesimes(config, kind.millesimes)) {
-    const a = kind.accumulator(m);
-    await streamCsv(config, kind, m, `${field}=eq:${geo.code}`, (r) => a.add(r));
-    out.push(...a.rows());
+    out.push(...(await retry(async () => {
+      const a = kind.accumulator(m);
+      await streamCsv(config, kind, m, `${field}=eq:${geo.code}`, (r) => a.add(r));
+      return a.rows();
+    })));
   }
   return out;
 }
@@ -162,8 +179,11 @@ async function fetchMany(config, geos) {
   for (const m of await millesimes(config, kind.millesimes)) {
     const groups = idf ? [[comm.map((g) => g.code), 'REG_CODE=eq:11']] : chunk(comm.map((g) => g.code), 60).map((part) => [part, `${kind.geoField}=in:${part.join(',')}`]);
     for (const [codes, filter] of groups) {
-      const accs = new Map(codes.map((c) => [c, kind.accumulator(m)]));
-      await streamCsv(config, kind, m, filter, (r) => accs.get(r[kind.geoField])?.add(r));
+      const accs = await retry(async () => {
+        const map = new Map(codes.map((c) => [c, kind.accumulator(m)]));
+        await streamCsv(config, kind, m, filter, (r) => map.get(r[kind.geoField])?.add(r));
+        return map;
+      });
       for (const [code, a] of accs) out.get(code).push(...a.rows());
     }
   }

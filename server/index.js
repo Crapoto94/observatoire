@@ -51,6 +51,7 @@ const status = (req, res) => {
 };
 app.get('/api/health', status);
 app.get('/api/status', status);
+app.get('/api/database', (req, res) => { try { res.json(require('./dbstats').stats({ check: req.query.check === '1' })); } catch (e) { res.status(500).json({ error: e.message }); } });
 
 // ---------------- Indicateurs ----------------
 function withDatasets(rows) {

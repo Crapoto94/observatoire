@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api, fmtDate } from '../api';
 import CarteDonnees from './CarteDonnees';
+import EvolutionDonnees from './EvolutionDonnees';
 import { VIEWS } from '../datasetViews';
 import { Mode, MAX_CATEGORIES, Ratio, Sel, buildChart, buildSelection, cellValue, distinct, initialSelection, isMeasureDim, natCompare, pinnedDims, selectRows } from '../explorer';
 import { DataRow, Dataset, DatasetData, Geo, Indicator, Job, LEVEL_LABEL } from '../types';
@@ -25,7 +26,7 @@ export default function Donnees() {
   const [data, setData] = useState<DatasetData | null>(null);
   const [onlyRef, setOnlyRef] = useState(true);
   const [compare, setCompare] = useState('');
-  const [view, setView] = useState<'chart' | 'key' | 'table' | 'map'>('chart');
+  const [view, setView] = useState<'chart' | 'key' | 'table' | 'map' | 'evol'>('chart');
   const [idfCommunes, setIdfCommunes] = useState(0);
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState('');
@@ -163,6 +164,15 @@ export default function Donnees() {
   const measureText = ratio?.label ?? (measureDim && pins[measureDim] && ![x, series].includes(measureDim) ? lab(measureDim, pins[measureDim]) : '');
   const chart = useMemo(() => buildChart(selected, sel, ctx), [selected, mode, band5, ratio, keep, x, series, level, ctx]); // eslint-disable-line react-hooks/exhaustive-deps
   const suffix = chart.unit === '%' ? ' %' : chart.unit === 'idx' ? ' (base 100)' : '';
+
+  // onglet Évolution : lecture chronologique (axe période) ; on prend le premier préréglage dans le temps si besoin
+  const openEvol = () => {
+    setView('evol');
+    if (x === '@PERIOD') return;
+    const i = vcfg.presets?.findIndex((q) => q.x === '@PERIOD') ?? -1;
+    if (i >= 0) applySel(buildSelection(rows, ctx, vcfg.presets![i]), i);
+    else { setX('@PERIOD'); if (series === '@PERIOD') setSeries(''); setPresetIdx(null); }
+  };
 
   // ---------- chiffres clés : une ligne par mesure ----------
   const keyTable = useMemo(() => {
@@ -354,20 +364,21 @@ export default function Donnees() {
                   <div className="tabs">
                     <button className={view === 'chart' ? 'on' : ''} onClick={() => setView('chart')}>Graphique</button>
                     {measureDim && (dimValues[measureDim]?.length ?? 0) > 1 && <button className={view === 'key' ? 'on' : ''} onClick={() => setView('key')}>Chiffres clés</button>}
+                    {basePeriods.length > 1 && <button className={view === 'evol' ? 'on' : ''} onClick={openEvol}>Évolution</button>}
                     {current.map_capable && <button className={view === 'map' ? 'on' : ''} onClick={() => setView('map')}>Carte</button>}
                     <button className={view === 'table' ? 'on' : ''} onClick={() => setView('table')}>Données brutes ({rawRows.length})</button>
                     <span className="spacer" />
                     <button className="secondary" onClick={exportCsv}>Exporter CSV</button>
                   </div>
 
-                  {(view === 'chart' || view === 'map') && vcfg.presets && (
+                  {(view === 'chart' || view === 'map' || view === 'evol') && vcfg.presets && (
                     <div className="presets">
                       {vcfg.presets.map((p, i) => (
                         <button key={i} className={presetIdx === i ? 'on' : ''} onClick={() => applySel(buildSelection(rows, ctx, p), i)}>{p.label}</button>
                       ))}
                     </div>
                   )}
-                  {(view === 'chart' || view === 'map') && preset?.note && <div className="note-box small">{preset.note}</div>}
+                  {(view === 'chart' || view === 'map' || view === 'evol') && preset?.note && <div className="note-box small">{preset.note}</div>}
                   {vcfg.note && <div className="note-box small">{vcfg.note}</div>}
                   {view === 'chart' && x === '@GEO' && shownGeos.length < 2 && (
                     <div className="warn small">Ce graphique compare des territoires : décochez « Ivry-sur-Seine uniquement » (et choisissez un territoire, ou laissez « tous les territoires importés »).</div>
@@ -445,6 +456,10 @@ export default function Donnees() {
                         <label className="inline small"><input type="checkbox" checked={withTotals} onChange={(e) => setWithTotals(e.target.checked)} /> Inclure les totaux</label>
                       )}
                     </div>
+                  )}
+
+                  {view === 'evol' && (
+                    <EvolutionDonnees chart={chart} suffix={suffix} title={[preset?.label, measureText].filter(Boolean).join(' : ')} />
                   )}
 
                   {view === 'map' && current && (

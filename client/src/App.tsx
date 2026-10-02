@@ -5,6 +5,7 @@ import Carte from './pages/Carte';
 import Donnees from './pages/Donnees';
 import Pilotage from './pages/Pilotage';
 import Catalogue from './pages/Catalogue';
+import Database from './pages/Database';
 
 export default function App() {
   const [build, setBuild] = useState('');
@@ -23,6 +24,7 @@ export default function App() {
           <NavLink to="/carte">Carte mentale</NavLink>
           <NavLink to="/donnees">Données</NavLink>
           <NavLink to="/catalogue">Catalogue</NavLink>
+          <NavLink to="/database">Base de données</NavLink>
         </nav>
       </header>
       <main>
@@ -33,6 +35,7 @@ export default function App() {
           <Route path="/carte" element={<Carte />} />
           <Route path="/donnees" element={<Donnees />} />
           <Route path="/catalogue" element={<Catalogue />} />
+          <Route path="/database" element={<Database />} />
         </Routes>
       </main>
       {build && <footer className="build">Version du {build}</footer>}

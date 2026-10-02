@@ -163,3 +163,21 @@ ol.rank li span { display: inline-block; max-width: 150px; overflow: hidden; tex
 ol.rank li b { float: right; font-variant-numeric: tabular-nums; }
 ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 @media (max-width: 1100px) { .map-layout { grid-template-columns: 1fr; } }
+
+/* évolution */
+.trend-up { color: #15803d; }
+.trend-down { color: #b91c1c; }
+.trend-flat { color: #64748b; }
+.evol .table-wrap { margin-top: 12px; }
+
+/* base de données */
+.db-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin: 12px 0 20px; }
+.db-card { border: 1px solid var(--border, #dde1e6); border-radius: 8px; padding: 10px 12px; background: #fff; }
+.db-val { font-size: 22px; font-weight: 600; }
+.db-health { border-radius: 8px; padding: 10px 14px; margin: 8px 0; background: #ecfdf3; border: 1px solid #a7e3bf; }
+.db-health.attention { background: #fffbeb; border-color: #f2d58a; }
+.db-health.erreur { background: #fef2f2; border-color: #f1a9a9; }
+.db-health ul { margin: 6px 0 0 18px; padding: 0; }
+.al-attention { color: #b45309; } .al-erreur { color: #b91c1c; } .al-info { color: #475569; }
+.db-bar { height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 2px; }
+.db-bar i { display: block; height: 100%; background: #2563eb; border-radius: 2px; }

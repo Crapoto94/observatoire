@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { Ctx, MapPick, MapRow, Sel, categoryOptions, mapConstraints, mapValues, quantileBreaks } from '../explorer';
 import { DataRow } from '../types';
+import { project, yearOf } from '../trend';
 
 // Carte choroplèthe des communes d'Île-de-France pour la lecture courante (préréglage) d'un jeu de données.
 // Contours : formes simplifiées servies par l'API (/api/shapes) ; aucun fond de carte externe (fonctionne hors connexion).
@@ -20,6 +21,11 @@ const fmt = (v: number) => {
   const a = Math.abs(v);
   return v.toLocaleString('fr-FR', { maximumFractionDigits: a >= 100 ? 0 : a >= 10 ? 1 : 2 });
 };
+type Display = 'value' | 'evol' | 'annual' | 'p1' | 'p5';
+const DISPLAYS: { k: Display; l: string }[] = [
+  { k: 'value', l: 'Valeur' }, { k: 'evol', l: 'Évolution depuis la période de départ' }, { k: 'annual', l: 'Évolution annuelle moyenne' },
+  { k: 'p1', l: 'Projection à 1 an' }, { k: 'p5', l: 'Projection à 5 ans' },
+];
 const isDim = (v: string) => v !== '' && !v.startsWith('@');
 
 interface Props {
@@ -38,14 +44,20 @@ interface Props {
 }
 
 export default function CarteDonnees({ dsId, sel, ctx, rows, title, refCode, compare, coverage, totalCommunes, importing, onImport, onPick }: Props) {
-  const [scope, setScope] = useState('idf');
+  const [scope, setScope] = useState('94'); // Val-de-Marne par défaut
   const [shapes, setShapes] = useState<Shapes | null>(null);
   const [periods, setPeriods] = useState<string[]>([]);
   const [period, setPeriod] = useState('');
   const [cat, setCat] = useState('');
   const [seriesVal, setSeriesVal] = useState('');
-  const [perK, setPerK] = useState(sel.mode === 'pop');
+  // par défaut : pour 1 000 habitants, sauf pour les lectures qui sont déjà des prix, taux, parts, médianes ou moyennes
+  const defaultPerK = !/prix|loyer|taux|part |parts |médian|niveau de vie|indice|moyen|€|%|densité|pour 1 000|pour 1000|surface|ratio/i.test(`${title} ${sel.ratio?.label ?? ''}`);
+  const [perK, setPerK] = useState(defaultPerK);
+  useEffect(() => { setPerK(defaultPerK); }, [title, dsId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [data, setData] = useState<MapRow[]>([]);
+  const [display, setDisplay] = useState<Display>('value');
+  const [basePeriod, setBasePeriod] = useState('');
+  const [baseData, setBaseData] = useState<MapRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [hover, setHover] = useState<{ code: string; x: number; y: number } | null>(null);
   const [vb, setVb] = useState<number[] | null>(null);
@@ -70,6 +82,14 @@ export default function CarteDonnees({ dsId, sel, ctx, rows, title, refCode, com
   }, [dsId, coverage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    // période de départ par défaut : la plus proche de cinq ans avant la période affichée
+    const y = yearOf(period);
+    const older = periods.filter((p) => yearOf(p) != null && (y == null || yearOf(p)! < y));
+    if (!older.length) { setBasePeriod(''); return; }
+    setBasePeriod((cur) => (older.includes(cur) ? cur : older.reduce((best, p) => (Math.abs(yearOf(p)! - ((y ?? 0) - 5)) < Math.abs(yearOf(best)! - ((y ?? 0) - 5)) ? p : best), older[0])));
+  }, [periods, period]);
+
+  useEffect(() => {
     api<Shapes>(`/shapes?scope=${scope}`).then((s) => { setShapes(s); setVb(s.viewBox); }).catch(() => setShapes(null));
   }, [scope]);
 
@@ -89,7 +109,33 @@ export default function CarteDonnees({ dsId, sel, ctx, rows, title, refCode, com
     return () => { live = false; };
   }, [key, coverage]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const values = useMemo(() => mapValues(data, mapSel, ctx), [data, mapSel, ctx]);
+  useEffect(() => {
+    if (display === 'value' || !coverage || !basePeriod) { setBaseData([]); return; }
+    let live = true;
+    api<{ rows: MapRow[] }>(`/datasets/${dsId}/map?scope=${scope}&period=${encodeURIComponent(basePeriod)}&dims=${encodeURIComponent(JSON.stringify(constraints))}`)
+      .then((r) => { if (live) setBaseData(r.rows); })
+      .catch(() => { if (live) setBaseData([]); });
+    return () => { live = false; };
+  }, [key, coverage, display, basePeriod]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const current = useMemo(() => mapValues(data, mapSel, ctx), [data, mapSel, ctx]);
+  const baseValues = useMemo(() => mapValues(baseData, mapSel, ctx), [baseData, mapSel, ctx]);
+  const dt = yearOf(period) != null && yearOf(basePeriod) != null ? yearOf(period)! - yearOf(basePeriod)! : 0;
+  const isRatio = !!sel.ratio && (sel.ratio.factor ?? 100) === 100;
+  const values = useMemo(() => {
+    if (display === 'value' || dt <= 0) return current;
+    const out = new Map<string, number>();
+    for (const [g, v] of current) {
+      const b = baseValues.get(g);
+      if (b == null) continue;
+      if (display === 'evol') { const r = isRatio ? v - b : b !== 0 ? ((v - b) / Math.abs(b)) * 100 : null; if (r != null) out.set(g, r); }
+      else if (display === 'annual') {
+        const r = isRatio ? (v - b) / dt : b > 0 && v > 0 ? (Math.pow(v / b, 1 / dt) - 1) * 100 : null;
+        if (r != null) out.set(g, r);
+      } else { const r = project({ t: 0, v: b }, { t: dt, v }, display === 'p1' ? 1 : 5); if (r != null) out.set(g, r); }
+    }
+    return out;
+  }, [current, baseValues, display, dt, isRatio]);
   const inScope = useMemo(() => (shapes?.items ?? []).filter((s) => values.has(s.code)), [shapes, values]);
   const breaks = useMemo(() => quantileBreaks(inScope.map((s) => values.get(s.code)!), PALETTE.length), [inScope, values]);
   const classOf = (v: number) => { const i = breaks.findIndex((b) => v <= b); return i < 0 ? breaks.length - 1 : i; };
@@ -134,7 +180,9 @@ export default function CarteDonnees({ dsId, sel, ctx, rows, title, refCode, com
 
   const coverageShort = coverage < Math.min(50, totalCommunes);
   const scale = vb && shapes ? vb[2] / shapes.viewBox[2] : 1;
-  const unit = sel.ratio ? ((sel.ratio.factor ?? 100) === 100 ? ' %' : '') : '';
+  const evolMode = display === 'evol' || display === 'annual';
+  const valueUnit = sel.ratio ? ((sel.ratio.factor ?? 100) === 100 ? ' %' : '') : '';
+  const unit = evolMode ? (isRatio ? (display === 'annual' ? ' pts/an' : ' pts') : (display === 'annual' ? ' %/an' : ' %')) : valueUnit;
 
   return (
     <div className="mapview">
@@ -164,8 +212,19 @@ export default function CarteDonnees({ dsId, sel, ctx, rows, title, refCode, com
             <select value={seriesVal} onChange={(e) => setSeriesVal(e.target.value)}>{seriesOptions.map((c) => <option key={c} value={c}>{ctx.label(sel.series, c)}</option>)}</select>
           </label>
         )}
+        <label className="field small"><span>Affichage</span>
+          <select value={display} onChange={(e) => setDisplay(e.target.value as Display)}>{DISPLAYS.map((d) => <option key={d.k} value={d.k}>{d.l}</option>)}</select>
+        </label>
+        {display !== 'value' && (
+          <label className="field small"><span>Période de départ</span>
+            <select value={basePeriod} onChange={(e) => setBasePeriod(e.target.value)}>
+              {periods.filter((p) => yearOf(p) != null && (yearOf(period) == null || yearOf(p)! < yearOf(period)!)).map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </label>
+        )}
         {!sel.ratio && <label className="inline small"><input type="checkbox" checked={perK} onChange={(e) => setPerK(e.target.checked)} /> Pour 1 000 habitants</label>}
         {loading && <span className="muted small">Chargement…</span>}
+        {display !== 'value' && dt <= 0 && <span className="muted small">Au moins deux périodes sont nécessaires pour calculer une évolution.</span>}
       </div>
 
       <div className="map-layout">
