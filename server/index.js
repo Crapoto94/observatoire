@@ -62,6 +62,14 @@ app.get('/api/cartographie/layer/:id', (req, res) => {
     d ? res.json(d) : res.status(404).json({ error: 'couche introuvable' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Quartiers prioritaires de la politique de la ville (contours simplifiés, chargés au premier appel)
+app.get('/api/qpv', async (req, res) => {
+  try {
+    const qpv = require('./qpv');
+    await qpv.bootstrap();
+    res.json({ items: qpv.list(String(req.query.scope || 'idf')) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/autres', (req, res) => { try { res.json(require('./autres').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/emploi', (req, res) => { try { res.json(require('./emploi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/kpi', (req, res) => { try { res.json(require('./kpi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
@@ -401,6 +409,7 @@ app.listen(PORT, '0.0.0.0', () => {
   }
   // Chargement de l'Île-de-France (carte) fait par le serveur, sans passer par le navigateur
   if (process.env.AUTO_IMPORT_IDF !== 'false') autoImportIdf();
+  require('./qpv').bootstrap().catch((e) => console.warn('[qpv]', e.message));
   // recalcul des agrégats de l'EPT (GOSB) à chaque démarrage : suit d'éventuelles corrections de règles
   setTimeout(() => { try { require('./groups').aggregateAll(); } catch (e) { console.warn('[groupes]', e.message); } }, 15000);
 });

@@ -101,4 +101,4 @@ function shapes(scope) {
   };
 }
 
-module.exports = { bootstrapIdf, shapes, project };
+module.exports = { bootstrapIdf, shapes, project, shapeOf };

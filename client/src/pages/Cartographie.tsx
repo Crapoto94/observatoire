@@ -44,10 +44,14 @@ export default function Cartographie() {
   const [shapes, setShapes] = useState<Shapes | null>(null);
   const [arrows, setArrows] = useState(true);
   const [depts, setDepts] = useState(true);
+  const [qpvOn, setQpvOn] = useState(true);
+  const [qpv, setQpv] = useState<{ code: string; nom: string; communes_noms: string; path: string }[]>([]);
+  useEffect(() => { api<{ items: { code: string; nom: string; communes_noms: string; path: string }[] }>(`/qpv?scope=${scope}`).then((r) => setQpv(r.items)).catch(() => setQpv([])); }, [scope]);
   const [gosbShapes, setGosbShapes] = useState<Shapes | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hover, setHover] = useState<{ code: string; x: number; y: number } | null>(null);
+  const [hoverQ, setHoverQ] = useState<{ nom: string; x: number; y: number } | null>(null);
   const [vb, setVb] = useState<number[] | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -155,6 +159,7 @@ export default function Cartographie() {
             <div className="small"><span className="gosb-swatch" /> Contour du GOSB (Grand-Orly Seine Bièvre)</div>
             <div className="small"><span className="gosb-swatch" style={{ borderColor: '#dc2626' }} /> Ivry-sur-Seine</div>
             <div className="small"><span className="gosb-swatch" style={{ borderColor: '#6b7280', borderWidth: 2 }} /> Départements</div>
+            <div className="small"><span className="gosb-swatch" style={{ borderColor: '#7c3aed', borderWidth: 2, borderStyle: 'dashed', background: 'rgba(124,58,237,0.18)' }} /> Quartiers prioritaires (QPV)</div>
             <div className="small"><b style={{ color: '#16a34a' }}>▲</b> <b style={{ color: '#dc2626' }}>▼</b> tendance favorable / défavorable · <b style={{ color: '#2563eb' }}>▲ ► ▼</b> neutre ou stable</div>
           </div>
         </aside>
@@ -169,6 +174,7 @@ export default function Cartographie() {
                 <select value={data?.period ?? ''} onChange={(e) => setPeriod(e.target.value)}>{data!.periods.map((p) => <option key={p} value={p}>{p}</option>)}</select>
               </label>
             )}
+            <label className="inline small"><input type="checkbox" checked={qpvOn} onChange={(e) => setQpvOn(e.target.checked)} /> Quartiers prioritaires (QPV)</label>
             <label className="inline small"><input type="checkbox" checked={depts} onChange={(e) => setDepts(e.target.checked)} /> Contours des départements</label>
             <button className="secondary" onClick={() => { const v = gosbView(); if (v) setVb(v); }}>Vue GOSB</button>
             <button className="secondary" onClick={() => shapes && setVb(shapes.viewBox)}>Vue complète</button>
@@ -233,7 +239,12 @@ export default function Cartographie() {
                   <g mask="url(#gosb-outside)" pointerEvents="none">
                     {outline.map((s) => <path key={`g-${s.code}`} d={s.path} fill="none" stroke="#111827" strokeWidth={4 * u} />)}
                   </g>
-                                  {ivry && <path d={ivry.path} fill="none" stroke="#dc2626" strokeWidth={2.2 * u} pointerEvents="none" />}
+                                  {qpvOn && qpv.map((q) => (
+                    <path key={q.code} d={q.path} fill="rgba(124, 58, 237, 0.18)" stroke="#7c3aed" strokeWidth={1.2 * u} strokeDasharray={`${4 * u} ${2 * u}`}
+                      onMouseEnter={(e) => { const r = box.current!.getBoundingClientRect(); setHoverQ({ nom: `${q.nom} (QPV, ${q.communes_noms})`, x: e.clientX - r.left, y: e.clientY - r.top }); }}
+                      onMouseLeave={() => setHoverQ(null)} />
+                  ))}
+                  {ivry && <path d={ivry.path} fill="none" stroke="#dc2626" strokeWidth={2.2 * u} pointerEvents="none" />}
                   {showArrows && items.map((s) => {
                     const t = values[s.code]?.trend;
                     const c = centers.get(s.code);
@@ -263,6 +274,7 @@ export default function Cartographie() {
                   ) : <div>donnée non disponible</div>}
                 </div>
               )}
+              {hoverQ && <div className="map-tip" style={{ left: hoverQ.x + 14, top: hoverQ.y + 14 }}><strong>{hoverQ.nom}</strong></div>}
               <div className="map-legend">
                 {breaks.map((b, i) => <span key={i} className="lg"><i style={{ background: PALETTE[i] }} />≤ {fmt(b)}{unit}</span>)}
                 <span className="lg"><i style={{ background: NO_DATA }} />n.d.</span>
