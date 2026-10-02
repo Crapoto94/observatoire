@@ -144,6 +144,14 @@ const selectDatasets = (ids) => (ids?.length
   ? all(`SELECT * FROM datasets WHERE id IN (${ids.map(() => '?').join(',')})`, ...ids)
   : all('SELECT * FROM datasets'));
 
+// Chien de garde : un lot qui ne répond plus est abandonné (erreur journalisée) pour que l'import passe au suivant
+const withTimeout = (p, ms, label) => new Promise((resolve, reject) => {
+  const t = setTimeout(() => reject(new Error(`délai dépassé (${Math.round(ms / 60000)} min) : ${label}`)), ms);
+  p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+});
+const CHUNK_TIMEOUT = 30 * 60000; // un lot d'import en masse
+const GEO_TIMEOUT = 5 * 60000; // une commune en mode unitaire
+
 // Import d'un jeu pour tous les territoires de l'Île-de-France (en masse)
 async function importIdfDataset(d, geos, job, log) {
   const started = now();
@@ -153,7 +161,7 @@ async function importIdfDataset(d, geos, job, log) {
   if (b) {
     for (const part of bulk.chunk(geos, b.size)) {
       try {
-        const map = await b.fn(cfg, part);
+        const map = await withTimeout(b.fn(cfg, part, (m) => log(`${d.id} : ${m}`)), b.size >= 100000 ? 3 * CHUNK_TIMEOUT : CHUNK_TIMEOUT, `${d.id} (${part.length} communes)`);
         if (map === null) { log(`${d.id} : niveau communal non disponible`); job.done++; continue; }
         total += storeRows(d.id, part.map((g) => g.code), (code) => map.get(code));
         log(`${d.id} : ${part.length} communes traitées`);
@@ -165,7 +173,7 @@ async function importIdfDataset(d, geos, job, log) {
     }
   } else {
     await pool(geos, 4, async (g) => {
-      try { total += await importOne(d, g, () => {}); } catch (e) { job.errors++; log(`${d.id} / ${g.nom} : ERREUR ${e.message}`); }
+      try { total += await withTimeout(importOne(d, g, () => {}), GEO_TIMEOUT, `${d.id} / ${g.nom}`); } catch (e) { job.errors++; log(`${d.id} / ${g.nom} : ERREUR ${e.message}`); }
       job.done++;
     });
     log(`${d.id} : ${geos.length} communes traitées`);
@@ -185,9 +193,9 @@ function startImport({ datasetIds, geoCodes, scope } = {}) {
   if (running) return { ...running, already: true };
   const datasets = selectDatasets(datasetIds);
   const id = ++jobSeq;
-  const job = { id, scope: scope || 'favoris', status: 'en cours', total: 1, done: 0, errors: 0, log: [], started: now() };
+  const job = { id, scope: scope || 'favoris', status: 'en cours', total: 1, done: 0, errors: 0, log: [], started: now(), activity: Date.now() };
   jobs.set(id, job);
-  const log = (m) => { job.log.push(m); if (job.log.length > 300) job.log.shift(); };
+  const log = (m) => { job.activity = Date.now(); job.log.push(m); if (job.log.length > 300) job.log.shift(); };
 
   if (scope === 'idf') {
     (async () => {
@@ -239,7 +247,12 @@ function autoImportIdf({ intervalMs = 30000 } = {}) {
   const tried = new Set();
   const tick = () => {
     try {
-      if (currentJob()) return;
+      const running = currentJob();
+      if (running) {
+        // surveillance : un import sans activité depuis 20 min est signalé (les lots bloqués sont abandonnés par leur délai)
+        if (Date.now() - (running.activity || 0) > 20 * 60000 && !running.warned) { running.warned = true; console.warn(`[import] job ${running.id} sans activité depuis 20 min`); running.log.push('ATTENTION : aucune activité depuis 20 min, le lot en cours sera abandonné à son délai'); }
+        return;
+      }
       const communes = get('SELECT COUNT(*) AS n FROM geo_shapes').n;
       const loaded = Object.fromEntries(all('SELECT dataset_id, COUNT(DISTINCT geo) AS n FROM data_rows WHERE geo IN (SELECT code FROM geo_shapes) GROUP BY dataset_id').map((r) => [r.dataset_id, r.n]));
       const todo = all('SELECT id FROM datasets').map((d) => d.id)

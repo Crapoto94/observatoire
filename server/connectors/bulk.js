@@ -46,7 +46,7 @@ async function melodiMany(config, geos, geoId) {
 }
 
 // ---------------- API tabulaire data.gouv.fr : filtre __in sur le code commune ----------------
-async function tabularMany(config, geos) {
+async function tabularMany(config, geos, progress = () => {}) {
   const comm = communes(geos);
   const sources = config.sources.filter((s) => (s.level || 'COM') === 'COM');
   if (!sources.length) return null;
@@ -57,7 +57,9 @@ async function tabularMany(config, geos) {
     try {
       const resource = await open.resolveResource(src);
       const byGeo = new Map();
-      for (const part of chunk(comm.map((g) => g.code), 80)) {
+      const parts = chunk(comm.map((g) => g.code), 80);
+      for (const [pi, part] of parts.entries()) {
+        progress(`communes ${pi * 80 + 1}-${pi * 80 + part.length} sur ${comm.length}`);
         for (let page = 1; page <= 80; page++) {
           const j = await fetchJson(`${open.TAB}/${resource}/data/?${encodeURIComponent(src.geoField)}__in=${part.join(',')}&page_size=200&page=${page}`);
           for (const r of j.data || []) {
