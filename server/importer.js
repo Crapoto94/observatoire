@@ -9,6 +9,8 @@ const dido = require('./connectors/dido');
 const datafair = require('./connectors/datafair');
 const icu = require('./connectors/icu');
 const idfm = require('./connectors/idfm');
+const ssmsi = require('./connectors/ssmsi');
+const finances = require('./connectors/finances');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
 
@@ -25,6 +27,8 @@ const CONNECTORS = {
   datafair: datafair.fetchGeo,
   icu: icu.fetchGeo,
   idfm: idfm.fetchGeo,
+  ssmsi: ssmsi.fetchGeo,
+  finances: finances.fetchGeo,
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -37,6 +41,8 @@ const BULK = {
   datafair: { fn: datafair.fetchMany, size: 400 },
   icu: { fn: icu.fetchMany, size: 100000 },
   idfm: { fn: idfm.fetchMany, size: 100000 },
+  ssmsi: { fn: ssmsi.fetchMany, size: 100000 },
+  finances: { fn: finances.fetchMany, size: 200 },
 };
 
 const jobs = new Map();

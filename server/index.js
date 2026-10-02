@@ -9,6 +9,7 @@ const { shapes } = require('./idf');
 
 seed();
 require('./groups').ensureGroups();
+try { const n = require('./propositions').apply(); if (n) console.log(`[propositions] ${n} fiche(s) mise(s) à jour avec les données disponibles`); } catch (e) { console.warn('[propositions]', e.message); }
 syncPopulations();
 
 const app = express();
@@ -61,6 +62,7 @@ app.get('/api/cartographie/layer/:id', (req, res) => {
     d ? res.json(d) : res.status(404).json({ error: 'couche introuvable' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+app.get('/api/autres', (req, res) => { try { res.json(require('./autres').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/emploi', (req, res) => { try { res.json(require('./emploi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/kpi', (req, res) => { try { res.json(require('./kpi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/database', (req, res) => { try { res.json(require('./dbstats').stats({ check: req.query.check === '1' })); } catch (e) { res.status(500).json({ error: e.message }); } });
@@ -315,7 +317,7 @@ app.get('/api/datasets/:id/map', (req, res) => {
   const period = req.query.period != null ? String(req.query.period) : '';
   const params = [req.params.id];
   let sql = `SELECT r.geo, r.period, r.dims, r.value FROM data_rows r JOIN geos g ON g.code = r.geo
-    WHERE r.dataset_id = ? AND g.level = 'COM' AND r.geo IN (SELECT code FROM geo_shapes)`;
+    WHERE r.dataset_id = ? AND g.level = 'COM' AND g.population >= 5000 AND r.geo IN (SELECT code FROM geo_shapes)`;
   const members = require('./groups').membersOf(scope.toUpperCase());
   if (members.length) { sql += ` AND r.geo IN (${members.map(() => '?').join(',')})`; params.push(...members); } else if (scope !== 'idf') { sql += ' AND g.dept = ?'; params.push(scope); }
   for (const [dim, codes] of Object.entries(dims)) {

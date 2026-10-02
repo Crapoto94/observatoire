@@ -34,7 +34,7 @@ function info() {
   const value = {
     version: count != null ? `0.${count + OFFSET}` : require('../package.json').version,
     commits: count, source,
-    whatsnew: lines.map(parse),
+    whatsnew: lines.map(parse).map((e, i) => ({ ...e, version: count != null ? `0.${count - i + OFFSET}` : null })), // chaque commit correspond à une version
   };
   cache = { at: Date.now(), value };
   return value;

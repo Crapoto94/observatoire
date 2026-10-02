@@ -381,6 +381,32 @@ export const VIEWS: Record<string, View> = {
       { label: 'Part des logements construits avant 1971', x: '@PERIOD', pins: { CRITERE: 'EPOQUE' }, ratio: ratio('MODALITE', ['EP_AV1946', 'EP_1946_1970'], ['EP_AV1946', 'EP_1946_1970', 'EP_1971_1990', 'EP_1991_2005', 'EP_2006_PLUS'], 'Logements construits avant 1971 / logements') },
     ],
   },
+  ssmsi: {
+    note: "Faits enregistrés par la police et la gendarmerie (SSMSI). Un fait enregistré n'est pas un fait commis : les dépôts de plainte varient selon les territoires. Les valeurs soumises au secret statistique ne sont pas diffusées.",
+    presets: [
+      { label: 'Cambriolages de logement (pour 1 000 hab.)', x: '@PERIOD', pins: { MESURE: 'TAUX_MILLE', INFRACTION: 'CAMBRIOLAGES' } },
+      { label: 'Violences physiques hors cadre familial (pour 1 000 hab.)', x: '@PERIOD', pins: { MESURE: 'TAUX_MILLE', INFRACTION: 'VIOL_HORS_FAMILLE' } },
+      { label: 'Violences intrafamiliales (pour 1 000 hab.)', x: '@PERIOD', pins: { MESURE: 'TAUX_MILLE', INFRACTION: 'VIOL_FAMILIALES' } },
+      { label: 'Violences sexuelles (pour 1 000 hab.)', x: '@PERIOD', pins: { MESURE: 'TAUX_MILLE', INFRACTION: 'VIOL_SEXUELLES' } },
+      { label: 'Vols sans violence (pour 1 000 hab.)', x: '@PERIOD', pins: { MESURE: 'TAUX_MILLE', INFRACTION: 'VOLS_SANS_VIOLENCE' } },
+      { label: 'Trafic de stupéfiants (pour 1 000 hab.)', x: '@PERIOD', pins: { MESURE: 'TAUX_MILLE', INFRACTION: 'STUP_TRAFIC' } },
+      { label: 'Dégradations volontaires (pour 1 000 hab.)', x: '@PERIOD', pins: { MESURE: 'TAUX_MILLE', INFRACTION: 'DEGRADATIONS' } },
+      { label: 'Faits par catégorie (nombre)', x: 'INFRACTION', pins: { MESURE: 'NOMBRE' } },
+      { label: 'Faits par catégorie (pour 1 000 hab.)', x: 'INFRACTION', pins: { MESURE: 'TAUX_MILLE' } },
+    ],
+  },
+  finances: {
+    note: "Comptes individuels des communes (DGFiP) en euros par habitant. La « strate » est la moyenne des communes de même taille : elle sert de repère, pas d'objectif.",
+    presets: [
+      { label: 'Encours de la dette (€/hab.) et strate', x: '@PERIOD', series: 'MESURE', keep: { MESURE: ['DETTE_HAB', 'DETTE_HAB_STRATE'] } },
+      { label: 'Charges de personnel (€/hab.) et strate', x: '@PERIOD', series: 'MESURE', keep: { MESURE: ['PERSONNEL_HAB', 'PERSONNEL_HAB_STRATE'] } },
+      { label: "Dépenses d'équipement (€/hab.) et strate", x: '@PERIOD', series: 'MESURE', keep: { MESURE: ['EQUIPEMENT_HAB', 'EQUIPEMENT_HAB_STRATE'] } },
+      { label: "Capacité d'autofinancement (€/hab.) et strate", x: '@PERIOD', series: 'MESURE', keep: { MESURE: ['CAF_HAB', 'CAF_HAB_STRATE'] } },
+      { label: 'Produits et charges de fonctionnement (€/hab.)', x: '@PERIOD', series: 'MESURE', keep: { MESURE: ['PRODUITS_HAB', 'CHARGES_HAB'] } },
+      { label: 'Impôts locaux (€/hab.) et strate', x: '@PERIOD', series: 'MESURE', keep: { MESURE: ['IMPOTS_LOCAUX_HAB', 'IMPOTS_LOCAUX_HAB_STRATE'] } },
+      { label: 'Dette / produits de fonctionnement (%)', x: '@PERIOD', pins: { MESURE: 'DETTE_PCT_PRODUITS' } },
+    ],
+  },
   ft_defm: {
     note: "Demandeurs d'emploi inscrits à France Travail (catégories A, B, C) au 4ᵉ trimestre de chaque année, par commune. Chiffres bruts arrondis à 5 : de petits écarts sont normaux entre le total et la somme des détails.",
     presets: [

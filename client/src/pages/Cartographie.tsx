@@ -278,7 +278,7 @@ export default function Cartographie() {
                   <ol className="rank">{ranking.slice(0, 10).map((r) => <li key={r.code}><span>{gosbSet.has(r.code) ? '◆ ' : ''}{r.nom}</span><b>{fmt(r.v)}{unit}</b></li>)}</ol>
                   <div className="muted small">Valeurs les plus faibles</div>
                   <ol className="rank rev">{ranking.slice(-10).reverse().map((r) => <li key={r.code}><span>{gosbSet.has(r.code) ? '◆ ' : ''}{r.nom}</span><b>{fmt(r.v)}{unit}</b></li>)}</ol>
-                  <p className="muted small">◆ commune du GOSB. Molette : zoom · glisser : déplacer.</p>
+                  <p className="muted small">◆ commune du GOSB. Seules les communes de plus de 5 000 habitants sont classées et colorées (les données des plus petites communes ne sont pas exhaustives). Molette : zoom · glisser : déplacer.</p>
                 </>
               )}
             </aside>

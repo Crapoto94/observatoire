@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 
-interface Entry { hash: string; date: string; type: string; label: string; scope: string | null; subject: string }
+interface Entry { version: string | null; hash: string; date: string; type: string; label: string; scope: string | null; subject: string }
 interface Version { version: string; commits: number | null; source: string; whatsnew: Entry[] }
 
 const COLOR: Record<string, string> = { feat: '#2563eb', fix: '#dc2626', docs: '#64748b', perf: '#7c3aed', refactor: '#0891b2', chore: '#94a3b8', autre: '#94a3b8' };
@@ -38,7 +38,7 @@ export default function Nouveautes() {
               <ul>
                 {list.map((e) => (
                   <li key={e.hash}>
-                    <span className="st" style={{ background: COLOR[e.type] }}>{e.label}</span>{' '}
+                    <b className="wn-ver">{e.version ? `v${e.version}` : e.hash}</b>{' '}<span className="st" style={{ background: COLOR[e.type] }}>{e.label}</span>{' '}
                     {e.scope && <span className="muted small">[{e.scope}] </span>}
                     {e.subject}
                     <span className="muted small"> · {e.hash}</span>

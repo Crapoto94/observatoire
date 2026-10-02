@@ -27,7 +27,8 @@ function ensureGroups() {
 }
 
 // valeurs « intensives » : à moyenner (pondération par la population) plutôt qu'à additionner
-const INTENSIVE_DATASETS = new Set(['filosofi']);
+const INTENSIVE_DATASETS = new Set(['filosofi', 'finances']); // finances : montants par habitant, pondérés par la population
+const ADDITIVE_MEASURES = new Set(['POP_BUDGET']);
 const INTENSIVE = /(^|[_\s])(MED|MEDIAN|MEDIANE|PRIX|LOYER|TAUX|PR|GI|IR|S80S20|PART|PCT|POURCENT|RATIO|MOYEN|MOYENNE|DENSITE)($|[_\s])/i;
 
 function aggregate(datasetId) {
@@ -40,7 +41,7 @@ function aggregate(datasetId) {
     for (const r of rows) {
       const k = `${r.period ?? ''}\u0001${r.dims}\u0001${r.measure}`;
       const a = acc.get(k) || acc.set(k, { period: r.period, dims: r.dims, measure: r.measure, sum: 0, w: 0, wv: 0, n: 0, intensive: null }).get(k);
-      if (a.intensive === null) a.intensive = INTENSIVE_DATASETS.has(datasetId) || INTENSIVE.test(`${a.measure} ${Object.values(JSON.parse(a.dims || '{}')).join(' ')}`);
+      if (a.intensive === null) a.intensive = (INTENSIVE_DATASETS.has(datasetId) && !ADDITIVE_MEASURES.has(JSON.parse(a.dims || '{}').MESURE)) || INTENSIVE.test(`${a.measure} ${Object.values(JSON.parse(a.dims || '{}')).join(' ')}`);
       a.sum += r.value; a.n++;
       const w = pops[r.geo] || 0;
       a.w += w; a.wv += r.value * w;

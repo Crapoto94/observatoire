@@ -274,3 +274,5 @@ ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent
 .insights li.alerte { border-left-color: #dc2626; } .insights li.positif { border-left-color: #16a34a; }
 .src-list { list-style: none; padding: 0; }
 .src-list li { margin: 8px 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+
+.wn-ver { display: inline-block; min-width: 52px; font-variant-numeric: tabular-nums; }

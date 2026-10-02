@@ -66,8 +66,7 @@ const SOURCES = [
   { statut: 'à vérifier', titre: 'API France Travail (offres d’emploi, marché du travail, ROME)', detail: "Les API du catalogue francetravail.io demandent en général une inscription et un jeton OAuth : à confirmer avant tout développement. Je n'ai pas pu vérifier sans compte quelles API sont réellement ouvertes sans clé.", lien: 'https://francetravail.io/data/api' },
 ];
 
-function build2() {
-  const d = build();
+function build2(d = build()) {
   const kpis = d.kpis.filter((k) => k.theme === 'Emploi');
   return { generated: d.generated, kpis, insights: insights(kpis), ranking: gosbRanking(), sources: SOURCES };
 }

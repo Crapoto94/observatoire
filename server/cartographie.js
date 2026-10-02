@@ -15,6 +15,7 @@ const LAYERS = [...KPIS, ...EXTRA].map((k) => ({ ...k, label: k.perK && !/1 000/
 // jeux construits par comptage d'événements (accidents, autorisations) : l'absence de ligne signifie « zéro » et non « inconnu »
 const ZERO_FILL = new Set(['accidents', 'autorises', 'commences']);
 const ADDITIVE = (l) => !l.ratio && !['%', '€', '€/m²'].includes(l.unit || '');
+const MIN_POP = 5000; // classements et cartes : communes de plus de 5 000 habitants uniquement (les autres données ne sont pas exhaustives)
 const FLAT = 0.5; // % d'évolution en deçà duquel la tendance est jugée stable
 
 // population la plus proche de la période (millésimes du recensement)
@@ -71,10 +72,12 @@ function layerData(id, scope = '94', periodWanted = '') {
   const layer = LAYERS.find((l) => l.id === id);
   if (!layer) return null;
   const members = membersOf(String(scope).toUpperCase());
-  const communes = members.length
+  const allCommunes = members.length
     ? members
     : all(scope === 'idf' ? 'SELECT code FROM geo_shapes' : 'SELECT s.code FROM geo_shapes s JOIN geos g ON g.code = s.code WHERE g.dept = ?', ...(scope === 'idf' ? [] : [scope])).map((r) => r.code);
   const pops = populationSeries();
+  const big = new Set(all('SELECT code FROM geos WHERE population >= ?', MIN_POP).map((r) => r.code));
+  const communes = allCommunes.filter((c) => big.has(c));
   const per = (geo, period, v) => {
     if (!layer.perK) return v;
     const p = popAt(pops[geo], period);

@@ -4,7 +4,7 @@ const { all } = require('./db');
 const { REF_GEO } = require('./seed');
 
 const IGNORED = new Set(['UNIT_MEASURE', 'OBS_STATUS']);
-const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['’]/g, ' ').toLowerCase();
 
 // dir : sens favorable (up = une hausse est positive, down = une hausse est défavorable, none = neutre)
 // where : modalités retenues ; les autres dimensions doivent valoir _T (total). ratio : num / den sur une dimension.
@@ -22,6 +22,17 @@ const KPIS = [
   { id: 'defm_50', label: "Part des 50 ans et plus parmi les demandeurs d'emploi", theme: 'Emploi', dataset: 'ft_defm', where: { MESURE: 'DEFM_ABC', SEXE: '_T' }, ratio: { dim: 'AGE', num: ['Y_GE50'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /demandeurs d emploi|seniors|france travail/ },
   { id: 'defm_femmes', label: "Part des femmes parmi les demandeurs d'emploi", theme: 'Emploi', dataset: 'ft_defm', where: { MESURE: 'DEFM_ABC', AGE: '_T' }, ratio: { dim: 'SEXE', num: ['F'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /demandeurs d emploi|france travail/ },
   { id: 'emploi_lt', label: "Emplois au lieu de travail", theme: 'Emploi', dataset: 'rp_emploi_lt', where: { RP_MEASURE: 'NBEMP', EMPSTA_ENQ: '1', SEX: '_T', EMPFORM: '_T', WKTIME: '_T', AGE: '_T' }, dir: 'up', ind: /nombre d emplois|evolution du nombre d emplois|densite d emplois/ },
+  { id: 'cambriolages', label: 'Cambriolages de logement (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'CAMBRIOLAGES' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'violences', label: 'Violences physiques hors cadre familial (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'VIOL_HORS_FAMILLE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'violences_fam', label: 'Violences intrafamiliales (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'VIOL_FAMILIALES' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'vols_sans_violence', label: 'Vols sans violence (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'VOLS_SANS_VIOLENCE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'stupefiants', label: 'Trafic de stupéfiants (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'STUP_TRAFIC' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'degradations', label: 'Destructions et dégradations (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'DEGRADATIONS' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'dette_hab', label: 'Encours de la dette (€/hab.)', theme: 'Finances locales', dataset: 'finances', where: { MESURE: 'DETTE_HAB' }, unit: '€', cmp: true, dir: 'down', ind: /^$/ },
+  { id: 'personnel_hab', label: 'Charges de personnel (€/hab.)', theme: 'Finances locales', dataset: 'finances', where: { MESURE: 'PERSONNEL_HAB' }, unit: '€', cmp: true, dir: 'none', ind: /^$/ },
+  { id: 'equipement_hab', label: 'Dépenses d’équipement (€/hab.)', theme: 'Finances locales', dataset: 'finances', where: { MESURE: 'EQUIPEMENT_HAB' }, unit: '€', cmp: true, dir: 'up', ind: /^$/ },
+  { id: 'caf_hab', label: 'Capacité d’autofinancement (€/hab.)', theme: 'Finances locales', dataset: 'finances', where: { MESURE: 'CAF_HAB' }, unit: '€', cmp: true, dir: 'up', ind: /^$/ },
+  { id: 'impots_hab', label: 'Impôts locaux (€/hab.)', theme: 'Finances locales', dataset: 'finances', where: { MESURE: 'IMPOTS_LOCAUX_HAB' }, unit: '€', cmp: true, dir: 'none', ind: /^$/ },
   { id: 'logements', label: 'Logements', theme: 'Logement', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: '_T' }, dir: 'none', ind: /nombre de logements|parc de logements/ },
   { id: 'vacance', label: 'Part de logements vacants (parc privé)', theme: 'Logement', dataset: 'lovac', where: {}, ratio: { dim: 'MESURE', num: ['PP_VACANT'], den: ['PP_TOTAL'] }, unit: '%', cmp: true, dir: 'down', ind: /vacan/ },
   { id: 'sru', label: 'Taux de logements sociaux (SRU)', theme: 'Logement', dataset: 'sru', where: { MESURE: 'TAUX_SRU' }, unit: '%', cmp: true, dir: 'up', ind: /sru|logements sociaux/ },

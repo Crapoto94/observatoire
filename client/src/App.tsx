@@ -10,7 +10,7 @@ import Cartographie from './pages/Cartographie';
 import Imports from './pages/Imports';
 import Nouveautes from './pages/Nouveautes';
 import Dashboard from './pages/Dashboard';
-import Emploi from './pages/Emploi';
+import Autres from './pages/Autres';
 
 export default function App() {
   const [build, setBuild] = useState('');
@@ -27,7 +27,7 @@ export default function App() {
         <nav>
           <NavLink to="/indicateurs">Conception des indicateurs</NavLink>
           <NavLink to="/tableau-de-bord">Tableau de bord</NavLink>
-          <NavLink to="/emploi">Emploi</NavLink>
+          <NavLink to="/autres">Autres</NavLink>
           <NavLink to="/pilotage">Pilotage</NavLink>
           <NavLink to="/carte">Carte mentale</NavLink>
           <NavLink to="/donnees">Données</NavLink>
@@ -42,7 +42,8 @@ export default function App() {
           <Route path="/" element={<Navigate to="/indicateurs" replace />} />
           <Route path="/indicateurs" element={<Indicateurs />} />
           <Route path="/tableau-de-bord" element={<Dashboard />} />
-          <Route path="/emploi" element={<Emploi />} />
+          <Route path="/autres" element={<Autres />} />
+          <Route path="/emploi" element={<Navigate to="/autres" replace />} />
           <Route path="/pilotage" element={<Pilotage />} />
           <Route path="/carte" element={<Carte />} />
           <Route path="/donnees" element={<Donnees />} />
