@@ -3,9 +3,42 @@
 // Les données renvoyées par les outils sont transmises à Groq pour la rédaction de la réponse.
 const { all, get } = require('./db');
 
-const API = process.env.IA_BASE_URL || 'https://api.groq.com/openai/v1';
-const MODEL = () => process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
-const KEY = () => process.env.GROQ_API_KEY || '';
+const { db, run } = require('./db');
+
+db.exec('CREATE TABLE IF NOT EXISTS ia_settings (key TEXT PRIMARY KEY, value TEXT)');
+const getSetting = (k, d = '') => get('SELECT value FROM ia_settings WHERE key = ?', k)?.value ?? d;
+const setSetting = (k, v) => run('INSERT INTO ia_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', k, v == null ? '' : String(v));
+
+// URL d'un serveur compatible OpenAI : on ajoute /v1 si l'adresse n'a pas de chemin
+function baseOf(url) {
+  const u = String(url || '').trim().replace(/\/+$/, '');
+  if (!u) return '';
+  try { return new URL(u).pathname.replace(/\/+$/, '') ? u : `${u}/v1`; } catch { return u; }
+}
+
+function localConfig() {
+  return {
+    kind: getSetting('local.kind') || process.env.LOCAL_LLM_KIND || 'ollama',
+    url: getSetting('local.url') || process.env.LOCAL_LLM_URL || '',
+    model: getSetting('local.model') || process.env.LOCAL_LLM_MODEL || '',
+  };
+}
+
+/** Configuration d'un fournisseur : 'groq' ou 'local' (Ollama / vLLM). */
+function providerConfig(provider) {
+  if (provider === 'local') {
+    const c = localConfig();
+    return { id: 'local', name: c.kind === 'vllm' ? 'vLLM' : 'Ollama', base: baseOf(c.url), model: c.model, key: process.env.LOCAL_LLM_API_KEY || '', ok: !!(c.url && c.model), local: true, kind: c.kind };
+  }
+  const key = process.env.GROQ_API_KEY || '';
+  return { id: 'groq', name: 'Groq', base: process.env.IA_BASE_URL || 'https://api.groq.com/openai/v1', model: getSetting('groq.model') || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', key, ok: !!key, local: false };
+}
+
+const defaultProvider = () => {
+  const chosen = getSetting('provider');
+  if (chosen === 'local' || chosen === 'groq') return chosen;
+  return providerConfig('groq').ok ? 'groq' : providerConfig('local').ok ? 'local' : 'groq';
+};
 const MAX_STEPS = 5;
 const MAX_ROWS = 60;
 const MAX_TOOL_CHARS = 3200; // ≈ 900 jetons par résultat d'outil
@@ -108,53 +141,129 @@ const TOOL_IMPL = {
   },
 };
 
-const status = () => ({ configured: !!KEY(), model: MODEL(), provider: API.includes('groq') ? 'Groq' : API });
+const status = () => {
+  const g = providerConfig('groq'), l = providerConfig('local'), c = localConfig();
+  return {
+    selected: defaultProvider(),
+    groq: { configured: g.ok, model: g.model },
+    local: { configured: l.ok, kind: c.kind, url: c.url, model: c.model },
+  };
+};
 
-async function callModel(messages, attempt = 0) {
-  const res = await fetch(`${API}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${KEY()}` },
-    body: JSON.stringify({ model: MODEL(), messages, tools: TOOLS, tool_choice: 'auto', temperature: 0.2, max_tokens: 900 }),
-    signal: AbortSignal.timeout(120000),
-  });
-  if (res.status === 429 && attempt < 3) {
+function saveSettings(b = {}) {
+  if (b.provider === 'groq' || b.provider === 'local') setSetting('provider', b.provider);
+  if (b.groqModel !== undefined) setSetting('groq.model', String(b.groqModel).trim());
+  if (b.local) {
+    if (b.local.kind === 'ollama' || b.local.kind === 'vllm') setSetting('local.kind', b.local.kind);
+    if (b.local.url !== undefined) {
+      const u = String(b.local.url).trim();
+      if (u && !/^https?:\/\//i.test(u)) throw new Error("l'URL du modèle local doit commencer par http:// ou https://");
+      setSetting('local.url', u);
+    }
+    if (b.local.model !== undefined) setSetting('local.model', String(b.local.model).trim());
+  }
+  return status();
+}
+
+const unreachable = (cfg, e) => new Error(`Impossible de joindre ${cfg.name} (${cfg.base}) : ${e.cause?.code || e.message}. Depuis Docker, « localhost » désigne le conteneur : utilisez l'adresse IP ou le nom du serveur qui héberge le modèle.`);
+
+/** Modèles proposés par le serveur local (API OpenAI /models, ou /api/tags pour Ollama). */
+async function listModels(provider = 'local') {
+  const cfg = providerConfig(provider);
+  if (!cfg.base) throw new Error("URL du serveur non renseignée");
+  const headers = cfg.key ? { Authorization: `Bearer ${cfg.key}` } : {};
+  try {
+    const r = await fetch(`${cfg.base}/models`, { headers, signal: AbortSignal.timeout(15000) });
+    if (r.ok) return ((await r.json()).data || []).map((m) => m.id);
+    if (cfg.kind === 'ollama') {
+      const t = await fetch(`${new URL(cfg.base).origin}/api/tags`, { signal: AbortSignal.timeout(15000) });
+      if (t.ok) return ((await t.json()).models || []).map((m) => m.name);
+    }
+    throw new Error(`HTTP ${r.status}`);
+  } catch (e) { throw unreachable(cfg, e); }
+}
+
+async function callModel(cfg, messages, { tools = true, attempt = 0 } = {}) {
+  let res;
+  try {
+    res = await fetch(`${cfg.base}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(cfg.key ? { Authorization: `Bearer ${cfg.key}` } : {}) },
+      body: JSON.stringify({ model: cfg.model, messages, ...(tools ? { tools: TOOLS, tool_choice: 'auto' } : {}), temperature: 0.2, max_tokens: cfg.local ? 1500 : 900 }),
+      signal: AbortSignal.timeout(cfg.local ? 300000 : 120000),
+    });
+  } catch (e) { throw unreachable(cfg, e); }
+  if (res.status === 429 && !cfg.local && attempt < 3) {
     const t = await res.text().catch(() => '');
     const m = /try again in ([\d.]+)s/i.exec(t) || /try again in (?:(\d+)m)?([\d.]+)s/i.exec(t);
     const wait = Math.min(25, Math.max(2, Number(m?.[m.length - 1]) || 8)) + 1;
     await new Promise((r) => setTimeout(r, wait * 1000));
-    return callModel(messages, attempt + 1);
+    return callModel(cfg, messages, { tools, attempt: attempt + 1 });
   }
   if (!res.ok) {
     const t = await res.text().catch(() => '');
-    const hint = res.status === 401 ? ' (clé API invalide)' : res.status === 429 ? ' (quota ou débit Groq dépassé : réessayez dans une minute)' : '';
-    throw new Error(`Groq HTTP ${res.status}${hint} ${t.slice(0, 200)}`);
+    const noTools = res.status === 400 && /tool|function/i.test(t);
+    const hint = res.status === 401 ? ' (clé API invalide)' : res.status === 429 ? ' (quota ou débit dépassé : réessayez dans une minute)' : res.status === 404 && cfg.local ? ' (modèle introuvable sur le serveur : vérifiez son nom)' : '';
+    const err = new Error(`${cfg.name} HTTP ${res.status}${hint} ${t.slice(0, 200)}`);
+    err.noTools = noTools;
+    throw err;
   }
   return res.json();
 }
 
-/** Conversation : messages = [{role:'user'|'assistant', content}], le dernier est la question. */
-async function chat(history) {
-  if (!KEY()) throw new Error("Clé Groq absente : définissez GROQ_API_KEY dans le fichier .env du serveur.");
-  const messages = [{ role: 'system', content: SYSTEM }, ...history.slice(-MAX_HISTORY).map((m, i, arr) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, m.role === 'assistant' && i < arr.length - 1 ? 600 : 2000) }))];
-  const consulted = [];
-  for (let step = 0; step < MAX_STEPS; step++) {
-    const j = await callModel(messages);
-    const msg = j.choices?.[0]?.message;
-    if (!msg) throw new Error('réponse vide du modèle');
-    if (!msg.tool_calls?.length) return { answer: msg.content || '', consulted, model: MODEL() };
-    messages.push({ role: 'assistant', content: msg.content || null, tool_calls: msg.tool_calls });
-    for (const tc of msg.tool_calls) {
-      let args = {}, out;
-      try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* arguments invalides */ }
-      try {
-        const fn = TOOL_IMPL[tc.function.name];
-        out = fn ? fn(args) : { erreur: `outil inconnu : ${tc.function.name}` };
-      } catch (e) { out = { erreur: e.message }; }
-      consulted.push({ outil: tc.function.name, arguments: args });
-      messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(out).slice(0, MAX_TOOL_CHARS) });
-    }
-  }
-  return { answer: "Je n'ai pas pu conclure en un nombre raisonnable d'étapes : reformulez ou précisez la question.", consulted, model: MODEL() };
+const toMessages = (history) => [{ role: 'system', content: SYSTEM }, ...history.slice(-MAX_HISTORY).map((m, i, arr) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, m.role === 'assistant' && i < arr.length - 1 ? 600 : 2000) }))];
+
+// Modèle sans appel de fonctions : on lui fournit directement un extrait pertinent des données de l'observatoire
+function contextFor(question) {
+  const words = [...new Set(norm(question).split(/[^a-z0-9]+/).filter((w) => w.length >= 4))];
+  const kpis = TOOL_IMPL.get_kpis({});
+  const found = TOOL_IMPL.search_indicators({ query: words.slice(0, 2).join(' '), limit: 8 });
+  const ds = TOOL_IMPL.list_datasets({}).filter((d) => words.some((w) => norm(`${d.libelle} ${d.resume}`).includes(w))).slice(0, 6);
+  return { kpis, found, ds };
 }
 
-module.exports = { chat, status, TOOL_IMPL };
+/** Conversation : history = [{role, content}], le dernier est la question. provider : 'groq' | 'local'. */
+async function chat(history, provider) {
+  const cfg = providerConfig(provider === 'local' || provider === 'groq' ? provider : defaultProvider());
+  if (!cfg.ok) {
+    throw new Error(cfg.local ? "Modèle local non configuré : renseignez l'URL du serveur et le modèle (bouton « Configurer »)." : "Clé Groq absente : définissez GROQ_API_KEY dans le fichier .env du serveur.");
+  }
+  const maxChars = cfg.local ? 8000 : MAX_TOOL_CHARS;
+  const messages = toMessages(history);
+  const consulted = [];
+  try {
+    for (let step = 0; step < MAX_STEPS; step++) {
+      const j = await callModel(cfg, messages);
+      const msg = j.choices?.[0]?.message;
+      if (!msg) throw new Error('réponse vide du modèle');
+      if (!msg.tool_calls?.length) return { answer: msg.content || '', consulted, model: cfg.model, provider: cfg.name };
+      messages.push({ role: 'assistant', content: msg.content || null, tool_calls: msg.tool_calls });
+      for (const tc of msg.tool_calls) {
+        let args = {}, out;
+        try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* arguments invalides */ }
+        try {
+          const fn = TOOL_IMPL[tc.function.name];
+          out = fn ? fn(args) : { erreur: `outil inconnu : ${tc.function.name}` };
+        } catch (e) { out = { erreur: e.message }; }
+        consulted.push({ outil: tc.function.name, arguments: args });
+        messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(out).slice(0, maxChars) });
+      }
+    }
+    return { answer: "Je n'ai pas pu conclure en un nombre raisonnable d'étapes : reformulez ou précisez la question.", consulted, model: cfg.model, provider: cfg.name };
+  } catch (e) {
+    if (!e.noTools) throw e;
+    // le modèle ne gère pas les appels de fonctions : repli sur un contexte préparé par l'observatoire
+    const question = String(history[history.length - 1].content);
+    const ctx = contextFor(question);
+    const base = toMessages(history.slice(0, -1));
+    base.push({ role: 'user', content: `Données de l'observatoire (seule source autorisée) :\n${JSON.stringify(ctx).slice(0, 9000)}\n\nQuestion : ${question}` });
+    const j = await callModel(cfg, base, { tools: false });
+    return {
+      answer: j.choices?.[0]?.message?.content || '',
+      consulted: [{ outil: 'contexte', arguments: { mode: 'sans appel de fonctions', indicateurs: ctx.found.total, jeux: ctx.ds.map((d) => d.id) } }],
+      model: cfg.model, provider: cfg.name,
+    };
+  }
+}
+
+module.exports = { chat, status, saveSettings, listModels, TOOL_IMPL };

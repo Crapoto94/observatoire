@@ -72,11 +72,13 @@ app.get('/api/qpv', async (req, res) => {
 });
 // Assistant IA (Groq) : réponses fondées sur les données de l'observatoire uniquement
 app.get('/api/ia/status', (req, res) => res.json(require('./ia').status()));
+app.put('/api/ia/settings', (req, res) => { try { res.json(require('./ia').saveSettings(req.body || {})); } catch (e) { res.status(400).json({ error: e.message }); } });
+app.get('/api/ia/models', async (req, res) => { try { res.json({ models: await require('./ia').listModels(String(req.query.provider || 'local')) }); } catch (e) { res.status(502).json({ error: e.message }); } });
 app.post('/api/ia/chat', async (req, res) => {
   const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
   if (!messages.length || messages[messages.length - 1].role !== 'user') return res.status(400).json({ error: 'question manquante' });
   try {
-    res.json(await require('./ia').chat(messages));
+    res.json(await require('./ia').chat(messages, req.body?.provider));
   } catch (e) {
     console.warn('[ia]', e.message);
     res.status(502).json({ error: e.message });

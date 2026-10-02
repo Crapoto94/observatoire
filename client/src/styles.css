@@ -287,3 +287,10 @@ ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent
 .chat-input { display: flex; gap: 8px; align-items: stretch; position: sticky; bottom: 8px; }
 .chat-input textarea { flex: 1; resize: vertical; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); font: inherit; }
 .chat-empty .chips button { text-align: left; }
+
+/* choix du modèle IA */
+.ia-provider { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 8px 0; }
+.ia-provider label.on { font-weight: 600; }
+.ia-config { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; background: var(--panel); }
+.ia-config .grow { flex: 1; min-width: 220px; }
+.ia-config input { width: 100%; }
