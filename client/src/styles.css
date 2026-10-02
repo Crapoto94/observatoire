@@ -181,3 +181,25 @@ ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent
 .al-attention { color: #b45309; } .al-erreur { color: #b91c1c; } .al-info { color: #475569; }
 .db-bar { height: 4px; background: #e5e7eb; border-radius: 2px; margin-top: 2px; }
 .db-bar i { display: block; height: 100%; background: #2563eb; border-radius: 2px; }
+
+/* tableau de bord KPI */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+.kpi-card { border: 1px solid var(--border, #dde1e6); border-radius: 10px; padding: 12px 14px; background: #fff; display: flex; flex-direction: column; gap: 4px; }
+.kpi-top { display: flex; justify-content: space-between; align-items: center; }
+.kpi-badge { color: #fff; font-size: 11px; padding: 1px 8px; border-radius: 10px; }
+.kpi-label { font-weight: 600; }
+.kpi-main { display: flex; align-items: center; gap: 8px; }
+.kpi-val { font-size: 28px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+.kpi-unit { font-size: 14px; font-weight: 500; color: #64748b; }
+.kpi-spark { flex: 1; min-width: 60px; }
+.kpi-sub { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.kpi-delta.good { color: #16a34a; } .kpi-delta.bad { color: #dc2626; } .kpi-delta.flat { color: #2563eb; }
+.kpi-cmp { display: flex; gap: 12px; color: #475569; border-top: 1px dashed #e2e8f0; padding-top: 4px; }
+.kpi-foot { display: flex; gap: 8px; align-items: center; margin-top: auto; padding-top: 4px; }
+.kpi-ind { margin: 4px 0 0 0; padding-left: 0; list-style: none; }
+.dotc { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+.linklike { background: none; border: none; color: #2563eb; cursor: pointer; padding: 0; margin-left: auto; }
+.prio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.prio-block h3 { font-size: 15px; margin: 0 0 4px; }
+.prio-block ul { list-style: none; padding: 0; margin: 0; }
+.prio-block li { margin: 2px 0; }

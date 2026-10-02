@@ -6,6 +6,7 @@ import Donnees from './pages/Donnees';
 import Pilotage from './pages/Pilotage';
 import Catalogue from './pages/Catalogue';
 import Database from './pages/Database';
+import Dashboard from './pages/Dashboard';
 
 export default function App() {
   const [build, setBuild] = useState('');
@@ -20,6 +21,7 @@ export default function App() {
         </div>
         <nav>
           <NavLink to="/indicateurs">Conception des indicateurs</NavLink>
+          <NavLink to="/tableau-de-bord">Tableau de bord</NavLink>
           <NavLink to="/pilotage">Pilotage</NavLink>
           <NavLink to="/carte">Carte mentale</NavLink>
           <NavLink to="/donnees">Données</NavLink>
@@ -31,6 +33,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/indicateurs" replace />} />
           <Route path="/indicateurs" element={<Indicateurs />} />
+          <Route path="/tableau-de-bord" element={<Dashboard />} />
           <Route path="/pilotage" element={<Pilotage />} />
           <Route path="/carte" element={<Carte />} />
           <Route path="/donnees" element={<Donnees />} />
