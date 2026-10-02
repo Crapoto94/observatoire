@@ -70,6 +70,18 @@ app.get('/api/qpv', async (req, res) => {
     res.json({ items: qpv.list(String(req.query.scope || 'idf')) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Assistant IA (Groq) : réponses fondées sur les données de l'observatoire uniquement
+app.get('/api/ia/status', (req, res) => res.json(require('./ia').status()));
+app.post('/api/ia/chat', async (req, res) => {
+  const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+  if (!messages.length || messages[messages.length - 1].role !== 'user') return res.status(400).json({ error: 'question manquante' });
+  try {
+    res.json(await require('./ia').chat(messages));
+  } catch (e) {
+    console.warn('[ia]', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
 app.get('/api/autres', (req, res) => { try { res.json(require('./autres').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/emploi', (req, res) => { try { res.json(require('./emploi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/kpi', (req, res) => { try { res.json(require('./kpi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });

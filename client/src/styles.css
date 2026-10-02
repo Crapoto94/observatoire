@@ -276,3 +276,14 @@ ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent
 .src-list li { margin: 8px 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
 
 .wn-ver { display: inline-block; min-width: 52px; font-variant-numeric: tabular-nums; }
+
+/* assistant IA */
+.chat { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; min-height: 280px; }
+.bubble { max-width: 880px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); }
+.bubble.user { align-self: flex-end; background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.bubble.err { border-color: #dc2626; color: #b91c1c; }
+.bubble .markdown p { margin: 4px 0; } .bubble .markdown ul { margin: 4px 0 4px 18px; padding: 0; }
+.sources { margin-top: 6px; } .sources ul { margin: 4px 0 0 16px; padding: 0; } .sources code { font-size: 11px; word-break: break-all; }
+.chat-input { display: flex; gap: 8px; align-items: stretch; position: sticky; bottom: 8px; }
+.chat-input textarea { flex: 1; resize: vertical; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); font: inherit; }
+.chat-empty .chips button { text-align: left; }
