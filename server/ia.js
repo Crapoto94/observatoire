@@ -6,86 +6,23 @@ const { all, get } = require('./db');
 const API = process.env.IA_BASE_URL || 'https://api.groq.com/openai/v1';
 const MODEL = () => process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 const KEY = () => process.env.GROQ_API_KEY || '';
-const MAX_STEPS = 6;
-const MAX_ROWS = 150;
+const MAX_STEPS = 5;
+const MAX_ROWS = 60;
+const MAX_TOOL_CHARS = 3200; // ≈ 900 jetons par résultat d'outil
+const MAX_HISTORY = 6;
 
-const SYSTEM = `Tu es l'assistant de l'Observatoire de la ville d'Ivry-sur-Seine (Val-de-Marne, code INSEE 94041, membre du Grand-Orly Seine Bièvre, « GOSB »).
-Règles absolues :
-- Tu t'appuies UNIQUEMENT sur les données renvoyées par les outils de l'observatoire. Tu n'as aucune autre source : n'utilise pas tes connaissances générales pour donner un chiffre, une date ou un fait local.
-- Pour toute question chiffrée, appelle d'abord un ou plusieurs outils. Si les outils ne contiennent pas l'information, dis-le clairement et propose les jeux ou indicateurs les plus proches.
-- Cite pour chaque chiffre le jeu de données (ou KPI), le territoire et la période.
-- Distingue les faits (valeurs issues des outils) de ton interprétation, que tu présentes comme telle et avec prudence. Ne spécule pas sur les causes.
-- Les classements ne portent que sur les communes de plus de 5 000 habitants (les autres données ne sont pas exhaustives).
-- Les valeurs « pour 1 000 habitants » et les moyennes pondérées du GOSB sont des ordres de grandeur.
-- Réponds en français, de façon concise : la réponse d'abord, puis les chiffres clés en liste courte, puis les limites éventuelles.
-Territoires : Ivry-sur-Seine (94041), GOSB (code GOSB), Val-de-Marne (94), Île-de-France (11).`;
+const SYSTEM = `Assistant de l'Observatoire de la ville d'Ivry-sur-Seine (94041, membre du GOSB = Grand-Orly Seine Bièvre).
+Règles : réponds UNIQUEMENT avec les données renvoyées par les outils (aucune connaissance externe pour un chiffre ou un fait local). Appelle un outil avant toute réponse chiffrée ; si l'information manque, dis-le et propose le jeu le plus proche. Cite le jeu, le territoire et la période de chaque chiffre. Sépare faits et interprétation prudente. Classements : communes de plus de 5 000 habitants ; valeurs « pour 1 000 hab. » et moyennes du GOSB = ordres de grandeur. Français, concis : réponse d'abord, puis 3 à 6 chiffres clés, puis limites. Territoires : Ivry (94041), GOSB, Val-de-Marne (94), Île-de-France (11).`;
 
+const obj = (properties, required) => ({ type: 'object', properties, ...(required ? { required } : {}) });
 const TOOLS = [
-  {
-    type: 'function',
-    function: {
-      name: 'get_kpis',
-      description: "Indicateurs clés calculés pour Ivry-sur-Seine : dernière valeur, période, période précédente, et valeurs du GOSB, du Val-de-Marne et de l'Île-de-France. À utiliser en premier pour une question générale ou une comparaison.",
-      parameters: { type: 'object', properties: { theme: { type: 'string', description: "Filtre facultatif sur le thème (ex. Logement, Emploi, Sécurité, Finances locales, Santé, Cohésion sociale, Environnement, Démographie, Mobilité, Sport)" } } },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'list_datasets',
-      description: "Liste des jeux de données importés dans l'observatoire (identifiant, libellé, thèmes, nombre de lignes). Filtre facultatif par mot-clé.",
-      parameters: { type: 'object', properties: { query: { type: 'string', description: 'Mot-clé facultatif (libellé ou description)' } } },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'describe_dataset',
-      description: "Décrit un jeu de données : description, dimensions et libellés des modalités (codes à utiliser dans query_data), territoires et périodes disponibles.",
-      parameters: { type: 'object', properties: { dataset_id: { type: 'string' } }, required: ['dataset_id'] },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'query_data',
-      description: "Valeurs d'un jeu de données pour des territoires et des filtres de modalités. Les modalités non filtrées renvoient toutes les lignes (limité à 150). Utilise describe_dataset avant pour connaître les codes. Territoires : codes ou noms (Ivry, GOSB, Val-de-Marne, Île-de-France, ou une commune).",
-      parameters: {
-        type: 'object',
-        properties: {
-          dataset_id: { type: 'string' },
-          territoires: { type: 'array', items: { type: 'string' }, description: 'Par défaut : Ivry-sur-Seine' },
-          filtres: { type: 'object', description: 'Ex. {"MESURE":["DEFM_ABC"],"SEXE":["_T"]} (dimension -> liste de codes)', additionalProperties: { type: 'array', items: { type: 'string' } } },
-          periode_min: { type: 'string' }, periode_max: { type: 'string' },
-        },
-        required: ['dataset_id'],
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'rank_communes',
-      description: "Classement des communes (plus de 5 000 habitants) sur une couche cartographique (identifiant d'un KPI, voir get_kpis ou list_layers), avec la tendance et le rang d'Ivry. Périmètre : idf, gosb, ou un département (94, 92…).",
-      parameters: { type: 'object', properties: { layer_id: { type: 'string' }, perimetre: { type: 'string', description: 'gosb (défaut), 94, idf…' }, top: { type: 'integer' } }, required: ['layer_id'] },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'list_layers',
-      description: "Liste des couches (KPI) utilisables avec rank_communes : identifiant, libellé, thème.",
-      parameters: { type: 'object', properties: {} },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'search_indicators',
-      description: "Indicateurs de la conception de l'observatoire (209 fiches) : libellé, thème, priorité, statut de validation, source, proposition. Recherche par mot-clé et/ou thème.",
-      parameters: { type: 'object', properties: { query: { type: 'string' }, theme: { type: 'string', description: 'demographie, emploi, cohesion, logement, environnement, mobilite' }, limit: { type: 'integer' } } },
-    },
-  },
+  { type: 'function', function: { name: 'get_kpis', description: "KPI d'Ivry (dernière valeur, précédente) avec GOSB, Val-de-Marne, Île-de-France. Filtre facultatif par thème (Logement, Emploi, Sécurité, Finances locales, Santé, Cohésion sociale, Environnement, Démographie, Mobilité, Sport).", parameters: obj({ theme: { type: 'string' } }) } },
+  { type: 'function', function: { name: 'list_datasets', description: 'Jeux de données importés (id, libellé). Filtre facultatif par mot-clé.', parameters: obj({ query: { type: 'string' } }) } },
+  { type: 'function', function: { name: 'describe_dataset', description: "Dimensions, codes de modalités, périodes d'un jeu (à appeler avant query_data).", parameters: obj({ dataset_id: { type: 'string' } }, ['dataset_id']) } },
+  { type: 'function', function: { name: 'query_data', description: "Valeurs d'un jeu pour des territoires (codes ou noms : Ivry, GOSB, Val-de-Marne, Île-de-France, commune) et des filtres {DIM:[codes]}. Max 60 lignes.", parameters: obj({ dataset_id: { type: 'string' }, territoires: { type: 'array', items: { type: 'string' } }, filtres: { type: 'object', additionalProperties: { type: 'array', items: { type: 'string' } } }, periode_min: { type: 'string' }, periode_max: { type: 'string' } }, ['dataset_id']) } },
+  { type: 'function', function: { name: 'rank_communes', description: "Classement des communes (> 5 000 hab.) sur une couche (id issu de get_kpis/list_layers), tendance et rang d'Ivry. perimetre : gosb (défaut), 94, idf.", parameters: obj({ layer_id: { type: 'string' }, perimetre: { type: 'string' }, top: { type: 'integer' } }, ['layer_id']) } },
+  { type: 'function', function: { name: 'list_layers', description: 'Couches utilisables avec rank_communes.', parameters: obj({}) } },
+  { type: 'function', function: { name: 'search_indicators', description: 'Fiches de la conception (statut de validation, priorité, source, proposition). Mot-clé et/ou thème (demographie, emploi, cohesion, logement, environnement, mobilite).', parameters: obj({ query: { type: 'string' }, theme: { type: 'string' }, limit: { type: 'integer' } }) } },
 ];
 
 const round = (v) => (typeof v === 'number' ? Math.round(v * 100) / 100 : v);
@@ -106,14 +43,11 @@ const TOOL_IMPL = {
     const d = require('./kpi').build();
     let ks = d.kpis.filter((k) => k.value != null);
     if (theme) ks = ks.filter((k) => norm(k.theme).includes(norm(theme)));
+    const f = (v) => (v == null ? '-' : String(round(v)));
     return {
-      note: "Valeurs pour Ivry-sur-Seine ; 'GOSB' = agrégat des 24 communes ; unité dans 'unite'. Indicateurs pour 1 000 habitants : libellé le précise.",
-      kpis: ks.map((k) => ({
-        id: k.id, libelle: k.label, theme: k.theme, unite: k.unit || undefined, jeu: k.datasetLabel,
-        ivry: { valeur: round(k.value), periode: k.period, precedent: k.prev ? { valeur: round(k.prev.value), periode: k.prev.period } : undefined },
-        gosb: k.ept ? round(k.ept.value) : undefined, val_de_marne: k.dep ? round(k.dep.value) : undefined, ile_de_france: k.reg ? round(k.reg.value) : undefined,
-        etat_validation_fiche: k.statut,
-      })),
+      note: "Format : id | libellé | Ivry valeur (période) [précédent] | GOSB | Val-de-Marne | Île-de-France | unité. GOSB = agrégat des 24 communes.",
+      kpis: ks.slice(0, 40).map((k) => `${k.id} | ${k.label} | ${f(k.value)} (${k.period})${k.prev ? ` [${f(k.prev.value)} en ${k.prev.period}]` : ''} | ${f(k.ept?.value)} | ${f(k.dep?.value)} | ${f(k.reg?.value)} | ${k.unit || ''}`),
+      suite: ks.length > 40 ? 'liste tronquée : précise un thème' : undefined,
     };
   },
   list_datasets({ query } = {}) {
@@ -176,13 +110,20 @@ const TOOL_IMPL = {
 
 const status = () => ({ configured: !!KEY(), model: MODEL(), provider: API.includes('groq') ? 'Groq' : API });
 
-async function callModel(messages) {
+async function callModel(messages, attempt = 0) {
   const res = await fetch(`${API}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${KEY()}` },
-    body: JSON.stringify({ model: MODEL(), messages, tools: TOOLS, tool_choice: 'auto', temperature: 0.2, max_tokens: 1200 }),
+    body: JSON.stringify({ model: MODEL(), messages, tools: TOOLS, tool_choice: 'auto', temperature: 0.2, max_tokens: 900 }),
     signal: AbortSignal.timeout(120000),
   });
+  if (res.status === 429 && attempt < 3) {
+    const t = await res.text().catch(() => '');
+    const m = /try again in ([\d.]+)s/i.exec(t) || /try again in (?:(\d+)m)?([\d.]+)s/i.exec(t);
+    const wait = Math.min(25, Math.max(2, Number(m?.[m.length - 1]) || 8)) + 1;
+    await new Promise((r) => setTimeout(r, wait * 1000));
+    return callModel(messages, attempt + 1);
+  }
   if (!res.ok) {
     const t = await res.text().catch(() => '');
     const hint = res.status === 401 ? ' (clé API invalide)' : res.status === 429 ? ' (quota ou débit Groq dépassé : réessayez dans une minute)' : '';
@@ -194,7 +135,7 @@ async function callModel(messages) {
 /** Conversation : messages = [{role:'user'|'assistant', content}], le dernier est la question. */
 async function chat(history) {
   if (!KEY()) throw new Error("Clé Groq absente : définissez GROQ_API_KEY dans le fichier .env du serveur.");
-  const messages = [{ role: 'system', content: SYSTEM }, ...history.slice(-10).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, 4000) }))];
+  const messages = [{ role: 'system', content: SYSTEM }, ...history.slice(-MAX_HISTORY).map((m, i, arr) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, m.role === 'assistant' && i < arr.length - 1 ? 600 : 2000) }))];
   const consulted = [];
   for (let step = 0; step < MAX_STEPS; step++) {
     const j = await callModel(messages);
@@ -210,7 +151,7 @@ async function chat(history) {
         out = fn ? fn(args) : { erreur: `outil inconnu : ${tc.function.name}` };
       } catch (e) { out = { erreur: e.message }; }
       consulted.push({ outil: tc.function.name, arguments: args });
-      messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(out).slice(0, 14000) });
+      messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(out).slice(0, MAX_TOOL_CHARS) });
     }
   }
   return { answer: "Je n'ai pas pu conclure en un nombre raisonnable d'étapes : reformulez ou précisez la question.", consulted, model: MODEL() };
