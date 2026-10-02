@@ -116,4 +116,27 @@ module.exports = [
       labels: mesure({ NB_DPE: 'Diagnostics valides', DPE_A: 'Étiquette A', DPE_B: 'Étiquette B', DPE_C: 'Étiquette C', DPE_D: 'Étiquette D', DPE_E: 'Étiquette E', DPE_F: 'Étiquette F', DPE_G: 'Étiquette G' }),
     },
   },
+  {
+    id: 'caf_prestations', provider: 'ods', label: 'Allocataires CAF par prestation (communal)',
+    description: "CAF (data.caf.fr), toutes prestations, décembre de chaque année 2020-2024 : nombre de foyers allocataires et de personnes couvertes par commune, et foyers bénéficiaires des allocations familiales, du complément familial, de l'allocation de soutien familial, de la PAJE (allocation de base, complément de libre choix du mode de garde), des aides au logement (APL, ALS, ALF), du RSA et de la prime d'activité. Les effectifs sont arrondis à 5.",
+    themes: ['cohesion'], doc_url: 'https://data.caf.fr/explore/dataset/s_ben_com_f/',
+    link: [{ theme: 'cohesion', re: /minima sociaux|allocataires|aides sociales/ }],
+    config: {
+      base: 'https://data.caf.fr', dataset: 's_ben_com_f', levels: { COM: 'numcomdo' },
+      columns: [
+        { field: 'indfoy_ndur', measure: 'FOYERS_ALLOCATAIRES' }, { field: 'indnbp_ndur', measure: 'PERSONNES_COUVERTES' },
+        { field: 'indfoy_af', measure: 'FOYERS_AF' }, { field: 'indfoy_cf', measure: 'FOYERS_CF' }, { field: 'indfoy_asf', measure: 'FOYERS_ASF' },
+        { field: 'indfoy_ab', measure: 'FOYERS_PAJE_BASE' }, { field: 'indfoy_cmg', measure: 'FOYERS_CMG' },
+        { field: 'indfoy_apl', measure: 'FOYERS_APL' }, { field: 'indfoy_als', measure: 'FOYERS_ALS' }, { field: 'indfoy_alf', measure: 'FOYERS_ALF' },
+        { field: 'indfoy_rsa', measure: 'FOYERS_RSA' }, { field: 'indfoy_ppa', measure: 'FOYERS_PPA' },
+      ],
+      queries: [{ periodField: 'dtreffre', periodYear: true }],
+      labels: mesure({
+        FOYERS_ALLOCATAIRES: 'Foyers allocataires (toutes prestations)', PERSONNES_COUVERTES: 'Personnes couvertes par une prestation',
+        FOYERS_AF: 'Foyers percevant des allocations familiales', FOYERS_CF: 'Foyers percevant le complément familial', FOYERS_ASF: "Foyers percevant l'allocation de soutien familial",
+        FOYERS_PAJE_BASE: "Foyers percevant l'allocation de base de la PAJE", FOYERS_CMG: 'Foyers percevant le complément de libre choix du mode de garde',
+        FOYERS_APL: 'Foyers percevant l’APL', FOYERS_ALS: 'Foyers percevant l’ALS', FOYERS_ALF: 'Foyers percevant l’ALF', FOYERS_RSA: 'Foyers au RSA', FOYERS_PPA: 'Foyers percevant la prime d’activité',
+      }),
+    },
+  },
 ];

@@ -381,6 +381,18 @@ export const VIEWS: Record<string, View> = {
       { label: 'Part des logements construits avant 1971', x: '@PERIOD', pins: { CRITERE: 'EPOQUE' }, ratio: ratio('MODALITE', ['EP_AV1946', 'EP_1946_1970'], ['EP_AV1946', 'EP_1946_1970', 'EP_1971_1990', 'EP_1991_2005', 'EP_2006_PLUS'], 'Logements construits avant 1971 / logements') },
     ],
   },
+  caf_prestations: {
+    note: "Foyers allocataires au mois de décembre de chaque année (effectifs arrondis à 5). Une même famille peut percevoir plusieurs prestations : ne pas additionner les prestations.",
+    presets: [
+      { label: 'Foyers allocataires (évolution)', x: '@PERIOD', pins: { MESURE: 'FOYERS_ALLOCATAIRES' } },
+      { label: 'Foyers allocataires pour 1 000 habitants (comparaison)', x: '@PERIOD', mode: 'pop', pins: { MESURE: 'FOYERS_ALLOCATAIRES' } },
+      { label: 'Prime d’activité pour 1 000 habitants', x: '@PERIOD', mode: 'pop', pins: { MESURE: 'FOYERS_PPA' } },
+      { label: 'RSA pour 1 000 habitants', x: '@PERIOD', mode: 'pop', pins: { MESURE: 'FOYERS_RSA' } },
+      { label: 'Allocations familiales pour 1 000 habitants', x: '@PERIOD', mode: 'pop', pins: { MESURE: 'FOYERS_AF' } },
+      { label: 'Aide personnalisée au logement pour 1 000 habitants', x: '@PERIOD', mode: 'pop', pins: { MESURE: 'FOYERS_APL' } },
+      { label: 'Prestations (dernière année)', x: 'MESURE', keep: { MESURE: ['FOYERS_AF', 'FOYERS_CF', 'FOYERS_ASF', 'FOYERS_PAJE_BASE', 'FOYERS_CMG', 'FOYERS_APL', 'FOYERS_ALS', 'FOYERS_ALF', 'FOYERS_RSA', 'FOYERS_PPA'] } },
+    ],
+  },
   gaspar: {
     note: "Base GASPAR (Géorisques). Un arrêté de catastrophe naturelle reconnaît un événement : il ne mesure ni son ampleur ni les dégâts. Les risques recensés sont ceux inscrits au dossier départemental sur les risques majeurs.",
     presets: [
