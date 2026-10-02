@@ -51,4 +51,42 @@ module.exports = [
       }),
     },
   },
+  {
+    id: 'finess', provider: 'ods', label: 'Offre sanitaire et sociale (FINESS)',
+    description: "Fichier national des établissements sanitaires et sociaux (FINESS), extrait francilien publié par la Région Île-de-France : nombre d'établissements par commune et par catégorie (pharmacies, centres de santé, EHPAD, résidences autonomie, PMI, laboratoires, services à domicile…). Stock à la date de l'import. Il s'agit d'établissements, pas de places ni de professionnels.",
+    themes: ['cohesion'], doc_url: 'https://data.iledefrance.fr/explore/dataset/finess/',
+    link: [],
+    config: {
+      base: 'https://data.iledefrance.fr', dataset: 'finess', levels: { COM: 'com_code' }, marginals: true, sum: true,
+      columns: [{ field: 'n', measure: 'ETABLISSEMENTS' }],
+      queries: [{
+        select: 'count(*) as n, libcategetab', groupBy: 'libcategetab', period: '$YEAR',
+        dimFields: [{ field: 'libcategetab', dim: 'CATEGORIE', map: {
+          "Pharmacie d'Officine": 'PHARMACIE', 'Centre de Santé': 'CENTRE_SANTE', 'Laboratoire de Biologie Médicale': 'LABORATOIRE',
+          'Protection Maternelle et Infantile (P.M.I.)': 'PMI', 'Résidences autonomie': 'RESIDENCE_AUTONOMIE',
+          "Etablissement d'hébergement pour personnes âgées dépendantes": 'EHPAD', 'Service de Soins Infirmiers A Domicile (S.S.I.A.D)': 'SSIAD',
+          'Service autonomie aide (SAA)': 'SERVICE_AUTONOMIE',
+        } }],
+      }],
+      labels: {
+        ...mesure({ ETABLISSEMENTS: "Nombre d'établissements" }),
+        CATEGORIE: { label: "Catégorie d'établissement", values: {
+          _T: 'Toutes catégories', PHARMACIE: 'Pharmacies', CENTRE_SANTE: 'Centres de santé', LABORATOIRE: 'Laboratoires de biologie médicale', PMI: 'Protection maternelle et infantile',
+          RESIDENCE_AUTONOMIE: 'Résidences autonomie', EHPAD: 'EHPAD', SSIAD: 'Soins infirmiers à domicile (SSIAD)', SERVICE_AUTONOMIE: 'Services autonomie aide à domicile',
+        } },
+      },
+    },
+  },
+  {
+    id: 'equipements_sportifs', provider: 'ods', label: 'Équipements sportifs (recensement national)',
+    description: "Recensement des équipements sportifs (Data ES) publié par la Région Île-de-France : nombre d'équipements par commune et par famille (terrains de grands jeux, salles multisports, courts de tennis, bassins de natation, city-stades…). Stock à la date de l'import.",
+    themes: ['cohesion', 'environnement'], doc_url: 'https://data.iledefrance.fr/explore/dataset/recensement-des-equipements-sportifs/',
+    link: [],
+    config: {
+      base: 'https://data.iledefrance.fr', dataset: 'recensement-des-equipements-sportifs', levels: { COM: 'new_code' }, marginals: true, sum: true,
+      columns: [{ field: 'n', measure: 'EQUIPEMENTS' }],
+      queries: [{ select: 'count(*) as n, equip_type_famille', groupBy: 'equip_type_famille', period: '$YEAR', dimFields: [{ field: 'equip_type_famille', dim: 'FAMILLE' }] }],
+      labels: { ...mesure({ EQUIPEMENTS: "Nombre d'équipements sportifs" }), FAMILLE: { label: "Famille d'équipement", values: { _T: 'Tous équipements' } } },
+    },
+  },
 ];

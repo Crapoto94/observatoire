@@ -5,7 +5,7 @@ Chaque source retenue a été **interrogée pour Ivry-sur-Seine (94041)** avant 
 
 Principe d'import : on télécharge de préférence le fichier complet, ou filtré sur l'Île-de-France, puis on filtre et on agrège en interne par commune. Les requêtes commune par commune ne servent que lorsqu'aucune autre solution n'existe.
 
-## 1. Jeux intégrés à l'application (41)
+## 1. Jeux intégrés à l'application (46)
 
 ### INSEE, API Melodi (20 jeux, communes + département, métropole, région)
 
@@ -39,6 +39,16 @@ Portail : <https://opendata.agenceore.fr> (API `/data-fair/api/v1`).
 | Îlots de chaleur urbains | [Institut Paris Région](https://data.iledefrance.fr/explore/dataset/ilots-de-chaleur-urbains-icu-classification-des-imu-en-zone-climatique-locale-lc/), export CSV complet (237 000 îlots), **rattachement à la commune par point dans polygone**, surfaces par zone climatique, aléa et vulnérabilité | surfaces en hectares par zone climatique |
 | Fréquentation du réseau ferré | [Île-de-France Mobilités](https://data.iledefrance-mobilites.fr/explore/dataset/validations-reseau-ferre-nombre-validations-par-jour-1er-trimestre/), validations par lieu d'arrêt rattachées aux communes par le [référentiel des zones d'arrêts](https://data.iledefrance-mobilites.fr/explore/dataset/zones-d-arrets/) | validations du 1er trimestre 2026 et nombre de lieux d'arrêt |
 
+### Emploi, sécurité, finances locales, santé et sport (oct. 2026)
+
+| Jeu | Source et accès | Niveaux | Valeur lue pour Ivry |
+|---|---|---|---|
+| Demandeurs d'emploi inscrits à France Travail (catégories A, B, C, sexe, âge) | [DARES / France Travail](https://www.data.gouv.fr/datasets/66df098924d76afbdd70938a), portail ouvert de la DARES (Opendatasoft), sans clé, 4ᵉ trimestre sur 10 ans | commune | 6 500 demandeurs fin 2024, soit 99,9 pour 1 000 habitants (GOSB 85,2 ; Val-de-Marne 78,4 ; Île-de-France 81,5) |
+| Délinquance enregistrée (15 catégories, 2016-2025) | [SSMSI, ministère de l'Intérieur](https://www.data.gouv.fr/datasets/621df2954fa5a3b5a023e23c), fichier CSV national compressé (40 Mo), filtré sur l'Île-de-France | commune | 167 cambriolages de logement en 2025 (2,6 pour 1 000 habitants) |
+| Finances de la commune (comptes individuels) | [DGFiP, data.economie.gouv.fr](https://data.economie.gouv.fr/explore/?q=comptes+individuels+des+communes) : un fichier par période (2011-2015, 2016, 2017, 2018, 2019-2020, 2021, 2022, 2023-2024, 2025) | commune | dette 1 433 €/hab., personnel 1 445 €/hab. (2025) ; moyenne de la strate fournie |
+| Offre sanitaire et sociale (FINESS) | [Région Île-de-France](https://data.iledefrance.fr/explore/dataset/finess/) | commune | 80 établissements, dont 16 pharmacies |
+| Équipements sportifs | [Région Île-de-France](https://data.iledefrance.fr/explore/dataset/recensement-des-equipements-sportifs/) | commune | 112 équipements |
+
 ### Open data hors INSEE chargés auparavant (11 jeux)
 
 | Jeu | Source et accès | Niveaux | Valeur lue pour Ivry |
@@ -70,6 +80,13 @@ Portail : <https://opendata.agenceore.fr> (API `/data-fair/api/v1`).
 | Demandeurs d'emploi | [France Travail, API Open Data](https://francetravail.io/data/api) | API soumise à clé | demande de clé |
 | Collecte des déchets | [SINOE](https://www.sinoe.org/), EPT Grand-Orly Seine Bièvre | pas de série communale ouverte | demande à l'EPT |
 | Autres prestations CAF | [data.caf.fr](https://data.caf.fr/) | seul le RSA est publié à la commune dans les jeux trouvés | explorer le catalogue par prestation |
+
+## 2 bis. Portails du GOSB, du Val-de-Marne et de la Région : ce qui a été trouvé
+
+- **Grand-Orly Seine Bièvre** : aucun portail de données ouvertes. Le profil [data.gouv.fr du GOSB](https://www.data.gouv.fr/organizations/grand-orly-seine-bievre/) ne publie aucun jeu. Des couches cartographiques « ept12 » (structures de l'emploi, ports fluviaux, syndicats de déchets, bus structurants) existent via l'Apur sur geo.data.gouv.fr, mais ne sont plus mises à jour. Le [PLUi, pré-diagnostic socio-économique](https://www.grandorlyseinebievre.fr/fileadmin/PORTAIL/PLUi/Majnov2023/20221110_PLUi_PreDiagnosticSocioEconomique_v2.pdf) est un document PDF exploitable pour le cadrage.
+- **Département du Val-de-Marne** : pas de portail ouvert trouvé (les adresses testées ne répondent pas) et aucune organisation du département sur data.gouv.fr.
+- **Ville d'Ivry** : les adresses data.ivry94.fr et opendata.ivry94.fr répondent « Accès restreint ».
+- **Région Île-de-France** ([data.iledefrance.fr](https://data.iledefrance.fr/)) : portail riche, déjà utilisé (occupation du sol, nuisances, îlots de chaleur, multi-exposition). Intégrés cette fois : FINESS et équipements sportifs. Repérés mais non intégrés : annuaire des professionnels de santé (348 000 lignes, une ligne par acte : à dédoublonner), établissements pour personnes âgées (sans code commune), répertoire des bibliothèques (sans code INSEE), hébergement touristique, mobilités scolaires, registre des cantines, indices de position sociale des lycées (lycées seulement).
 
 ## 3. Limites rencontrées (à connaître avant d'exploiter les données)
 

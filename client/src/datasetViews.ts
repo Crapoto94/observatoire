@@ -381,6 +381,23 @@ export const VIEWS: Record<string, View> = {
       { label: 'Part des logements construits avant 1971', x: '@PERIOD', pins: { CRITERE: 'EPOQUE' }, ratio: ratio('MODALITE', ['EP_AV1946', 'EP_1946_1970'], ['EP_AV1946', 'EP_1946_1970', 'EP_1971_1990', 'EP_1991_2005', 'EP_2006_PLUS'], 'Logements construits avant 1971 / logements') },
     ],
   },
+  finess: {
+    note: "Établissements sanitaires et sociaux du fichier FINESS (stock à la date de l'import). Ce sont des établissements, pas des places ni des professionnels de santé.",
+    presets: [
+      { label: "Établissements par catégorie", x: 'CATEGORIE', pins: { MESURE: 'ETABLISSEMENTS' } },
+      { label: 'Établissements par catégorie, pour 1 000 habitants', x: 'CATEGORIE', mode: 'pop', pins: { MESURE: 'ETABLISSEMENTS' } },
+      { label: 'Pharmacies pour 1 000 habitants (comparaison de territoires)', x: '@GEO', mode: 'pop', pins: { MESURE: 'ETABLISSEMENTS', CATEGORIE: 'PHARMACIE' } },
+      { label: 'Centres de santé pour 1 000 habitants (comparaison de territoires)', x: '@GEO', mode: 'pop', pins: { MESURE: 'ETABLISSEMENTS', CATEGORIE: 'CENTRE_SANTE' } },
+    ],
+  },
+  equipements_sportifs: {
+    note: "Équipements sportifs recensés (Data ES), stock à la date de l'import.",
+    presets: [
+      { label: "Équipements par famille", x: 'FAMILLE', pins: { MESURE: 'EQUIPEMENTS' } },
+      { label: 'Équipements par famille, pour 1 000 habitants', x: 'FAMILLE', mode: 'pop', pins: { MESURE: 'EQUIPEMENTS' } },
+      { label: 'Équipements sportifs pour 1 000 habitants (comparaison de territoires)', x: '@GEO', mode: 'pop', pins: { MESURE: 'EQUIPEMENTS', FAMILLE: '_T' } },
+    ],
+  },
   ssmsi: {
     note: "Faits enregistrés par la police et la gendarmerie (SSMSI). Un fait enregistré n'est pas un fait commis : les dépôts de plainte varient selon les territoires. Les valeurs soumises au secret statistique ne sont pas diffusées.",
     presets: [
