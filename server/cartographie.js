@@ -12,6 +12,9 @@ const EXTRA = [
 ];
 const LAYERS = [...KPIS, ...EXTRA].map((k) => ({ ...k, label: k.perK && !/1 000/.test(k.label) ? `${k.label} (pour 1 000 hab.)` : k.label }));
 
+// jeux construits par comptage d'événements (accidents, autorisations) : l'absence de ligne signifie « zéro » et non « inconnu »
+const ZERO_FILL = new Set(['accidents', 'autorises', 'commences']);
+const ADDITIVE = (l) => !l.ratio && !['%', '€', '€/m²'].includes(l.unit || '');
 const FLAT = 0.5; // % d'évolution en deçà duquel la tendance est jugée stable
 
 // population la plus proche de la période (millésimes du recensement)
@@ -88,23 +91,40 @@ function layerData(id, scope = '94', periodWanted = '') {
   }
   const periods = [...periodsSet].sort();
   const period = periods.includes(periodWanted) ? periodWanted : periods[periods.length - 1] || '';
+  const pi = periods.indexOf(period);
+  const prevPeriod = pi > 0 ? periods[pi - 1] : null;
+  const zero = ZERO_FILL.has(layer.id) && series.size >= communes.length * 0.5; // jeu suffisamment chargé : absence = 0
   const values = {};
-  for (const [g, s] of series) {
-    const i = s.findIndex((p) => p.period === period);
-    if (i < 0) continue;
-    const prev = i > 0 ? s[i - 1] : null;
-    values[g] = { v: s[i].value, prev: prev?.value ?? null, prevPeriod: prev?.period ?? null, trend: trendOf(s[i].value, prev?.value ?? null) };
+  for (const g of communes) {
+    const s = series.get(g) || [];
+    const at = (per2) => s.find((p) => p.period === per2)?.value ?? null;
+    let cur = at(period);
+    if (cur == null) { if (!zero) continue; cur = per(g, period, 0); if (cur == null) continue; }
+    let prev = prevPeriod ? at(prevPeriod) : null;
+    let pp = prevPeriod;
+    if (prev == null && zero && prevPeriod) prev = per(g, prevPeriod, 0);
+    if (prev == null && !zero) { const i = s.findIndex((p) => p.period === period); if (i > 0) { prev = s[i - 1].value; pp = s[i - 1].period; } }
+    values[g] = { v: cur, prev: prev ?? null, prevPeriod: prev != null ? pp : null, trend: trendOf(cur, prev ?? null) };
   }
 
-  // résumé : GOSB (agrégat), Ivry, Val-de-Marne, Île-de-France
+  // résumé : GOSB (agrégat), Ivry, Val-de-Marne, Île-de-France. Quand le jeu n'existe pas à ce niveau (jeux communaux), somme des communes.
   const refs = [['GOSB', 'Grand-Orly Seine Bièvre'], [REF_GEO.code, 'Ivry-sur-Seine'], ['94', 'Val-de-Marne'], ['11', 'Île-de-France']];
   const rrows = rowsFor(layer, refs.map((r) => r[0]));
+  const codesOf = (code) => (code === 'GOSB' ? membersOf('GOSB') : code === '94' ? all("SELECT s.code FROM geo_shapes s JOIN geos g ON g.code = s.code WHERE g.dept = '94'").map((r) => r.code) : code === '11' ? all('SELECT code FROM geo_shapes').map((r) => r.code) : []);
   const summary = refs.map(([code, nom]) => {
-    const s = seriesGeo(code, rrows.get(code));
+    let s = seriesGeo(code, rrows.get(code));
+    let aggregated = false;
+    if (!s.length && ADDITIVE(layer) && codesOf(code).length) {
+      const raw = rowsFor(layer, codesOf(code));
+      const sum = new Map();
+      for (const [, rows] of raw) for (const r of seriesOf(rows, layer)) sum.set(r.period, (sum.get(r.period) ?? 0) + r.value);
+      s = [...sum.entries()].sort((x, y) => (x[0] < y[0] ? -1 : 1)).map(([period2, v]) => ({ period: period2, value: per(code, period2, v) })).filter((x) => x.value != null);
+      aggregated = s.length > 0;
+    }
     const i = s.findIndex((p) => p.period === period);
     const cur = i >= 0 ? s[i] : null;
     const prev = i > 0 ? s[i - 1] : null;
-    return { code, nom, value: cur?.value ?? null, period: cur?.period ?? null, prev: prev?.value ?? null, prevPeriod: prev?.period ?? null, trend: trendOf(cur?.value ?? null, prev?.value ?? null), series: s.slice(-8) };
+    return { code, nom, aggregated, value: cur?.value ?? null, period: cur?.period ?? null, prev: prev?.value ?? null, prevPeriod: prev?.period ?? null, trend: trendOf(cur?.value ?? null, prev?.value ?? null), series: s.slice(-8) };
   });
   const l = { id: layer.id, label: layer.label, theme: layer.theme, dataset: layer.dataset, unit: layer.unit || '', perK: !!layer.perK, dir: layer.dir };
   return { layer: l, scope, period, periods, values, summary, gosb: membersOf('GOSB') };

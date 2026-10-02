@@ -14,7 +14,7 @@ const SCOPES = [
 interface Layer { id: string; label: string; theme: string; dataset: string; unit: string; perK: boolean; dir: 'up' | 'down' | 'none'; communes: number }
 interface Trend { dir: 'up' | 'down' | 'flat'; pct: number | null; abs: number }
 interface Val { v: number; prev: number | null; prevPeriod: string | null; trend: Trend | null }
-interface Sum { code: string; nom: string; value: number | null; period: string | null; prev: number | null; prevPeriod: string | null; trend: Trend | null }
+interface Sum { aggregated?: boolean; code: string; nom: string; value: number | null; period: string | null; prev: number | null; prevPeriod: string | null; trend: Trend | null }
 interface LayerData { layer: Layer; scope: string; period: string; periods: string[]; values: Record<string, Val>; summary: Sum[]; gosb: string[] }
 interface Shape { code: string; nom: string; dept: string; path: string; cx?: number; cy?: number }
 interface Shapes { viewBox: number[]; items: Shape[] }
@@ -38,11 +38,12 @@ export default function Cartographie() {
   const [params, setParams] = useSearchParams();
   const [layers, setLayers] = useState<Layer[]>([]);
   const [layerId, setLayerId] = useState(params.get('couche') || 'chomage');
-  const [scope, setScope] = useState(params.get('perimetre') || '94');
+  const [scope, setScope] = useState(params.get('perimetre') || 'idf');
   const [period, setPeriod] = useState('');
   const [data, setData] = useState<LayerData | null>(null);
   const [shapes, setShapes] = useState<Shapes | null>(null);
   const [arrows, setArrows] = useState(true);
+  const [depts, setDepts] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [hover, setHover] = useState<{ code: string; x: number; y: number } | null>(null);
@@ -55,6 +56,13 @@ export default function Cartographie() {
   useEffect(() => {
     api<Shapes>(`/shapes?scope=${scope}`).then((s) => { setShapes(s); setVb(s.viewBox); }).catch(() => setShapes(null));
   }, [scope]);
+  const gosbView = (): number[] | null => {
+    const v = gosbShapes?.viewBox;
+    if (!v) return null;
+    const k = 1.35; // marge autour du GOSB pour voir ses voisins
+    return [v[0] - (v[2] * (k - 1)) / 2, v[1] - (v[3] * (k - 1)) / 2, v[2] * k, v[3] * k];
+  };
+  useEffect(() => { if (scope === 'idf' && shapes && gosbShapes) setVb(gosbView() ?? shapes.viewBox); }, [shapes, gosbShapes]); // eslint-disable-line react-hooks/exhaustive-deps
   // contours du GOSB toujours disponibles, quel que soit le périmètre affiché
   const [gosbShapes, setGosbShapes] = useState<Shapes | null>(null);
   useEffect(() => { api<Shapes>('/shapes?scope=gosb').then(setGosbShapes).catch(() => setGosbShapes(null)); }, []);
@@ -120,7 +128,10 @@ export default function Cartographie() {
   };
 
   const outline = gosbShapes?.items ?? [];
-  const showArrows = arrows && (scope === 'gosb' || scope === '94' || items.length <= 200);
+  const showArrows = arrows;
+  const deptCodes = useMemo(() => [...new Set(items.map((s) => s.dept))].sort(), [items]);
+  const ivry = gosbShapes?.items.find((s) => s.code === '94041');
+  const inView = (c: [number, number] | undefined) => !!c && (!vb || (c[0] >= vb[0] && c[0] <= vb[0] + vb[2] && c[1] >= vb[1] && c[1] <= vb[1] + vb[3]));
 
   return (
     <section className="page cartographie">
@@ -142,6 +153,8 @@ export default function Cartographie() {
           <div className="carto-key">
             <div className="muted small">Légende</div>
             <div className="small"><span className="gosb-swatch" /> Contour du GOSB (Grand-Orly Seine Bièvre)</div>
+            <div className="small"><span className="gosb-swatch" style={{ borderColor: '#dc2626' }} /> Ivry-sur-Seine</div>
+            <div className="small"><span className="gosb-swatch" style={{ borderColor: '#6b7280', borderWidth: 2 }} /> Départements</div>
             <div className="small"><b style={{ color: '#16a34a' }}>▲</b> <b style={{ color: '#dc2626' }}>▼</b> tendance favorable / défavorable · <b style={{ color: '#2563eb' }}>▲ ► ▼</b> neutre ou stable</div>
           </div>
         </aside>
@@ -156,6 +169,9 @@ export default function Cartographie() {
                 <select value={data?.period ?? ''} onChange={(e) => setPeriod(e.target.value)}>{data!.periods.map((p) => <option key={p} value={p}>{p}</option>)}</select>
               </label>
             )}
+            <label className="inline small"><input type="checkbox" checked={depts} onChange={(e) => setDepts(e.target.checked)} /> Contours des départements</label>
+            <button className="secondary" onClick={() => { const v = gosbView(); if (v) setVb(v); }}>Vue GOSB</button>
+            <button className="secondary" onClick={() => shapes && setVb(shapes.viewBox)}>Vue complète</button>
             <label className="inline small"><input type="checkbox" checked={arrows} onChange={(e) => setArrows(e.target.checked)} /> Flèches de tendance par commune</label>
             {layer && <Link className="small" to={`/donnees?ds=${layer.dataset}`}>Voir les données du jeu</Link>}
             {loading && <span className="muted small">Chargement…</span>}
@@ -167,7 +183,7 @@ export default function Cartographie() {
               <div className="carto-trends">
                 {data.summary.map((s) => (
                   <span key={s.code} className={`trend-chip${s.code === 'GOSB' ? ' gosb' : ''}`} title={s.prevPeriod ? `par rapport à ${s.prevPeriod} (${s.prev != null ? fmt(s.prev) : '—'})` : 'pas de période précédente'}>
-                    {s.nom} <b>{s.value != null ? `${fmt(s.value)}${unit}` : 'n.d.'}</b>
+                    {s.nom} <b>{s.value != null ? `${fmt(s.value)}${unit}` : 'n.d.'}</b>{s.aggregated ? <span className="muted" title="Somme des communes (le jeu n'existe pas à ce niveau)"> Σ</span> : null}
                     {s.trend && <span style={{ color: arrowColor(s.trend.dir, layer.dir), fontWeight: 700 }}> {ARROW[s.trend.dir]}{s.trend.pct != null ? ` ${s.trend.pct > 0 ? '+' : ''}${fmt(s.trend.pct)} %` : ''}</span>}
                   </span>
                 ))}
@@ -188,6 +204,12 @@ export default function Cartographie() {
                 <svg ref={svgRef} className="map-svg" viewBox={vb.join(' ')} onMouseDown={onDown}>
                   <defs>
                     {/* halo extérieur : le contour du GOSB n'apparaît que sur son pourtour, pas entre ses communes */}
+                    {deptCodes.map((d) => (
+                      <mask key={`m-${d}`} id={`dept-outside-${d}`} maskUnits="userSpaceOnUse" x={-100000} y={-100000} width={200000} height={200000}>
+                        <rect x={-100000} y={-100000} width={200000} height={200000} fill="white" />
+                        {items.filter((s) => s.dept === d).map((s) => <path key={s.code} d={s.path} fill="black" />)}
+                      </mask>
+                    ))}
                     <mask id="gosb-outside" maskUnits="userSpaceOnUse" x={-100000} y={-100000} width={200000} height={200000}>
                       <rect x={-100000} y={-100000} width={200000} height={200000} fill="white" />
                       {outline.map((s) => <path key={s.code} d={s.path} fill="black" />)}
@@ -203,15 +225,21 @@ export default function Cartographie() {
                       />
                     );
                   })}
+                  {depts && deptCodes.map((d) => (
+                    <g key={`d-${d}`} mask={`url(#dept-outside-${d})`} pointerEvents="none">
+                      {items.filter((s) => s.dept === d).map((s) => <path key={s.code} d={s.path} fill="none" stroke="#6b7280" strokeWidth={3 * u} />)}
+                    </g>
+                  ))}
                   <g mask="url(#gosb-outside)" pointerEvents="none">
                     {outline.map((s) => <path key={`g-${s.code}`} d={s.path} fill="none" stroke="#111827" strokeWidth={4 * u} />)}
                   </g>
-                                  {showArrows && items.map((s) => {
+                                  {ivry && <path d={ivry.path} fill="none" stroke="#dc2626" strokeWidth={2.2 * u} pointerEvents="none" />}
+                  {showArrows && items.map((s) => {
                     const t = values[s.code]?.trend;
                     const c = centers.get(s.code);
-                    if (!t || !c) return null;
+                    if (!t || !c || !inView(c)) return null;
                     return (
-                      <text key={`a-${s.code}`} x={c[0]} y={c[1]} textAnchor="middle" dominantBaseline="central" fontSize={(scope === 'gosb' ? 16 : scope === '94' ? 13 : 10) * u}
+                      <text key={`a-${s.code}`} x={c[0]} y={c[1]} textAnchor="middle" dominantBaseline="central" fontSize={(scope === 'gosb' ? 16 : scope === '94' ? 13 : vb && vb[2] < 300 ? 13 : 9) * u}
                         fill={arrowColor(t.dir, layer?.dir ?? 'none')} stroke="#fff" strokeWidth={2 * u} paintOrder="stroke" pointerEvents="none" fontWeight={700}>
                         {ARROW[t.dir]}
                       </text>
