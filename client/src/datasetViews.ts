@@ -301,4 +301,102 @@ export const VIEWS: Record<string, View> = {
       { label: 'Population vulnérable par classe', x: 'MESURE', keep: { MESURE: ['CLASSE_VULN_1', 'CLASSE_VULN_2', 'CLASSE_VULN_3', 'CLASSE_VULN_4', 'CLASSE_VULN_5', 'CLASSE_VULN_6'] } },
     ],
   },
+
+  // ---------------- construction, énergie, mobilité, environnement (nouveaux jeux) ----------------
+  sitadel: {
+    note: "Base Sit@del2 du SDES : autorisations d'urbanisme créant des logements. Les logements sont comptés l'année de chaque étape (autorisation, ouverture de chantier, achèvement) ; l'année en cours est partielle.",
+    presets: [
+      { label: 'Logements autorisés, commencés et achevés', x: '@PERIOD', series: 'MESURE', keep: { MESURE: ['LGT_AUTORISES', 'LGT_COMMENCES', 'LGT_ACHEVES'] }, pins: { TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' } },
+      { label: 'Logements commencés par type', x: '@PERIOD', series: 'TYPE_LOGEMENT', keep: { TYPE_LOGEMENT: ['INDIVIDUEL', 'COLLECTIF'] }, pins: { MESURE: 'LGT_COMMENCES', TYPE_DAU: '_T' } },
+      { label: 'Logements achevés', x: '@PERIOD', pins: { MESURE: 'LGT_ACHEVES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' } },
+      { label: 'Logements autorisés pour 1 000 habitants', x: '@PERIOD', mode: 'pop', pins: { MESURE: 'LGT_AUTORISES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' } },
+      { label: 'Logements sociaux autorisés', x: '@PERIOD', pins: { MESURE: 'LGT_SOCIAUX_AUTORISES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' } },
+      { label: 'Part des logements sociaux dans les logements autorisés', x: '@PERIOD', pins: { TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' }, ratio: ratio('MESURE', ['LGT_SOCIAUX_AUTORISES'], ['LGT_AUTORISES'], 'Logements sociaux autorisés / logements autorisés') },
+      { label: 'Autorisations délivrées par type', x: '@PERIOD', series: 'TYPE_DAU', keep: { TYPE_DAU: ['PC', 'DP'] }, pins: { MESURE: 'NB_AUTORISATIONS', TYPE_LOGEMENT: '_T' } },
+      { label: 'Logements démolis', x: '@PERIOD', pins: { MESURE: 'LGT_DEMOLIS', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' } },
+    ],
+  },
+  ore_conso: {
+    note: "Consommations d'électricité et de gaz distribuées (Enedis, GRDF, distributeurs locaux), en MWh, hors énergies non réseau (fioul, bois). Données soumises au secret statistique.",
+    presets: [
+      { label: 'Consommation par secteur', x: '@PERIOD', series: 'SECTEUR', keep: { SECTEUR: ['RESIDENTIEL', 'TERTIAIRE', 'INDUSTRIE', 'AGRICULTURE'] }, pins: { MESURE: 'CONSO_MWH', FILIERE: '_T' } },
+      { label: 'Électricité et gaz', x: '@PERIOD', series: 'FILIERE', keep: { FILIERE: ['Electricité', 'Gaz'] }, pins: { MESURE: 'CONSO_MWH', SECTEUR: '_T' } },
+      { label: 'Consommation résidentielle pour 1 000 habitants', x: '@PERIOD', mode: 'pop', pins: { MESURE: 'CONSO_MWH', SECTEUR: 'RESIDENTIEL', FILIERE: '_T' } },
+      { label: 'Consommation tertiaire pour 1 000 habitants', x: '@PERIOD', mode: 'pop', pins: { MESURE: 'CONSO_MWH', SECTEUR: 'TERTIAIRE', FILIERE: '_T' } },
+      { label: 'Part du gaz dans la consommation résidentielle', x: '@PERIOD', pins: { MESURE: 'CONSO_MWH', SECTEUR: 'RESIDENTIEL' }, ratio: ratio('FILIERE', ['Gaz'], ['_T'], 'Gaz / électricité et gaz (résidentiel)') },
+      { label: 'Structure de la consommation par secteur (dernière année)', x: 'SECTEUR', mode: 'part', keep: { SECTEUR: ['RESIDENTIEL', 'TERTIAIRE', 'INDUSTRIE', 'AGRICULTURE'] }, pins: { MESURE: 'CONSO_MWH', FILIERE: '_T' } },
+    ],
+  },
+  ore_parc_auto: {
+    presets: [
+      { label: 'Voitures particulières immatriculées', x: '@PERIOD', pins: { MESURE: 'VP' } },
+      { label: 'Voitures pour 1 000 habitants', x: '@PERIOD', mode: 'pop', pins: { MESURE: 'VP' } },
+      { label: 'Voitures rechargeables électriques', x: '@PERIOD', pins: { MESURE: 'VP_ELECTRIQUES' } },
+      { label: 'Part de voitures rechargeables électriques', x: '@PERIOD', ratio: ratio('MESURE', ['VP_ELECTRIQUES'], ['VP'], 'Voitures rechargeables électriques / voitures') },
+    ],
+  },
+  ore_irve: {
+    note: "Points de recharge pour véhicules électriques recensés dans le fichier consolidé national, par année de mise en service.",
+    presets: [
+      { label: 'Points de recharge mis en service par an', x: '@PERIOD', pins: { MESURE: 'PDC_MIS_EN_SERVICE', IMPLANTATION: '_T' } },
+      { label: 'Points de recharge par type d\'implantation', x: 'IMPLANTATION', pins: { MESURE: 'PDC_MIS_EN_SERVICE' }, period: '' },
+      { label: 'Points de recharge pour 1 000 habitants', x: '@PERIOD', mode: 'pop', pins: { MESURE: 'PDC_MIS_EN_SERVICE', IMPLANTATION: '_T' } },
+    ],
+  },
+  lovac: {
+    note: "Fichier LOVAC (parc privé) : le parc de référence et la méthode évoluent d'un millésime à l'autre ; lire les évolutions avec prudence.",
+    presets: [
+      { label: 'Logements vacants du parc privé', x: '@PERIOD', pins: { MESURE: 'PP_VACANT' } },
+      { label: 'Vacants depuis plus de 2 ans', x: '@PERIOD', pins: { MESURE: 'PP_VACANT_2ANS' } },
+      { label: 'Part de logements vacants (parc privé)', x: '@PERIOD', ratio: ratio('MESURE', ['PP_VACANT'], ['PP_TOTAL'], 'Logements vacants / logements du parc privé') },
+      { label: 'Part des vacants de longue durée', x: '@PERIOD', ratio: ratio('MESURE', ['PP_VACANT_2ANS'], ['PP_VACANT'], 'Vacants depuis plus de 2 ans / vacants') },
+    ],
+  },
+  velo_stationnement: {
+    note: "Données contributives (OpenStreetMap) : la couverture varie selon les communes, ne pas comparer des communes sans vérifier leur exhaustivité.",
+    presets: [
+      { label: 'Capacité de stationnement vélo', x: '@GEO', pins: { MESURE: 'CAPACITE', MOBILIER: '_T' } },
+      { label: 'Capacité pour 1 000 habitants', x: '@GEO', mode: 'pop', pins: { MESURE: 'CAPACITE', MOBILIER: '_T' } },
+      { label: 'Emplacements par type de mobilier', x: 'MOBILIER', pins: { MESURE: 'NB_STATIONNEMENTS' } },
+    ],
+  },
+  nuisances: {
+    presets: [
+      { label: 'Mailles selon le nombre de nuisances cumulées', x: 'NB_NUISANCES', pins: { MESURE: 'MAILLES_500M', POINT_NOIR: '_T' } },
+      { label: 'Part des mailles avec point noir environnemental', x: '@GEO', pins: { MESURE: 'MAILLES_500M', NB_NUISANCES: '_T' }, ratio: ratio('POINT_NOIR', ['1'], ['_T'], 'Mailles avec point noir / mailles de la commune') },
+      { label: 'Part des mailles cumulant 3 nuisances ou plus', x: '@GEO', pins: { MESURE: 'MAILLES_500M', POINT_NOIR: '_T' }, ratio: ratio('NB_NUISANCES', ['3', '4', '5', '6', '7', '8'], ['_T'], 'Mailles à 3 nuisances ou plus / mailles de la commune') },
+    ],
+  },
+  rpls: {
+    note: "Répertoire des logements locatifs des bailleurs sociaux (SDES), situation au 1er janvier. Le nombre peut différer de l'inventaire SRU (périmètre et date différents).",
+    presets: [
+      { label: 'Logements locatifs sociaux', x: '@PERIOD', pins: { CRITERE: 'TOTAL', MODALITE: '_T' } },
+      { label: 'Logements sociaux pour 1 000 habitants', x: '@PERIOD', mode: 'pop', pins: { CRITERE: 'TOTAL', MODALITE: '_T' } },
+      { label: 'Nombre de pièces', x: 'MODALITE', keep: { MODALITE: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6'] }, pins: { CRITERE: 'NB_PIECES' } },
+      { label: 'Étiquette énergétique (DPE)', x: 'MODALITE', keep: { MODALITE: ['DPE_A', 'DPE_B', 'DPE_C', 'DPE_D', 'DPE_E', 'DPE_F', 'DPE_G', 'DPE_ND'] }, pins: { CRITERE: 'DPE' } },
+      { label: 'Période de construction', x: 'MODALITE', keep: { MODALITE: ['EP_AV1946', 'EP_1946_1970', 'EP_1971_1990', 'EP_1991_2005', 'EP_2006_PLUS'] }, pins: { CRITERE: 'EPOQUE' } },
+      { label: 'Financement initial', x: 'MODALITE', pins: { CRITERE: 'FINANCEMENT' } },
+      { label: 'Part des logements sociaux en quartier prioritaire', x: '@PERIOD', pins: { CRITERE: 'QPV' }, ratio: ratio('MODALITE', ['QPV_OUI'], ['QPV_OUI', 'QPV_NON'], 'Logements sociaux en QPV / logements sociaux') },
+      { label: 'Part des logements classés E, F ou G', x: '@PERIOD', pins: { CRITERE: 'DPE' }, ratio: ratio('MODALITE', ['DPE_E', 'DPE_F', 'DPE_G'], ['DPE_A', 'DPE_B', 'DPE_C', 'DPE_D', 'DPE_E', 'DPE_F', 'DPE_G'], 'Logements classés E, F, G / logements avec étiquette') },
+      { label: 'Part des logements construits avant 1971', x: '@PERIOD', pins: { CRITERE: 'EPOQUE' }, ratio: ratio('MODALITE', ['EP_AV1946', 'EP_1946_1970'], ['EP_AV1946', 'EP_1946_1970', 'EP_1971_1990', 'EP_1991_2005', 'EP_2006_PLUS'], 'Logements construits avant 1971 / logements') },
+    ],
+  },
+  idfm_ferre: {
+    note: "Validations du 1er trimestre 2026 aux stations ferrées de la commune (métro, RER, train, tramway), y compris les voyageurs qui ne résident pas dans la commune. Une commune sans station n'a pas de valeur.",
+    presets: [
+      { label: 'Validations du trimestre', x: '@GEO', pins: { MESURE: 'VALIDATIONS' } },
+      { label: 'Validations pour 1 000 habitants', x: '@GEO', mode: 'pop', pins: { MESURE: 'VALIDATIONS' } },
+      { label: 'Lieux d\'arrêt du réseau ferré', x: '@GEO', pins: { MESURE: 'NB_ARRETS' } },
+    ],
+  },
+  icu: {
+    note: "Aléa de chaleur : classes 1 (faible) à 3 (fort), -1 non évalué. Vulnérabilité : notes de 1 à 9. Surfaces en hectares, agrégées par commune.",
+    presets: [
+      { label: 'Surface par zone climatique locale', x: 'LCZ', pins: { MESURE: 'SURFACE_LCZ_HA', CLASSE: '_T' } },
+      { label: 'Aléa de chaleur de jour (surfaces)', x: 'CLASSE', keep: { CLASSE: ['1', '2', '3'] }, pins: { MESURE: 'SURFACE_ALEA_JOUR_HA', LCZ: '_T' } },
+      { label: 'Part de la surface en aléa fort de jour', x: '@GEO', pins: { MESURE: 'SURFACE_ALEA_JOUR_HA', LCZ: '_T' }, ratio: ratio('CLASSE', ['3'], ['1', '2', '3'], 'Surface en aléa fort / surface évaluée') },
+      { label: 'Part de la surface en aléa fort de nuit', x: '@GEO', pins: { MESURE: 'SURFACE_ALEA_NUIT_HA', LCZ: '_T' }, ratio: ratio('CLASSE', ['3'], ['1', '2', '3'], 'Surface en aléa fort de nuit / surface évaluée') },
+      { label: 'Part de la surface très vulnérable de jour (notes 7 à 9)', x: '@GEO', pins: { MESURE: 'SURFACE_VULNERABILITE_JOUR_HA', LCZ: '_T' }, ratio: ratio('CLASSE', ['7', '8', '9'], ['1', '2', '3', '4', '5', '6', '7', '8', '9'], 'Surface de vulnérabilité forte / surface évaluée') },
+    ],
+  },
 };

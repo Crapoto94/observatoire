@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { all, get, run, tx } = require('./db');
 const { seed, REF_GEO } = require('./seed');
-const { startImport, jobs, currentJob, syncPopulations, populationSeries } = require('./importer');
+const { autoImportIdf, startImport, jobs, currentJob, syncPopulations, populationSeries } = require('./importer');
 const { buildWorkbook } = require('./export');
 const { shapes } = require('./idf');
 
@@ -339,4 +339,6 @@ app.listen(PORT, '0.0.0.0', () => {
       startImport({ datasetIds: emptyDatasets });
     }
   }
+  // Chargement de l'Île-de-France (carte) fait par le serveur, sans passer par le navigateur
+  if (process.env.AUTO_IMPORT_IDF !== 'false') autoImportIdf();
 });

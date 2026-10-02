@@ -1,7 +1,7 @@
 // Connecteur API Melodi (INSEE) : https://api.insee.fr/melodi
 const BASE = 'https://api.insee.fr/melodi';
 
-async function fetchJson(url, tries = 3) {
+async function fetchJson(url, tries = 5) {
   let last;
   for (let t = 1; t <= tries; t++) {
     try {
@@ -10,7 +10,7 @@ async function fetchJson(url, tries = 3) {
       return await r.json();
     } catch (e) {
       last = e;
-      await new Promise((res) => setTimeout(res, 800 * t));
+      await new Promise((res) => setTimeout(res, 2000 * t));
     }
   }
   throw last;

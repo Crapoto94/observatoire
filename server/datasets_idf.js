@@ -71,4 +71,37 @@ module.exports = [
       },
     },
   },
+  {
+    id: "idfm_ferre", provider: "idfm", label: "Fréquentation du réseau ferré (validations)",
+    description: "Île-de-France Mobilités : validations du réseau ferré (métro, RER, train, tramway) sur le dernier trimestre publié (1er trimestre 2026), par lieu d'arrêt, agrégées par commune grâce au référentiel des zones d'arrêts. Le réseau de surface (bus) ne peut pas être rattaché aux communes : ses validations sont publiées par ligne.",
+    themes: ["mobilite"], doc_url: "https://data.iledefrance-mobilites.fr/explore/dataset/validations-reseau-ferre-nombre-validations-par-jour-1er-trimestre/",
+    link: [{ theme: "mobilite", re: /frequentation des lignes|accessibilite en transports/ }],
+    config: {
+      validations: "validations-reseau-ferre-nombre-validations-par-jour-1er-trimestre", period: "2026-T1",
+      labels: mesure({ VALIDATIONS: "Validations du trimestre (réseau ferré)", NB_ARRETS: "Lieux d'arrêt du réseau ferré" }),
+    },
+  },
+  {
+    id: "rpls", provider: "dido", label: "Parc social : répertoire des logements locatifs sociaux (RPLS)",
+    description: "SDES, RPLS au logement (fichier CSV détaillé, 3 derniers millésimes au 1er janvier) : nombre de logements locatifs sociaux de la commune, agrégé selon le nombre de pièces, l'étiquette énergétique, la période de construction, la situation en quartier prioritaire, le financement initial et le type de construction. Communes, départements, régions.",
+    themes: ["logement", "cohesion"], doc_url: "https://www.statistiques.developpement-durable.gouv.fr/catalogue?page=dataset&datasetId=6390f7cb84f0679b04942fc2",
+    link: [{ theme: "logement", re: /logements sociaux|logement social|parc de logements/ }, { groupe: "conditions-vie", re: /logement social/ }],
+    config: {
+      kind: "rpls", dataset: "6390f7cb84f0679b04942fc2", rid: "f3c2f2cb-8fb1-40fd-8733-964247744c9a",
+      labels: {
+        ...mesure({ LOGEMENTS_SOCIAUX: "Logements locatifs sociaux" }),
+        CRITERE: { label: "Critère", values: { TOTAL: "Total", NB_PIECES: "Nombre de pièces", DPE: "Étiquette énergie (DPE)", EPOQUE: "Période de construction", QPV: "Quartier prioritaire (QPV)", FINANCEMENT: "Financement initial", TYPE: "Type de construction" } },
+        MODALITE: {
+          label: "Modalité",
+          values: {
+            _T: "Total", P1: "1 pièce", P2: "2 pièces", P3: "3 pièces", P4: "4 pièces", P5: "5 pièces", P6: "6 pièces et plus",
+            DPE_A: "A", DPE_B: "B", DPE_C: "C", DPE_D: "D", DPE_E: "E", DPE_F: "F", DPE_G: "G", DPE_ND: "Non renseignée",
+            EP_AV1946: "Avant 1946", EP_1946_1970: "1946 à 1970", EP_1971_1990: "1971 à 1990", EP_1991_2005: "1991 à 2005", EP_2006_PLUS: "2006 et après",
+            QPV_OUI: "En QPV", QPV_NON: "Hors QPV", TYPE_COLLECTIF: "Collectif", TYPE_INDIVIDUEL: "Individuel", TYPE_ETUDIANT: "Logement étudiant",
+            FIN_10: "PLA d'intégration (PLAI)", FIN_12: "PLA ordinaire", FIN_13: "PLUS", FIN_14: "PLS / PPLS / PLA CFF", FIN_17: "PCL conventionné ou non", FIN_51: "PLR / PSR", FIN_52: "HLM/O", FIN_54: "ILN",
+          },
+        },
+      },
+    },
+  },
 ];

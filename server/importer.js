@@ -8,6 +8,7 @@ const bulk = require('./connectors/bulk');
 const dido = require('./connectors/dido');
 const datafair = require('./connectors/datafair');
 const icu = require('./connectors/icu');
+const idfm = require('./connectors/idfm');
 const { bootstrapIdf } = require('./idf');
 
 const GEO_YEAR = '2025'; // millésime de la géographie utilisé par Melodi
@@ -22,6 +23,7 @@ const CONNECTORS = {
   dido: dido.fetchGeo,
   datafair: datafair.fetchGeo,
   icu: icu.fetchGeo,
+  idfm: idfm.fetchGeo,
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -33,6 +35,7 @@ const BULK = {
   dido: { fn: dido.fetchMany, size: 400 },
   datafair: { fn: datafair.fetchMany, size: 400 },
   icu: { fn: icu.fetchMany, size: 100000 },
+  idfm: { fn: idfm.fetchMany, size: 100000 },
 };
 
 const jobs = new Map();
@@ -227,4 +230,28 @@ function startImport({ datasetIds, geoCodes, scope } = {}) {
   return job;
 }
 
-module.exports = { startImport, jobs, refreshStats, currentJob, syncPopulations, populationSeries };
+/**
+ * Chargement automatique de l'Île-de-France par le serveur (aucune action du navigateur requise) :
+ * dès qu'aucun import ne tourne, les jeux dont la couverture communale est incomplète sont importés pour toutes les communes.
+ * Chaque jeu n'est tenté qu'une fois par démarrage (les jeux à couverture structurellement partielle ne bouclent pas).
+ */
+function autoImportIdf({ intervalMs = 30000 } = {}) {
+  const tried = new Set();
+  const tick = () => {
+    try {
+      if (currentJob()) return;
+      const communes = get('SELECT COUNT(*) AS n FROM geo_shapes').n;
+      const loaded = Object.fromEntries(all('SELECT dataset_id, COUNT(DISTINCT geo) AS n FROM data_rows WHERE geo IN (SELECT code FROM geo_shapes) GROUP BY dataset_id').map((r) => [r.dataset_id, r.n]));
+      const todo = all('SELECT id FROM datasets').map((d) => d.id)
+        .filter((id) => !tried.has(id) && (!communes || (loaded[id] || 0) < communes * 0.95));
+      if (!todo.length) return;
+      todo.forEach((id) => tried.add(id));
+      console.log(`[import] Île-de-France : ${todo.length} jeu(x) à charger (${todo.join(', ')})`);
+      startImport({ datasetIds: todo, scope: 'idf' });
+    } catch (e) { console.error('[import] auto IDF', e.message); }
+  };
+  setInterval(tick, intervalMs).unref?.();
+  setTimeout(tick, 5000);
+}
+
+module.exports = { autoImportIdf, startImport, jobs, refreshStats, currentJob, syncPopulations, populationSeries };
