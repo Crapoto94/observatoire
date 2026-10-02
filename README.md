@@ -36,14 +36,22 @@ L'application est alors sur http://localhost:2508.
 | Pilotage | Couverture par thème (source, jeu importé, définition, porteur, validation), matrice priorité × faisabilité, doublons possibles, indicateurs de suivi sans indicateur de contexte. |
 | Carte mentale | Générée à partir de la base, géométrie relevée sur la carte PDF (cadres, pastilles, couleurs par niveau et par priorité). Export SVG, versions enregistrées (par exemple une par CODIR), pastille verte sur les indicateurs validés, indicateurs abandonnés masqués. |
 | Données | Jeux importés dans la base (SQLite) : tableau brut, graphique, comparaison avec un territoire au choix, valeurs pour 1 000 habitants, écart à la dernière période commune, bouton de mise à jour par jeu et bouton « Tout mettre à jour » (réimporte tous les jeux publics pour tous les territoires, avec progression et bilan ; un seul import à la fois). |
+| Tableau de bord | 17 KPI d'Ivry (valeur récente, évolution, comparaison GOSB / Val-de-Marne / Île-de-France) et état de validation des fiches indicateurs correspondantes ; liens depuis la conception et la carte mentale. |
+| Cartographie | Couches communales en légende, carte d'Île-de-France (ou d'un département, ou du GOSB), contour du GOSB, flèches de tendance par couche et par commune. |
+| Journal des imports | Une ligne par jeu et par tentative : méthode (API ou CSV), source, durée, lignes, erreurs, détail ; filtres. |
+| Base de données | Volumétrie (taille, lignes, couverture Île-de-France par jeu) et santé (erreurs d'import, jeux vides, jeux partiels). |
 
 ## Territoires de comparaison
+
+Le **GOSB** (Grand-Orly Seine Bièvre, EPT T12, 24 communes) est un territoire de comparaison calculé : somme des communes pour les effectifs, moyenne pondérée par la population pour les taux, prix et médianes (approximation). Liste des communes dans `server/groups.js`.
+
 
 Importés d'emblée avec Ivry : Val-de-Marne, Métropole du Grand Paris, Île-de-France, et 11 communes proches (Vitry-sur-Seine, Villejuif, Le Kremlin-Bicêtre, Gentilly, Alfortville, Choisy-le-Roi, Créteil, Champigny-sur-Marne, Montreuil, Saint-Denis, Nanterre). Liste dans `server/seed.js` (`DEFAULT_GEOS`).
 Une autre commune s'ajoute depuis la page Données (recherche par nom ou code INSEE) ; son import démarre aussitôt.
 
 ## Données
 
+- Imports : tout est fait par le serveur (aucune action du navigateur). Un jeu en difficulté est reporté puis repris ; en cas d'échec d'un lot, la granularité est affinée (département, communes voisines, commune). Repli sur un fichier CSV quand l'API n'est pas joignable (data.gouv.fr, Opendatasoft). Un jeu chargé pour l'Île-de-France depuis moins de 7 jours n'est pas rechargé automatiquement.
 - Base : `data/observatoire.sqlite` (ignorée par git). Les données sont **importées**, jamais lues en direct par l'interface.
 - Connecteurs : API Melodi de l'INSEE (`server/connectors/melodi.js`) ; API tabulaire data.gouv.fr, portails Opendatasoft, fichiers geo-dvf et API Recherche d'entreprises (`server/connectors/open.js`).
 - Catalogue des jeux : `server/datasets.js` (INSEE) et `server/datasets_open.js` (open data). 31 jeux, voir `CATALOGUE_DONNEES_OUVERTES.md` pour les sources, les valeurs vérifiées, les pistes et les limites.
