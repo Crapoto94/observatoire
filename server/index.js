@@ -8,6 +8,7 @@ const { buildWorkbook } = require('./export');
 const { shapes } = require('./idf');
 
 seed();
+require('./groups').ensureGroups();
 syncPopulations();
 
 const app = express();
@@ -304,7 +305,8 @@ app.get('/api/datasets/:id/map', (req, res) => {
   const params = [req.params.id];
   let sql = `SELECT r.geo, r.period, r.dims, r.value FROM data_rows r JOIN geos g ON g.code = r.geo
     WHERE r.dataset_id = ? AND g.level = 'COM' AND r.geo IN (SELECT code FROM geo_shapes)`;
-  if (scope !== 'idf') { sql += ' AND g.dept = ?'; params.push(scope); }
+  const members = require('./groups').membersOf(scope.toUpperCase());
+  if (members.length) { sql += ` AND r.geo IN (${members.map(() => '?').join(',')})`; params.push(...members); } else if (scope !== 'idf') { sql += ' AND g.dept = ?'; params.push(scope); }
   for (const [dim, codes] of Object.entries(dims)) {
     if (!/^[A-Z0-9_]+$/.test(dim) || !Array.isArray(codes) || !codes.length) return res.status(400).json({ error: 'dimension invalide' });
     sql += ` AND json_extract(r.dims, '$.${dim}') IN (${codes.map(() => '?').join(',')})`;
@@ -371,7 +373,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Observatoire : http://localhost:${PORT}`);
   // Import automatique des territoires sans données (premier démarrage : commune de référence et territoires de comparaison)
   if (process.env.AUTO_IMPORT !== 'false') {
-    const missing = all('SELECT code FROM geos WHERE bulk = 0 AND code NOT IN (SELECT DISTINCT geo FROM data_rows)').map((g) => g.code);
+    const missing = all("SELECT code FROM geos WHERE bulk = 0 AND level != 'EPT' AND code NOT IN (SELECT DISTINCT geo FROM data_rows)").map((g) => g.code);
     const emptyDatasets = all('SELECT id FROM datasets WHERE id NOT IN (SELECT DISTINCT dataset_id FROM data_rows)').map((d) => d.id);
     if (missing.length && emptyDatasets.length) {
       console.log('[import] territoires et jeux sans données : import complet en cours');

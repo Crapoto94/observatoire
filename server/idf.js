@@ -85,7 +85,10 @@ async function bootstrapIdf({ force = false, log = () => {} } = {}) {
 
 /** Formes d'un périmètre : 'idf' ou un code de département. */
 function shapes(scope) {
-  const rows = scope && scope !== 'idf'
+  const members = require('./groups').membersOf(String(scope).toUpperCase());
+  const rows = members.length
+    ? all(`SELECT s.code, g.nom, g.dept, s.path, s.x0, s.y0, s.x1, s.y1 FROM geo_shapes s JOIN geos g ON g.code = s.code WHERE s.code IN (${members.map(() => '?').join(',')})`, ...members)
+    : scope && scope !== 'idf'
     ? all(`SELECT s.code, g.nom, g.dept, s.path, s.x0, s.y0, s.x1, s.y1 FROM geo_shapes s JOIN geos g ON g.code = s.code WHERE g.dept = ?`, scope)
     : all(`SELECT s.code, g.nom, g.dept, s.path, s.x0, s.y0, s.x1, s.y1 FROM geo_shapes s JOIN geos g ON g.code = s.code`);
   if (!rows.length) return { viewBox: [0, 0, 100, 100], items: [] };

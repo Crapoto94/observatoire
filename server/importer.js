@@ -10,6 +10,7 @@ const datafair = require('./connectors/datafair');
 const icu = require('./connectors/icu');
 const idfm = require('./connectors/idfm');
 const { bootstrapIdf } = require('./idf');
+const groups = require('./groups');
 
 const GEO_YEAR = '2025'; // millésime de la géographie utilisé par Melodi
 const geoId = (g) => `${GEO_YEAR}-${g.level || 'COM'}-${g.code}`;
@@ -60,6 +61,7 @@ function storeRows(datasetId, geoCodes, rowsOf) {
 }
 
 async function importOne(dataset, geo, log) {
+  if (groups.isGroup(geo.code)) return 0; // valeurs calculées à partir des communes membres (groups.aggregate)
   const started = now();
   try {
     const config = JSON.parse(dataset.config || '{}');
@@ -110,6 +112,7 @@ function syncPopulations() {
 }
 
 function refreshStats(datasetId) {
+  try { groups.aggregate(datasetId); } catch (e) { console.warn('[groupes]', datasetId, e.message); }
   if (datasetId === 'rp_serie_historique') syncPopulations();
   const n = get('SELECT COUNT(*) AS n FROM data_rows WHERE dataset_id = ?', datasetId).n;
   const last = get(`SELECT MAX(finished) AS d FROM import_log WHERE dataset_id = ? AND status = 'ok'`, datasetId)?.d;
@@ -200,14 +203,40 @@ async function importIdfDataset(d, geos, job, log, attempt) {
   let total = 0, errors = 0, failure = null;
   try {
     if (b) {
-      for (const part of bulk.chunk(geos, b.size)) {
+      const centers = new Map(all('SELECT code, (x0 + x1) / 2 AS cx, (y0 + y1) / 2 AS cy FROM geo_shapes').map((r) => [r.code, r]));
+      let failedGeos = 0;
+      const split = (part) => {
+        const depts = new Map();
+        for (const g of part) (depts.get(g.code.slice(0, 2)) || depts.set(g.code.slice(0, 2), []).get(g.code.slice(0, 2))).push(g);
+        if (depts.size > 1) return [...depts.values()]; // 1) par département
+        const xs = part.map((g) => centers.get(g.code)?.cx ?? 0), ys = part.map((g) => centers.get(g.code)?.cy ?? 0);
+        const axis = Math.max(...xs) - Math.min(...xs) >= Math.max(...ys) - Math.min(...ys) ? 'cx' : 'cy';
+        const sorted = [...part].sort((x, y) => (centers.get(x.code)?.[axis] ?? 0) - (centers.get(y.code)?.[axis] ?? 0)); // 2) communes voisines
+        const h = Math.ceil(sorted.length / 2);
+        return [sorted.slice(0, h), sorted.slice(h)];
+      };
+      const runPart = async (part) => {
         if (aborted()) throw new Bypass('abandonné');
-        const map = await withTimeout(b.fn(cfg, part, (m) => lg(`${d.id} : ${m}`)), b.size >= 100000 ? 3 * CHUNK_TIMEOUT : CHUNK_TIMEOUT, `${d.id} (${part.length} communes)`, aborted);
-        if (map === null) { lg(`${d.id} : niveau communal non disponible`); job.current.done += part.length; continue; }
-        total += storeRows(d.id, part.map((g) => g.code), (code) => map.get(code));
-        job.current.done += part.length;
-        lg(`${d.id} : ${job.current.done} / ${geos.length} communes traitées`);
-      }
+        try {
+          const map = await withTimeout(b.fn(cfg, part, (m) => lg(`${d.id} : ${m}`)), b.size >= 100000 ? 3 * CHUNK_TIMEOUT : CHUNK_TIMEOUT, `${d.id} (${part.length} communes)`, aborted);
+          if (map === null) { lg(`${d.id} : niveau communal non disponible`); job.current.done += part.length; return; }
+          total += storeRows(d.id, part.map((g) => g.code), (code) => map.get(code));
+          job.current.done += part.length;
+          lg(`${d.id} : ${job.current.done} / ${geos.length} communes traitées`);
+        } catch (e) {
+          if (e instanceof Bypass) throw e;
+          if (part.length <= 1) {
+            errors++; failedGeos++; job.current.done += part.length;
+            lg(`${d.id} / ${part[0]?.nom} : ERREUR ${e.message}`);
+            if (failedGeos >= 30) throw new Error(`trop de communes en échec (dernière erreur : ${e.message})`);
+            return;
+          }
+          const subs = split(part);
+          lg(`${d.id} : échec d'un lot de ${part.length} communes (${e.message}) : granularité plus fine, ${subs.length} sous-lots`);
+          for (const sub of subs) await runPart(sub);
+        }
+      };
+      for (const part of bulk.chunk(geos, b.size)) await runPart(part);
     } else {
       let consecutive = 0;
       await pool(geos, 4, async (g) => {
@@ -249,6 +278,7 @@ function startImport({ datasetIds, geoCodes, scope } = {}) {
   const running = currentJob();
   if (running) return { ...running, already: true };
   const datasets = selectDatasets(datasetIds);
+  if (scope === 'gosb') geoCodes = groups.membersOf('GOSB'); // comparaison avec le Grand-Orly Seine Bièvre : ses 24 communes
   const id = ++jobSeq;
   const job = { id, scope: scope || 'favoris', status: 'en cours', total: 1, done: 0, errors: 0, log: [], started: now(), activity: Date.now(), current: null, deferred: [] };
   jobs.set(id, job);
@@ -301,7 +331,7 @@ function startImport({ datasetIds, geoCodes, scope } = {}) {
 
   const geos = geoCodes?.length
     ? all(`SELECT * FROM geos WHERE code IN (${geoCodes.map(() => '?').join(',')})`, ...geoCodes)
-    : all('SELECT * FROM geos WHERE bulk = 0');
+    : all("SELECT * FROM geos WHERE bulk = 0 AND level != 'EPT'");
   job.total = datasets.length * geos.length;
   (async () => {
     for (const d of datasets) {
@@ -309,7 +339,7 @@ function startImport({ datasetIds, geoCodes, scope } = {}) {
       job.skip = null;
       const lines = [];
       const lg = (m) => { log(m); lines.push(`${new Date().toISOString().slice(11, 19)} ${m}`); };
-      const runId = startRun(job, d, 'favoris', 1, geos.length);
+      const runId = startRun(job, d, job.scope, 1, geos.length);
       job.current = { id: d.id, label: d.label, done: 0, total: geos.length, attempt: 1, method: methodOf(d).method };
       await ensureLabels(d, lg);
       let rows = 0, errors = 0, failure = null;
@@ -338,6 +368,7 @@ const MIN_RELOAD_MS = 7 * 24 * 3600 * 1000;
 
 function autoImportIdf({ intervalMs = 30000 } = {}) {
   const tried = new Set();
+  let gosbTried = false;
   const tick = () => {
     try {
       const running = currentJob();
@@ -346,6 +377,8 @@ function autoImportIdf({ intervalMs = 30000 } = {}) {
         if (Date.now() - (running.activity || 0) > 20 * 60000 && !running.warned) { running.warned = true; console.warn(`[import] job ${running.id} sans activité depuis 20 min`); running.log.push('ATTENTION : aucune activité depuis 20 min, le lot en cours sera abandonné à son délai'); }
         return;
       }
+      groups.ensureGroups();
+      if (!gosbTried && get("SELECT COUNT(*) AS n FROM data_rows WHERE geo = 'GOSB'").n === 0) { gosbTried = true; console.log('[import] chargement des 24 communes du GOSB'); startImport({ scope: 'gosb' }); return; }
       const communes = get('SELECT COUNT(*) AS n FROM geo_shapes').n;
       const loaded = Object.fromEntries(all('SELECT dataset_id, COUNT(DISTINCT geo) AS n FROM data_rows WHERE geo IN (SELECT code FROM geo_shapes) GROUP BY dataset_id').map((r) => [r.dataset_id, r.n]));
       // un jeu chargé avec succès pour l'Île-de-France depuis moins de 7 jours n'est pas rechargé automatiquement (import manuel toujours possible)

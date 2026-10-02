@@ -183,6 +183,30 @@ async function fetchTabular(config, geo) {
 }
 
 // ---------------- Opendatasoft (explore v2.1) ----------------
+// Enregistrements d'une requête (where / select / group_by) : API paginée, ou en repli export CSV filtré du même jeu.
+async function odsRecords(config, params) {
+  const recs = [];
+  try {
+    for (let offset = 0; offset < 20000; offset += 100) {
+      const p = new URLSearchParams({ limit: '100', offset: String(offset) });
+      for (const [k, v] of Object.entries(params)) if (v) p.set(k, v);
+      const j = await fetchJson(`${config.base}/api/explore/v2.1/catalog/datasets/${config.dataset}/records?${p}`);
+      recs.push(...(j.results || []));
+      if ((j.results || []).length < 100) break;
+    }
+    return recs;
+  } catch (e) {
+    if (/HTTP 4(?!29)\d\d/.test(e.message)) throw e; // requête invalide : l'export échouerait de même
+    const p = new URLSearchParams({ limit: '-1', delimiter: ';', use_labels: 'false' });
+    for (const [k, v] of Object.entries(params)) if (v) p.set(k, v);
+    const res = await fetchRetry(`${config.base}/api/explore/v2.1/catalog/datasets/${config.dataset}/exports/csv?${p}`, { signal: AbortSignal.timeout(600000) });
+    if (!res.ok) throw new Error(`API puis export CSV en échec (${e.message} ; export HTTP ${res.status})`);
+    const lines = (await res.text()).split('\n').map((l) => l.replace(/\r$/, '')).filter(Boolean);
+    const head = splitCsv(lines.shift() || '', ';').map((h) => h.replace(/^\uFEFF/, '').trim());
+    return lines.map((l) => { const c = splitCsv(l, ';'); return Object.fromEntries(head.map((h, i) => [h, c[i] === '' || c[i] === undefined ? null : c[i]])); });
+  }
+}
+
 async function fetchOds(config, geo) {
   const field = config.levels?.[geo.level || 'COM'];
   if (!field) return null;
@@ -195,15 +219,7 @@ async function fetchOds(config, geo) {
       ? `${field}="${upper(geo.nom)}" and ${byName.deptField}="${geo.code.slice(0, 2)}"`
       : config.geoQuote === false ? `${field}=${geo.code}` : `${field}="${geo.code}"`;
     const where = [geoWhere, q.where].filter(Boolean).join(' and ');
-    const recs = [];
-    for (let offset = 0; offset < 20000; offset += 100) {
-      const p = new URLSearchParams({ where, limit: '100', offset: String(offset) });
-      if (q.select) p.set('select', q.select);
-      if (q.groupBy) p.set('group_by', q.groupBy);
-      const j = await fetchJson(`${config.base}/api/explore/v2.1/catalog/datasets/${config.dataset}/records?${p}`);
-      recs.push(...(j.results || []));
-      if ((j.results || []).length < 100) break;
-    }
+    const recs = await odsRecords(config, { where, select: q.select, group_by: q.groupBy });
     rows.push(...mapRecords(recs, { ...config, ...q }, q.constDims || {}, q.period ?? null));
   }
   return rows;
@@ -286,4 +302,4 @@ async function fetchEntreprises(config, geo) {
   return rows;
 }
 
-module.exports = { csvIndex, mergeRows, fetchTabular, fetchOds, fetchGeoDvf, fetchEntreprises, parseNum, mapRecords, resolveResource, dvfRows, TAB };
+module.exports = { odsRecords, csvIndex, mergeRows, fetchTabular, fetchOds, fetchGeoDvf, fetchEntreprises, parseNum, mapRecords, resolveResource, dvfRows, TAB };

@@ -34,7 +34,7 @@ async function fetchJson(url, tries = 7) {
       return j;
     } catch (e) {
       last = e;
-      if (/HTTP 4(?!29)dd/.test(e.message)) throw e; // erreur définitive (404, 400…) : inutile de relancer
+      if (/HTTP 4(?!29)\d\d/.test(e.message)) throw e; // erreur définitive (404, 400…) : inutile de relancer
       await new Promise((res) => setTimeout(res, Math.min(60000, 2000 * 2 ** (t - 1))));
     }
   }

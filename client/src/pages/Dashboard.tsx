@@ -6,7 +6,7 @@ import { api } from '../api';
 interface Pt { period: string; value: number }
 interface Kpi {
   id: string; label: string; theme: string; unit: string; dir: 'up' | 'down' | 'none'; dataset: string; datasetLabel: string; last_import: string | null;
-  value: number | null; period: string | null; prev: Pt | null; series: Pt[]; dep: Pt | null; reg: Pt | null; age: number | null;
+  value: number | null; period: string | null; prev: Pt | null; series: Pt[]; ept: Pt | null; dep: Pt | null; reg: Pt | null; age: number | null;
   indicators: { id: number; libelle: string; statut: string; priorite: number | null }[];
   statut: 'valide' | 'brouillon' | 'abandonne' | 'sans_fiche';
   states: { valide: number; brouillon: number; abandonne: number };
@@ -67,8 +67,9 @@ function Card({ k }: { k: Kpi }) {
               </span>
             )}
           </div>
-          {(k.dep || k.reg) && (
+          {(k.ept || k.dep || k.reg) && (
             <div className="kpi-cmp small">
+              {k.ept && <span title="Grand-Orly Seine Bièvre : agrégation des 24 communes">GOSB <b>{fmt(k.ept.value)}</b></span>}
               {k.dep && <span>Val-de-Marne <b>{fmt(k.dep.value)}</b></span>}
               {k.reg && <span>Île-de-France <b>{fmt(k.reg.value)}</b></span>}
             </div>

@@ -92,17 +92,7 @@ async function tabularMany(config, geos, progress = () => {}) {
 }
 
 // ---------------- Opendatasoft : clause « in (…) », ou recherche par nom de commune ----------------
-async function odsPages(config, params) {
-  const recs = [];
-  for (let offset = 0; offset < 10000; offset += 100) {
-    const p = new URLSearchParams({ limit: '100', offset: String(offset) });
-    for (const [k, v] of Object.entries(params)) if (v) p.set(k, v);
-    const j = await fetchJson(`${config.base}/api/explore/v2.1/catalog/datasets/${config.dataset}/records?${p}`);
-    recs.push(...(j.results || []));
-    if ((j.results || []).length < 100) break;
-  }
-  return recs;
-}
+const odsPages = (config, params) => open.odsRecords(config, params);
 
 async function odsByName(config, comm, out) {
   const { deptField, yearField } = config.byName;

@@ -9,7 +9,7 @@ import { project, yearOf } from '../trend';
 const PALETTE = ['#eef4fc', '#c6dbf5', '#92bdee', '#5a97df', '#2f6fc7', '#14418a'];
 const NO_DATA = '#e3e5e8';
 const SCOPES = [
-  { k: 'idf', l: 'Île-de-France' }, { k: '75', l: 'Paris (75)' }, { k: '77', l: 'Seine-et-Marne (77)' }, { k: '78', l: 'Yvelines (78)' },
+  { k: 'idf', l: 'Île-de-France' }, { k: 'gosb', l: 'Grand-Orly Seine Bièvre (24 communes)' }, { k: '75', l: 'Paris (75)' }, { k: '77', l: 'Seine-et-Marne (77)' }, { k: '78', l: 'Yvelines (78)' },
   { k: '91', l: 'Essonne (91)' }, { k: '92', l: 'Hauts-de-Seine (92)' }, { k: '93', l: 'Seine-Saint-Denis (93)' }, { k: '94', l: 'Val-de-Marne (94)' },
   { k: '95', l: "Val-d'Oise (95)" },
 ];

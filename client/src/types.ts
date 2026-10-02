@@ -105,12 +105,12 @@ export interface Geo {
   dept: string | null;
   population: number | null;
   fixed: number;
-  level: 'COM' | 'DEP' | 'EPCI' | 'REG';
+  level: 'COM' | 'DEP' | 'EPCI' | 'REG' | 'EPT';
   pop_series?: Record<string, number>; // population par millésime du recensement
   bulk?: number; // 1 = commune d'Île-de-France chargée en masse pour la carte
 }
 
-export const LEVEL_LABEL: Record<string, string> = { COM: 'commune', DEP: 'département', EPCI: 'intercommunalité', REG: 'région' };
+export const LEVEL_LABEL: Record<string, string> = { COM: 'commune', DEP: 'département', EPCI: 'intercommunalité', REG: 'région', EPT: 'EPT' };
 
 export interface DataRow {
   geo: string;

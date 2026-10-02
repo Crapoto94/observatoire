@@ -55,7 +55,7 @@ function seriesOf(rows, spec) {
 }
 
 function build() {
-  const geos = [[REF_GEO.code, 'ref'], ['94', 'dep'], ['11', 'reg']];
+  const geos = [[REF_GEO.code, 'ref'], ['GOSB', 'ept'], ['94', 'dep'], ['11', 'reg']];
   const indicators = all('SELECT id, libelle, statut, priorite, theme_label FROM indicators');
   const dsInfo = Object.fromEntries(all('SELECT id, label, last_import FROM datasets').map((d) => [d.id, d]));
   const withData = new Set(all('SELECT DISTINCT indicator_id FROM indicator_datasets').map((r) => r.indicator_id));
@@ -85,7 +85,7 @@ function build() {
       id: spec.id, label: spec.label, theme: spec.theme, unit: spec.unit || '', dir: spec.dir, dataset: spec.dataset, datasetLabel: dsInfo[spec.dataset]?.label || spec.dataset,
       last_import: dsInfo[spec.dataset]?.last_import || null,
       value: last?.value ?? null, period: last?.period ?? null, prev, series: s.slice(-8),
-      dep: last && res.dep ? at(res.dep, last.period) : null, reg: last && res.reg ? at(res.reg, last.period) : null,
+      ept: last && res.ept ? at(res.ept, last.period) : null, dep: last && res.dep ? at(res.dep, last.period) : null, reg: last && res.reg ? at(res.reg, last.period) : null,
       age: year == null || Number.isNaN(year) ? null : new Date().getFullYear() - year,
       indicators: cands.slice(0, 8).map((i) => ({ id: i.id, libelle: i.libelle, statut: i.statut || 'brouillon', priorite: i.priorite })),
       statut, states,
