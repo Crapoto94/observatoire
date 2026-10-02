@@ -4,7 +4,7 @@ import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
 
 interface Pt { period: string; value: number }
-interface Kpi {
+export interface Kpi {
   id: string; label: string; theme: string; unit: string; dir: 'up' | 'down' | 'none'; dataset: string; datasetLabel: string; last_import: string | null;
   value: number | null; period: string | null; prev: Pt | null; series: Pt[]; ept: Pt | null; dep: Pt | null; reg: Pt | null; age: number | null;
   indicators: { id: number; libelle: string; statut: string; priorite: number | null }[];
@@ -29,7 +29,7 @@ const BADGE: Record<string, { label: string; color: string }> = {
   sans_fiche: { label: 'Sans fiche', color: '#94a3b8' },
 };
 
-function Card({ k, focus }: { k: Kpi; focus: boolean }) {
+export function Card({ k, focus }: { k: Kpi; focus: boolean }) {
   const [open, setOpen] = useState(false);
   const delta = k.value != null && k.prev ? k.value - k.prev.value : null;
   const pct = delta != null && k.prev && k.prev.value !== 0 ? (delta / Math.abs(k.prev.value)) * 100 : null;

@@ -260,3 +260,17 @@ ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent
 .c-theme .chip { margin-top: 3px; display: inline-block; }
 .c-links a { word-break: break-all; }
 .ind-table.grid, .page:has(.ind-table) .table-wrap { overflow-x: hidden; }
+
+.topbar .brand .ver { margin-left: 8px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: var(--accent); color: var(--accent-ink); text-decoration: none; vertical-align: middle; }
+.topbar .brand .ver.active { outline: 2px solid var(--accent-ink); }
+
+/* barre de navigation : retour à la ligne si trop d'onglets */
+.topbar { height: auto; min-height: 52px; flex-wrap: wrap; row-gap: 2px; padding-top: 4px; padding-bottom: 4px; }
+.topbar nav { flex-wrap: wrap; }
+.topbar nav a { padding: 6px 10px; }
+/* emploi */
+.insights { list-style: none; padding: 0; margin: 8px 0 16px; }
+.insights li { padding: 8px 12px; margin: 5px 0; border-left: 4px solid #2563eb; background: var(--panel); border-radius: 4px; }
+.insights li.alerte { border-left-color: #dc2626; } .insights li.positif { border-left-color: #16a34a; }
+.src-list { list-style: none; padding: 0; }
+.src-list li { margin: 8px 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }

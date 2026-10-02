@@ -130,4 +130,4 @@ function layerData(id, scope = '94', periodWanted = '') {
   return { layer: l, scope, period, periods, values, summary, gosb: membersOf('GOSB') };
 }
 
-module.exports = { list, layerData, LAYERS };
+module.exports = { list, layerData, LAYERS, rowsFor, popAt };

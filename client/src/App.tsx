@@ -10,6 +10,7 @@ import Cartographie from './pages/Cartographie';
 import Imports from './pages/Imports';
 import Nouveautes from './pages/Nouveautes';
 import Dashboard from './pages/Dashboard';
+import Emploi from './pages/Emploi';
 
 export default function App() {
   const [build, setBuild] = useState('');
@@ -21,11 +22,12 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">◉</span> Observatoire de la ville
+          <span className="brand-mark">◉</span> Observatoire de la ville{version && <NavLink to="/nouveautes" className="ver" title="Nouveautés (historique des versions)">v{version}</NavLink>}
         </div>
         <nav>
           <NavLink to="/indicateurs">Conception des indicateurs</NavLink>
           <NavLink to="/tableau-de-bord">Tableau de bord</NavLink>
+          <NavLink to="/emploi">Emploi</NavLink>
           <NavLink to="/pilotage">Pilotage</NavLink>
           <NavLink to="/carte">Carte mentale</NavLink>
           <NavLink to="/donnees">Données</NavLink>
@@ -40,6 +42,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/indicateurs" replace />} />
           <Route path="/indicateurs" element={<Indicateurs />} />
           <Route path="/tableau-de-bord" element={<Dashboard />} />
+          <Route path="/emploi" element={<Emploi />} />
           <Route path="/pilotage" element={<Pilotage />} />
           <Route path="/carte" element={<Carte />} />
           <Route path="/donnees" element={<Donnees />} />
@@ -50,7 +53,7 @@ export default function App() {
           <Route path="/database" element={<Database />} />
         </Routes>
       </main>
-      {build && <footer className="build"><NavLink to="/nouveautes" title="Voir les nouveautés">v{version}</NavLink> · version du {build}</footer>}
+      <footer className="build">{version && <NavLink to="/nouveautes" title="Voir les nouveautés">v{version} · Nouveautés</NavLink>}{build ? ` · version du ${build}` : ''}</footer>
     </div>
   );
 }
