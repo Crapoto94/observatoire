@@ -6,6 +6,7 @@ import Donnees from './pages/Donnees';
 import Pilotage from './pages/Pilotage';
 import Catalogue from './pages/Catalogue';
 import Database from './pages/Database';
+import Cartographie from './pages/Cartographie';
 import Imports from './pages/Imports';
 import Dashboard from './pages/Dashboard';
 
@@ -26,6 +27,7 @@ export default function App() {
           <NavLink to="/pilotage">Pilotage</NavLink>
           <NavLink to="/carte">Carte mentale</NavLink>
           <NavLink to="/donnees">Données</NavLink>
+          <NavLink to="/cartographie">Cartographie</NavLink>
           <NavLink to="/catalogue">Catalogue</NavLink>
           <NavLink to="/imports">Journal des imports</NavLink>
           <NavLink to="/database">Base de données</NavLink>
@@ -39,6 +41,7 @@ export default function App() {
           <Route path="/pilotage" element={<Pilotage />} />
           <Route path="/carte" element={<Carte />} />
           <Route path="/donnees" element={<Donnees />} />
+          <Route path="/cartographie" element={<Cartographie />} />
           <Route path="/catalogue" element={<Catalogue />} />
           <Route path="/imports" element={<Imports />} />
           <Route path="/database" element={<Database />} />

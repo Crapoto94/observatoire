@@ -52,6 +52,14 @@ const status = (req, res) => {
 };
 app.get('/api/health', status);
 app.get('/api/status', status);
+// Cartographie : couches communales, valeurs, tendances
+app.get('/api/cartographie/layers', (req, res) => { try { res.json(require('./cartographie').list()); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.get('/api/cartographie/layer/:id', (req, res) => {
+  try {
+    const d = require('./cartographie').layerData(req.params.id, String(req.query.scope || '94'), String(req.query.period || ''));
+    d ? res.json(d) : res.status(404).json({ error: 'couche introuvable' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.get('/api/kpi', (req, res) => { try { res.json(require('./kpi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/database', (req, res) => { try { res.json(require('./dbstats').stats({ check: req.query.check === '1' })); } catch (e) { res.status(500).json({ error: e.message }); } });
 
