@@ -1,16 +1,31 @@
 // Connecteur API Melodi (INSEE) : https://api.insee.fr/melodi
 const BASE = 'https://api.insee.fr/melodi';
 
-async function fetchJson(url, tries = 5) {
+// Intervalle minimal entre deux appels par hôte (l'API Recherche d'entreprises limite à 7 appels/s)
+const SPACING = { 'recherche-entreprises.api.gouv.fr': 250 };
+const nextSlot = new Map();
+async function throttle(url) {
+  const gap = SPACING[new URL(url).hostname];
+  if (!gap) return;
+  const at = Math.max(Date.now(), nextSlot.get(url.split('/')[2]) ?? 0);
+  nextSlot.set(url.split('/')[2], at + gap);
+  if (at > Date.now()) await new Promise((r) => setTimeout(r, at - Date.now()));
+}
+
+// Les coupures réseau du serveur durent parfois une vingtaine de secondes : relances espacées de 2 s à 30 s
+async function fetchJson(url, tries = 7) {
   let last;
   for (let t = 1; t <= tries; t++) {
     try {
+      await throttle(url);
       const r = await fetch(url, { signal: AbortSignal.timeout(120000), headers: { Accept: 'application/json' } });
+      if (r.status === 429) throw new Error(`HTTP 429 sur ${url}`);
       if (!r.ok) throw new Error(`HTTP ${r.status} sur ${url}`);
       return await r.json();
     } catch (e) {
       last = e;
-      await new Promise((res) => setTimeout(res, 2000 * t));
+      if (/HTTP 4(?!29)dd/.test(e.message)) throw e; // erreur définitive (404, 400…) : inutile de relancer
+      await new Promise((res) => setTimeout(res, Math.min(30000, 2000 * 2 ** (t - 1))));
     }
   }
   throw last;
@@ -49,4 +64,20 @@ async function fetchGeo(config, geoId) {
   return rows;
 }
 
-module.exports = { fetchJson, fetchLabels, fetchGeo };
+// fetch avec relances sur coupure réseau ou 5xx (le corps n'est lu qu'après : une relance repart de zéro)
+async function fetchRetry(url, opts = {}, tries = 6) {
+  let last;
+  for (let t = 1; t <= tries; t++) {
+    try {
+      const r = await fetch(url, opts);
+      if (r.status >= 500 || r.status === 429) throw new Error(`HTTP ${r.status}`);
+      return r;
+    } catch (e) {
+      last = e;
+      await new Promise((res) => setTimeout(res, Math.min(30000, 2000 * 2 ** (t - 1))));
+    }
+  }
+  throw last;
+}
+
+module.exports = { fetchRetry, fetchJson, fetchLabels, fetchGeo };

@@ -1,6 +1,6 @@
 // Connecteurs open data hors INSEE : API tabulaire data.gouv.fr, portails Opendatasoft, fichiers geo-dvf, API Recherche d'entreprises.
 // Chaque connecteur expose fetchGeo(config, geo) -> lignes { period, dims, measure, value } ou null si le niveau géographique n'est pas géré.
-const { fetchJson } = require('./melodi');
+const { fetchJson, fetchRetry } = require('./melodi');
 
 // ---------------- outils communs ----------------
 function parseNum(v) {
@@ -206,7 +206,7 @@ async function fetchGeoDvf(config, geo) {
   const rows = [];
   for (const year of config.years) {
     const url = `https://files.data.gouv.fr/geo-dvf/latest/csv/${year}/communes/${geo.code.slice(0, 2)}/${geo.code}.csv`;
-    const r = await fetch(url, { signal: AbortSignal.timeout(120000), redirect: 'follow' });
+    const r = await fetchRetry(url, { signal: AbortSignal.timeout(120000), redirect: 'follow' });
     if (!r.ok) continue;
     const recs = parseCsv(await r.text()).filter((x) => x.nature_mutation === 'Vente');
     const byMut = new Map();

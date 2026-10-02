@@ -4,6 +4,7 @@
 const readline = require('readline');
 const { Readable } = require('stream');
 const { bootstrapIdf } = require('../idf');
+const { fetchRetry } = require('./melodi');
 const spatial = require('../spatial');
 
 const URL_EXPORT = 'https://data.iledefrance.fr/api/explore/v2.1/catalog/datasets/ilots-de-chaleur-urbains-icu-classification-des-imu-en-zone-climatique-locale-lc/exports/csv'
@@ -14,7 +15,7 @@ let cache = null; // { at, rows: Map code -> lignes }
 async function aggregate(config) {
   await bootstrapIdf({});
   spatial.ready();
-  const res = await fetch(URL_EXPORT, { signal: AbortSignal.timeout(900000) });
+  const res = await fetchRetry(URL_EXPORT, { signal: AbortSignal.timeout(900000) });
   if (!res.ok) throw new Error(`export ICU : HTTP ${res.status}`);
   const rl = readline.createInterface({ input: Readable.fromWeb(res.body), crlfDelay: Infinity });
   const acc = new Map(); // code -> Map(clé -> hectares)

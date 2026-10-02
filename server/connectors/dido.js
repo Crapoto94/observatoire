@@ -4,7 +4,7 @@
 //  - rpls    : répertoire des logements locatifs des bailleurs sociaux (détail au logement) -> parc social par commune et millésime
 const readline = require('readline');
 const { Readable } = require('stream');
-const { fetchJson } = require('./melodi');
+const { fetchJson, fetchRetry } = require('./melodi');
 
 const API = 'https://data.statistiques.developpement-durable.gouv.fr/dido/api/v1';
 const IDF_DEPTS = new Set(['75', '77', '78', '91', '92', '93', '94', '95']);
@@ -129,7 +129,7 @@ async function streamCsv(config, kind, millesime, filter, onRecord) {
   const old = legacyOf(kind, millesime);
   const rename = (c) => (old && c === kind.geoField ? old.geoField : c);
   const url = `${API}/datafiles/${config.rid}/csv?millesime=${millesime}&withColumnName=true&withColumnDescription=false&withColumnUnit=false&columns=${kind.columns.map(rename).join(',')}&${filter.replace(new RegExp(`^${kind.geoField}=`), `${rename(kind.geoField)}=`)}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(1200000) });
+  const res = await fetchRetry(url, { signal: AbortSignal.timeout(1200000) });
   if (!res.ok) throw new Error(`DiDo HTTP ${res.status} (${config.rid})`);
   const rl = readline.createInterface({ input: Readable.fromWeb(res.body), crlfDelay: Infinity });
   let head = null;

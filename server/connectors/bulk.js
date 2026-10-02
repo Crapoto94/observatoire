@@ -3,7 +3,7 @@
 const zlib = require('zlib');
 const readline = require('readline');
 const { Readable } = require('stream');
-const { fetchJson } = require('./melodi');
+const { fetchJson, fetchRetry } = require('./melodi');
 const open = require('./open');
 
 const BASE = 'https://api.insee.fr/melodi';
@@ -164,7 +164,7 @@ async function geodvfMany(config, geos) {
   for (const [dept, codes] of byDept) {
     const want = new Set(codes);
     for (const year of config.years) {
-      const res = await fetch(`https://files.data.gouv.fr/geo-dvf/latest/csv/${year}/departements/${dept}.csv.gz`, { redirect: 'follow', signal: AbortSignal.timeout(900000) });
+      const res = await fetchRetry(`https://files.data.gouv.fr/geo-dvf/latest/csv/${year}/departements/${dept}.csv.gz`, { redirect: 'follow', signal: AbortSignal.timeout(900000) });
       if (!res.ok) continue;
       const rl = readline.createInterface({ input: Readable.fromWeb(res.body).pipe(zlib.createGunzip()), crlfDelay: Infinity });
       let idx = null;
