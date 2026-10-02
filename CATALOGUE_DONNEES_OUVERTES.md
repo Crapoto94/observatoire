@@ -83,6 +83,10 @@ Portail : <https://opendata.agenceore.fr> (API `/data-fair/api/v1`).
 | Offre de soins, densité médicale | DREES, [APL](https://data.drees.solidarites-sante.gouv.fr/explore/dataset/530_l-accessibilite-potentielle-localisee-apl/) | l'API ne renvoie pas d'enregistrements | télécharger le fichier APL |
 | Demandeurs d'emploi | [France Travail, API Open Data](https://francetravail.io/data/api) | API soumise à clé | demande de clé |
 | Collecte des déchets | [SINOE](https://www.sinoe.org/), EPT Grand-Orly Seine Bièvre | pas de série communale ouverte | demande à l'EPT |
+| Impôt sur le revenu par commune (IRCOM) | DGFiP, [data.gouv.fr](https://www.data.gouv.fr/datasets/536998cba3a729239d20505e) : archives annuelles (18 Mo) de fichiers Excel anciens (.xls) par département | format .xls non lu par l'application (nécessite une bibliothèque dédiée) | revenu fiscal de référence, foyers imposables, impôt net par commune |
+| Quartiers prioritaires (QPV) | ANCT, [data.gouv.fr](https://www.data.gouv.fr/datasets/5a561801c751df42d7fca9b6) : périmètres et populations | contours à rapprocher des communes ; Filosofi par QPV à ajouter | indicateurs spécifiques aux QPV d'Ivry |
+| Annuaire des professionnels de santé | [Région Île-de-France](https://data.iledefrance.fr/explore/dataset/annuaire-et-localisation-des-professionnels-de-sante/) (348 000 lignes, une ligne par acte) | à dédoublonner par professionnel avant de compter | densité de médecins, infirmiers, dentistes par commune |
+| Résultats au brevet (DNB) par établissement | [Éducation nationale](https://data.education.gouv.fr/explore/dataset/fr-en-dnb-par-etablissement/) | s'arrête à la session 2021 | taux de réussite par commune |
 | Autres prestations CAF | [data.caf.fr](https://data.caf.fr/) | seul le RSA est publié à la commune dans les jeux trouvés | explorer le catalogue par prestation |
 
 ## 2 bis. Portails du GOSB, du Val-de-Marne et de la Région : ce qui a été trouvé
