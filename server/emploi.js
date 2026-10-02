@@ -20,8 +20,9 @@ function insights(kpis) {
     const parts = [];
     for (const [nom, ref] of [['le GOSB', d1.ept], ['le Val-de-Marne', d1.dep], ['l\'Île-de-France', d1.reg]]) if (ref) parts.push(`${nom} ${f1(ref.value)}`);
     const base = d1.ept || d1.dep || d1.reg;
+    const baseNom = d1.ept ? 'le GOSB' : d1.dep ? 'le Val-de-Marne' : "l'Île-de-France";
     const gap = base.value ? ((d1.value - base.value) / base.value) * 100 : null;
-    out.push({ level: gap != null && gap > 10 ? 'alerte' : 'info', text: `${f1(d1.value)} demandeurs d'emploi pour 1 000 habitants à Ivry-sur-Seine, contre ${parts.join(', ')}` + (gap != null ? ` (${sign(gap)} % par rapport au premier terme de comparaison).` : '.') });
+    out.push({ level: gap != null && gap > 10 ? 'alerte' : 'info', text: `${f1(d1.value)} demandeurs d'emploi pour 1 000 habitants à Ivry-sur-Seine, contre ${parts.join(', ')}` + (gap != null ? ` (${sign(gap)} % par rapport à ${baseNom}).` : '.') });
   }
   for (const [id, label, hint] of [
     ['defm_jeunes', 'moins de 25 ans', "public cible de la mission locale et des dispositifs jeunes"],
