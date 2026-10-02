@@ -334,6 +334,8 @@ function startImport({ datasetIds, geoCodes, scope } = {}) {
  * dès qu'aucun import ne tourne, les jeux dont la couverture communale est incomplète sont importés pour toutes les communes.
  * Chaque jeu n'est tenté qu'une fois par démarrage (les jeux à couverture structurellement partielle ne bouclent pas).
  */
+const MIN_RELOAD_MS = 7 * 24 * 3600 * 1000;
+
 function autoImportIdf({ intervalMs = 30000 } = {}) {
   const tried = new Set();
   const tick = () => {
@@ -346,8 +348,11 @@ function autoImportIdf({ intervalMs = 30000 } = {}) {
       }
       const communes = get('SELECT COUNT(*) AS n FROM geo_shapes').n;
       const loaded = Object.fromEntries(all('SELECT dataset_id, COUNT(DISTINCT geo) AS n FROM data_rows WHERE geo IN (SELECT code FROM geo_shapes) GROUP BY dataset_id').map((r) => [r.dataset_id, r.n]));
+      // un jeu chargé avec succès pour l'Île-de-France depuis moins de 7 jours n'est pas rechargé automatiquement (import manuel toujours possible)
+      const since = new Date(Date.now() - MIN_RELOAD_MS).toISOString();
+      const recent = new Set(all("SELECT DISTINCT dataset_id FROM import_runs WHERE scope = 'idf' AND status IN ('ok', 'partiel') AND finished >= ?", since).map((r) => r.dataset_id));
       const todo = all('SELECT id FROM datasets').map((d) => d.id)
-        .filter((id) => !tried.has(id) && (!communes || (loaded[id] || 0) < communes * 0.95));
+        .filter((id) => !tried.has(id) && !recent.has(id) && (!communes || (loaded[id] || 0) < communes * 0.95));
       if (!todo.length) return;
       todo.forEach((id) => tried.add(id));
       console.log(`[import] Île-de-France : ${todo.length} jeu(x) à charger (${todo.join(', ')})`);
