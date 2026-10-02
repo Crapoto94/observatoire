@@ -53,7 +53,7 @@ function seriesOf(rows, spec) {
 }
 
 function build() {
-  const geos = [[REF_GEO, 'ref'], ['94', 'dep'], ['11', 'reg']];
+  const geos = [[REF_GEO.code, 'ref'], ['94', 'dep'], ['11', 'reg']];
   const indicators = all('SELECT id, libelle, statut, priorite, theme_label FROM indicators');
   const dsInfo = Object.fromEntries(all('SELECT id, label, last_import FROM datasets').map((d) => [d.id, d]));
   const withData = new Set(all('SELECT DISTINCT indicator_id FROM indicator_datasets').map((r) => r.indicator_id));

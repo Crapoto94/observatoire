@@ -2,7 +2,7 @@
 const BASE = 'https://api.insee.fr/melodi';
 
 // Intervalle minimal entre deux appels par hôte (l'API Recherche d'entreprises limite à 7 appels/s)
-const SPACING = { 'recherche-entreprises.api.gouv.fr': 250 };
+const SPACING = { 'recherche-entreprises.api.gouv.fr': 250, 'tabular-api.data.gouv.fr': 400, 'geo.api.gouv.fr': 200, 'www.data.gouv.fr': 400 };
 const nextSlot = new Map();
 async function throttle(url) {
   const gap = SPACING[new URL(url).hostname];
@@ -25,7 +25,7 @@ async function fetchJson(url, tries = 7) {
     } catch (e) {
       last = e;
       if (/HTTP 4(?!29)dd/.test(e.message)) throw e; // erreur définitive (404, 400…) : inutile de relancer
-      await new Promise((res) => setTimeout(res, Math.min(30000, 2000 * 2 ** (t - 1))));
+      await new Promise((res) => setTimeout(res, Math.min(60000, 2000 * 2 ** (t - 1))));
     }
   }
   throw last;
@@ -74,7 +74,7 @@ async function fetchRetry(url, opts = {}, tries = 6) {
       return r;
     } catch (e) {
       last = e;
-      await new Promise((res) => setTimeout(res, Math.min(30000, 2000 * 2 ** (t - 1))));
+      await new Promise((res) => setTimeout(res, Math.min(60000, 2000 * 2 ** (t - 1))));
     }
   }
   throw last;
