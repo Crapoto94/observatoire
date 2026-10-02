@@ -120,6 +120,30 @@ CREATE TABLE IF NOT EXISTS carte_versions (
 );
 `);
 
+// Journal des imports : une ligne par jeu et par tentative (méthode, source, durée, volume, erreurs, détail)
+db.exec(`
+CREATE TABLE IF NOT EXISTS import_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  job_id INTEGER,
+  scope TEXT,
+  dataset_id TEXT NOT NULL,
+  dataset_label TEXT,
+  method TEXT,
+  kind TEXT,
+  source_url TEXT,
+  started TEXT,
+  finished TEXT,
+  status TEXT,
+  rows INTEGER DEFAULT 0,
+  errors INTEGER DEFAULT 0,
+  attempt INTEGER DEFAULT 1,
+  territories INTEGER,
+  message TEXT,
+  log TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_runs_ds ON import_runs(dataset_id, started);
+`);
+
 const clean = (params) => params.map((p) => (p === undefined ? null : p));
 
 module.exports = {

@@ -144,48 +144,105 @@ const selectDatasets = (ids) => (ids?.length
   ? all(`SELECT * FROM datasets WHERE id IN (${ids.map(() => '?').join(',')})`, ...ids)
   : all('SELECT * FROM datasets'));
 
-// Chien de garde : un lot qui ne répond plus est abandonné (erreur journalisée) pour que l'import passe au suivant
-const withTimeout = (p, ms, label) => new Promise((resolve, reject) => {
-  const t = setTimeout(() => reject(new Error(`délai dépassé (${Math.round(ms / 60000)} min) : ${label}`)), ms);
-  p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
-});
-const CHUNK_TIMEOUT = 30 * 60000; // un lot d'import en masse
-const GEO_TIMEOUT = 5 * 60000; // une commune en mode unitaire
+// ---------------- journal des imports (table import_runs) ----------------
+const METHODS = {
+  melodi: { method: 'API REST Melodi (INSEE)', kind: 'api' },
+  tabular: { method: 'API tabulaire data.gouv.fr', kind: 'api' },
+  ods: { method: 'API Opendatasoft (explore v2.1)', kind: 'api' },
+  geodvf: { method: 'Fichiers CSV geo-dvf (data.gouv.fr)', kind: 'csv' },
+  entreprises: { method: "API Recherche d'entreprises", kind: 'api' },
+  dido: { method: 'Téléchargement CSV filtré (DiDo, SDES)', kind: 'csv' },
+  datafair: { method: 'API Data Fair (Agence ORE)', kind: 'api' },
+  icu: { method: 'Export CSV + rattachement point dans polygone', kind: 'csv' },
+  idfm: { method: 'API Opendatasoft (IDFM) + référentiel des zones d\'arrêts', kind: 'api' },
+};
+const methodOf = (d) => METHODS[d.provider] || { method: d.provider, kind: 'api' };
 
-// Import d'un jeu pour tous les territoires de l'Île-de-France (en masse)
-async function importIdfDataset(d, geos, job, log) {
-  const started = now();
+function startRun(job, d, scope, attempt, total) {
+  const m = methodOf(d);
+  const r = run(
+    'INSERT INTO import_runs (job_id, scope, dataset_id, dataset_label, method, kind, source_url, started, status, attempt, territories) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+    job.id, scope, d.id, d.label, m.method, m.kind, d.doc_url || null, now(), 'en cours', attempt, total
+  );
+  return Number(r.lastInsertRowid);
+}
+function endRun(id, { status, rows = 0, errors = 0, message = null, lines = [] }) {
+  run('UPDATE import_runs SET finished = ?, status = ?, rows = ?, errors = ?, message = ?, log = ? WHERE id = ?',
+    now(), status, rows, errors, message ? String(message).slice(0, 600) : null, JSON.stringify(lines.slice(-200)), id);
+}
+// les runs restés « en cours » après un redémarrage du serveur sont marqués interrompus
+try { run("UPDATE import_runs SET status = 'interrompu', finished = ? WHERE status = 'en cours'", now()); } catch { /* table absente au premier démarrage */ }
+
+// Chien de garde : un lot qui ne répond plus (ou qu'on demande de passer) est abandonné pour que l'import continue avec le jeu suivant
+class Bypass extends Error {}
+const withTimeout = (p, ms, label, shouldAbort = () => false) => new Promise((resolve, reject) => {
+  const t = setTimeout(() => done(reject, new Error(`délai dépassé (${Math.round(ms / 60000)} min) : ${label}`)), ms);
+  const poll = setInterval(() => { if (shouldAbort()) done(reject, new Bypass('jeu passé à la demande ou import arrêté')); }, 1000);
+  const done = (fn, v) => { clearTimeout(t); clearInterval(poll); fn(v); };
+  p.then((v) => done(resolve, v), (e) => done(reject, e));
+});
+const CHUNK_TIMEOUT = 15 * 60000; // un lot d'import en masse
+const GEO_TIMEOUT = 3 * 60000; // une commune en mode unitaire
+const MAX_PASSES = 3; // passages sur les jeux reportés
+const RETRY_WAIT = 3 * 60000; // attente avant de reprendre les jeux reportés
+const sleep = (ms, stop = () => false) => new Promise((res) => { const t0 = Date.now(); const i = setInterval(() => { if (stop() || Date.now() - t0 >= ms) { clearInterval(i); res(); } }, 1000); });
+
+// Import d'un jeu pour des communes d'Île-de-France. Au premier échec d'un lot, le jeu est abandonné (statut « reporté ») ; les lots déjà
+// enregistrés sont conservés et seules les communes sans données seront reprises au passage suivant.
+async function importIdfDataset(d, geos, job, log, attempt) {
+  const lines = [];
+  const lg = (m) => { log(m); lines.push(`${new Date().toISOString().slice(11, 19)} ${m}`); };
+  const runId = startRun(job, d, 'idf', attempt, geos.length);
+  job.current = { id: d.id, label: d.label, done: 0, total: geos.length, attempt, method: methodOf(d).method };
   const cfg = JSON.parse(d.config || '{}');
   const b = BULK[d.provider];
-  let total = 0;
-  if (b) {
-    for (const part of bulk.chunk(geos, b.size)) {
-      try {
-        const map = await withTimeout(b.fn(cfg, part, (m) => log(`${d.id} : ${m}`)), b.size >= 100000 ? 3 * CHUNK_TIMEOUT : CHUNK_TIMEOUT, `${d.id} (${part.length} communes)`);
-        if (map === null) { log(`${d.id} : niveau communal non disponible`); job.done++; continue; }
+  const aborted = () => job.cancelled || job.skip === d.id;
+  let total = 0, errors = 0, failure = null;
+  try {
+    if (b) {
+      for (const part of bulk.chunk(geos, b.size)) {
+        if (aborted()) throw new Bypass('abandonné');
+        const map = await withTimeout(b.fn(cfg, part, (m) => lg(`${d.id} : ${m}`)), b.size >= 100000 ? 3 * CHUNK_TIMEOUT : CHUNK_TIMEOUT, `${d.id} (${part.length} communes)`, aborted);
+        if (map === null) { lg(`${d.id} : niveau communal non disponible`); job.current.done += part.length; continue; }
         total += storeRows(d.id, part.map((g) => g.code), (code) => map.get(code));
-        log(`${d.id} : ${part.length} communes traitées`);
-      } catch (e) {
-        job.errors++;
-        log(`${d.id} : ERREUR ${e.message}`);
+        job.current.done += part.length;
+        lg(`${d.id} : ${job.current.done} / ${geos.length} communes traitées`);
       }
-      job.done++;
+    } else {
+      let consecutive = 0;
+      await pool(geos, 4, async (g) => {
+        if (failure) return;
+        try {
+          total += await withTimeout(importOne(d, g, () => {}), GEO_TIMEOUT, `${d.id} / ${g.nom}`, aborted);
+          consecutive = 0;
+        } catch (e) {
+          errors++;
+          if (e instanceof Bypass) failure = e.message;
+          else if (++consecutive >= 8) failure = `${consecutive} erreurs consécutives (dernière : ${e.message})`;
+          lg(`${d.id} / ${g.nom} : ERREUR ${e.message}`);
+        }
+        job.current.done++;
+        if (job.current.done % 100 === 0) lg(`${d.id} : ${job.current.done} / ${geos.length} communes traitées`);
+      });
+      if (failure) throw new Error(failure);
     }
-  } else {
-    await pool(geos, 4, async (g) => {
-      try { total += await withTimeout(importOne(d, g, () => {}), GEO_TIMEOUT, `${d.id} / ${g.nom}`); } catch (e) { job.errors++; log(`${d.id} / ${g.nom} : ERREUR ${e.message}`); }
-      job.done++;
-    });
-    log(`${d.id} : ${geos.length} communes traitées`);
+    endRun(runId, { status: errors ? 'partiel' : 'ok', rows: total, errors, lines });
+    run('INSERT INTO import_log (dataset_id, geo, started, finished, status, rows) VALUES (?,?,?,?,?,?)', d.id, 'IDF', now(), now(), 'ok', total);
+    refreshStats(d.id);
+    return { ok: true, rows: total };
+  } catch (e) {
+    lg(`${d.id} : ERREUR ${e.message}`);
+    endRun(runId, { status: e instanceof Bypass ? 'passé' : 'reporté', rows: total, errors: errors + 1, message: e.message, lines });
+    refreshStats(d.id);
+    return { ok: false, rows: total, error: e.message, bypassed: e instanceof Bypass };
   }
-  run('INSERT INTO import_log (dataset_id, geo, started, finished, status, rows) VALUES (?,?,?,?,?,?)', d.id, 'IDF', started, now(), 'ok', total);
-  refreshStats(d.id);
 }
 
 /**
  * Lance un import en tâche de fond.
  *  - par défaut : territoires favoris (bulk = 0) ou geoCodes ;
- *  - scope 'idf' : toutes les communes d'Île-de-France.
+ *  - scope 'idf' : toutes les communes d'Île-de-France. Un jeu en difficulté est reporté, les suivants sont traités,
+ *    puis les jeux reportés sont repris (jusqu'à MAX_PASSES passages).
  */
 function startImport({ datasetIds, geoCodes, scope } = {}) {
   // un seul import à la fois : si un import tourne déjà, on renvoie celui-ci
@@ -193,28 +250,51 @@ function startImport({ datasetIds, geoCodes, scope } = {}) {
   if (running) return { ...running, already: true };
   const datasets = selectDatasets(datasetIds);
   const id = ++jobSeq;
-  const job = { id, scope: scope || 'favoris', status: 'en cours', total: 1, done: 0, errors: 0, log: [], started: now(), activity: Date.now() };
+  const job = { id, scope: scope || 'favoris', status: 'en cours', total: 1, done: 0, errors: 0, log: [], started: now(), activity: Date.now(), current: null, deferred: [] };
   jobs.set(id, job);
   const log = (m) => { job.activity = Date.now(); job.log.push(m); if (job.log.length > 300) job.log.shift(); };
+  const finish = () => {
+    job.current = null;
+    job.status = job.cancelled ? 'arrêté' : job.errors ? 'terminé avec erreurs' : 'terminé';
+    job.finished = now();
+  };
 
   if (scope === 'idf') {
     (async () => {
       try {
         await bootstrapIdf({ log });
-        const geos = all('SELECT g.* FROM geos g JOIN geo_shapes s ON s.code = g.code ORDER BY g.code');
-        job.total = datasets.reduce((n, d) => n + (BULK[d.provider] ? Math.ceil(geos.length / BULK[d.provider].size) : geos.length), 0);
-        for (const d of datasets) {
-          log(`${d.id} : import de ${geos.length} communes…`);
-          await ensureLabels(d, log);
-          await importIdfDataset(d, geos, job, log);
+        const allGeos = all('SELECT g.* FROM geos g JOIN geo_shapes s ON s.code = g.code ORDER BY g.code');
+        job.total = datasets.length; // unité : le jeu (la progression du jeu en cours est dans job.current)
+        let pending = datasets;
+        for (let pass = 0; pass < MAX_PASSES && pending.length && !job.cancelled; pass++) {
+          const next = [];
+          for (const d of pending) {
+            if (job.cancelled) break;
+            job.skip = null;
+            await ensureLabels(d, log);
+            // aux passages suivants : seulement les communes encore sans données
+            const have = pass ? new Set(all('SELECT DISTINCT geo FROM data_rows WHERE dataset_id = ?', d.id).map((r) => r.geo)) : null;
+            const geos = have ? allGeos.filter((g) => !have.has(g.code)) : allGeos;
+            if (!geos.length) { job.done++; continue; }
+            log(`${d.id} : import de ${geos.length} communes${pass ? ` (passage ${pass + 1})` : '…'}`);
+            const res = await importIdfDataset(d, geos, job, log, pass + 1);
+            if (res.ok) job.done++;
+            else if (pass + 1 < MAX_PASSES && !job.cancelled) { next.push(d); job.deferred = next.map((x) => x.id); log(`${d.id} : reporté, reprise plus tard`); } else { job.done++; job.errors++; }
+          }
+          pending = next;
+          if (pending.length && !job.cancelled) {
+            log(`${pending.length} jeu(x) reporté(s) : reprise dans ${RETRY_WAIT / 60000} min (${pending.map((d) => d.id).join(', ')})`);
+            job.current = null;
+            await sleep(RETRY_WAIT, () => job.cancelled);
+          }
         }
+        job.deferred = [];
         syncPopulations();
       } catch (e) {
         job.errors++;
         log(`ERREUR ${e.message}`);
       }
-      job.status = job.errors ? 'terminé avec erreurs' : 'terminé';
-      job.finished = now();
+      finish();
     })();
     return job;
   }
@@ -225,18 +305,29 @@ function startImport({ datasetIds, geoCodes, scope } = {}) {
   job.total = datasets.length * geos.length;
   (async () => {
     for (const d of datasets) {
-      await ensureLabels(d, log);
+      if (job.cancelled) break;
+      job.skip = null;
+      const lines = [];
+      const lg = (m) => { log(m); lines.push(`${new Date().toISOString().slice(11, 19)} ${m}`); };
+      const runId = startRun(job, d, 'favoris', 1, geos.length);
+      job.current = { id: d.id, label: d.label, done: 0, total: geos.length, attempt: 1, method: methodOf(d).method };
+      await ensureLabels(d, lg);
+      let rows = 0, errors = 0, failure = null;
+      const aborted = () => job.cancelled || job.skip === d.id;
       for (const g of geos) {
-        try { await importOne(d, g, log); } catch { job.errors++; }
+        if (aborted()) { failure = job.cancelled ? 'import arrêté' : 'jeu passé à la demande'; job.done += geos.length - job.current.done; break; }
+        try { rows += await withTimeout(importOne(d, g, lg), GEO_TIMEOUT, `${d.id} / ${g.nom}`, aborted); } catch (e) { errors++; job.errors++; if (e instanceof Bypass) failure = e.message; }
         job.done++;
+        job.current.done++;
       }
+      endRun(runId, { status: failure ? 'passé' : errors ? 'partiel' : 'ok', rows, errors, message: failure, lines });
       refreshStats(d.id);
     }
-    job.status = job.errors ? 'terminé avec erreurs' : 'terminé';
-    job.finished = now();
+    finish();
   })();
   return job;
 }
+
 
 /**
  * Chargement automatique de l'Île-de-France par le serveur (aucune action du navigateur requise) :

@@ -139,4 +139,7 @@ export interface Job {
   done: number;
   errors: number;
   log: string[];
+  scope?: string;
+  current?: { id: string; label: string; done: number; total: number; attempt: number; method: string } | null;
+  deferred?: string[];
 }

@@ -273,11 +273,25 @@ export default function Donnees() {
       {job && (
         <div className={`job ${job.status === 'en cours' ? 'run' : job.errors ? 'bad' : 'ok'}`}>
           <div className="job-line">
-            <strong>{job.status === 'en cours' ? 'Mise à jour en cours' : job.errors ? 'Mise à jour terminée avec erreurs' : 'Mise à jour terminée'}</strong>
-            <span>{job.done} / {job.total} ({job.total ? Math.round((100 * job.done) / job.total) : 0} %){job.errors ? ` · ${job.errors} erreur(s)` : ''}</span>
+            <strong>{job.status === 'en cours' ? 'Mise à jour en cours' : job.status === 'arrêté' ? 'Import arrêté' : job.errors ? 'Mise à jour terminée avec erreurs' : 'Mise à jour terminée'}</strong>
+            <span>{job.done} / {job.total}{job.scope === 'idf' ? ' jeux' : ''} ({job.total ? Math.round((100 * job.done) / job.total) : 0} %){job.errors ? ` · ${job.errors} erreur(s)` : ''}</span>
             {job.status !== 'en cours' && <button className="icon" onClick={() => setJob(null)}>✕</button>}
           </div>
           <div className="progress"><div style={{ width: `${job.total ? (100 * job.done) / job.total : 0}%` }} /></div>
+          {job.status === 'en cours' && job.current && (
+            <div className="job-current small">
+              <div className="job-line">
+                <span><strong>{job.current.label}</strong>{job.current.attempt > 1 ? ` · passage ${job.current.attempt}` : ''} <span className="muted">· {job.current.method}</span></span>
+                <span>{job.current.done} / {job.current.total} territoires ({job.current.total ? Math.round((100 * job.current.done) / job.current.total) : 0} %)</span>
+                <span>
+                  <button className="secondary" onClick={() => api(`/jobs/${job.id}/skip`, { body: {} }).catch(() => undefined)} title="Abandonne ce jeu, passe au suivant et le reprendra plus tard">Passer ce jeu</button>{' '}
+                  <button className="secondary" onClick={() => { if (confirm("Arrêter l'import en cours ?")) api(`/jobs/${job.id}/cancel`, { body: {} }).catch(() => undefined); }}>Arrêter</button>
+                </span>
+              </div>
+              <div className="progress thin"><div style={{ width: `${job.current.total ? (100 * job.current.done) / job.current.total : 0}%` }} /></div>
+            </div>
+          )}
+          {job.status === 'en cours' && (job.deferred?.length ?? 0) > 0 && <div className="small muted">Jeux reportés (repris plus tard) : {job.deferred!.join(', ')}</div>}
           {job.status === 'en cours' && job.log.length > 0 && <div className="small">{job.log[job.log.length - 1]}</div>}
           {job.errors > 0 && (
             <details className="small">

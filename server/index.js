@@ -222,6 +222,49 @@ app.post('/api/import', (req, res) => {
   res.status(202).json(startImport({ datasetIds: req.body?.datasets, geoCodes: req.body?.geos, scope: req.body?.scope }));
 });
 
+// Journal des imports : filtres dataset, statut, périmètre, méthode (api / csv), texte libre, dates
+app.get('/api/import-runs', (req, res) => {
+  const q = req.query, where = [], params = [];
+  if (q.dataset) { where.push('dataset_id = ?'); params.push(String(q.dataset)); }
+  if (q.status) { where.push('status = ?'); params.push(String(q.status)); }
+  if (q.scope) { where.push('scope = ?'); params.push(String(q.scope)); }
+  if (q.kind) { where.push('kind = ?'); params.push(String(q.kind)); }
+  if (q.method) { where.push('method = ?'); params.push(String(q.method)); }
+  if (q.from) { where.push('started >= ?'); params.push(String(q.from)); }
+  if (q.to) { where.push('started <= ?'); params.push(String(q.to) + 'T23:59:59'); }
+  if (q.q) { where.push('(dataset_label LIKE ? OR dataset_id LIKE ? OR message LIKE ? OR log LIKE ?)'); const l = '%' + String(q.q) + '%'; params.push(l, l, l, l); }
+  const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const limit = Math.min(Number(q.limit) || 100, 500), offset = Number(q.offset) || 0;
+  res.json({
+    total: get('SELECT COUNT(*) AS n FROM import_runs ' + w, ...params).n,
+    items: all('SELECT id, job_id, scope, dataset_id, dataset_label, method, kind, source_url, started, finished, status, rows, errors, attempt, territories, message FROM import_runs ' + w + ' ORDER BY id DESC LIMIT ? OFFSET ?', ...params, limit, offset),
+    facets: {
+      status: all('SELECT status AS v, COUNT(*) AS n FROM import_runs GROUP BY status ORDER BY n DESC'),
+      method: all('SELECT method AS v, kind, COUNT(*) AS n FROM import_runs GROUP BY method ORDER BY n DESC'),
+      scope: all('SELECT scope AS v, COUNT(*) AS n FROM import_runs GROUP BY scope'),
+      dataset: all('SELECT dataset_id AS v, dataset_label AS label, COUNT(*) AS n FROM import_runs GROUP BY dataset_id ORDER BY dataset_label'),
+    },
+  });
+});
+app.get('/api/import-runs/:id', (req, res) => {
+  const r = get('SELECT * FROM import_runs WHERE id = ?', req.params.id);
+  r ? res.json({ ...r, log: JSON.parse(r.log || '[]') }) : res.status(404).json({ error: 'introuvable' });
+});
+
+// Passer le jeu en cours (il sera repris plus tard) ou arrêter l'import
+app.post('/api/jobs/:id/skip', (req, res) => {
+  const j = jobs.get(Number(req.params.id));
+  if (!j || j.status !== 'en cours') return res.status(404).json({ error: 'import introuvable ou terminé' });
+  j.skip = j.current?.id || null;
+  res.json({ ok: true, skipped: j.skip });
+});
+app.post('/api/jobs/:id/cancel', (req, res) => {
+  const j = jobs.get(Number(req.params.id));
+  if (!j || j.status !== 'en cours') return res.status(404).json({ error: 'import introuvable ou terminé' });
+  j.cancelled = true;
+  res.json({ ok: true });
+});
+
 app.get('/api/jobs/current', (req, res) => res.json(currentJob()));
 
 app.get('/api/jobs/:id', (req, res) => {
