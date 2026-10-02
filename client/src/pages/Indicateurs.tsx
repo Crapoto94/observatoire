@@ -244,6 +244,7 @@ export default function Indicateurs() {
                   {i.dataset_ids.length ? i.dataset_ids.map((d) => (
                     <Link key={d} className="chip ds" to={`/donnees?ds=${d}`} title="Voir les données">{dsLabel(d)}</Link>
                   )) : <span className="muted">—</span>}
+                  {i.kpi_ids?.map((k) => <Link key={k} className="chip ds" to={`/tableau-de-bord?kpi=${k}`} title="Voir ce KPI dans le tableau de bord">KPI ▸ {k}</Link>)}
                 </td>
                 <td><button className="icon" title="Modifier" onClick={() => setEditing(i)}>✎</button></td>
               </tr>

@@ -60,7 +60,8 @@ function withDatasets(rows) {
   const links = all('SELECT indicator_id, dataset_id FROM indicator_datasets');
   const by = new Map();
   for (const l of links) (by.get(l.indicator_id) || by.set(l.indicator_id, []).get(l.indicator_id)).push(l.dataset_id);
-  return rows.map((r) => ({ ...r, dataset_ids: by.get(r.id) || [] }));
+  const { kpiIdsFor } = require('./kpi');
+  return rows.map((r) => ({ ...r, dataset_ids: by.get(r.id) || [], kpi_ids: kpiIdsFor(r.libelle) }));
 }
 
 app.get('/api/indicators', (req, res) => {

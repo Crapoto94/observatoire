@@ -103,4 +103,10 @@ function build() {
   };
 }
 
-module.exports = { build, KPIS };
+// KPI du tableau de bord correspondant à un intitulé d'indicateur (rapprochement par intitulé)
+function kpiIdsFor(libelle) {
+  const t = norm(libelle);
+  return KPIS.filter((k) => k.ind.test(t)).map((k) => k.id);
+}
+
+module.exports = { build, KPIS, kpiIdsFor };

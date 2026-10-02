@@ -141,7 +141,7 @@ export default function Carte() {
         <button className="secondary" onClick={saveVersion} disabled={!!versionId}>Enregistrer une version</button>
         {versionId && <button className="secondary" onClick={deleteVersion}>Supprimer cette version</button>}
         <label className="inline">Sous-titre <input value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-        <span className="muted small">Molette : zoom · glisser : déplacer · clic sur un indicateur : fiche</span>
+        <span className="muted small">Molette : zoom · glisser : déplacer · clic sur un indicateur : fiche · ▦ données · ◔ KPI</span>
       </div>
       {error && <div className="error">{error}</div>}
       {snapshot && <div className="version-banner">Version « {snapshot.label} » enregistrée le {fmtDate(snapshot.created_at.replace(' ', 'T') + 'Z')} (lecture seule).</div>}
@@ -193,6 +193,18 @@ export default function Carte() {
                   <title>{`${i.libelle}\nNiveau : ${i.niveau} · Priorité : ${i.priorite ?? '—'}\nSource : ${i.source || '—'}`}</title>
                   <rect x={c.x} y={c.y} width={c.w} height={c.h} rx={9} fill={NIVEAU_FILL[i.niveau]} stroke={darker(NIVEAU_FILL[i.niveau])} strokeWidth={1} />
                   {i.statut === 'valide' && <circle cx={c.x + c.w - 8} cy={c.y + 8} r={5} fill="#2e9d4f" stroke="#fff" strokeWidth={1.5} />}
+                  {(i.dataset_ids?.length ?? 0) > 0 && (
+                    <g onClick={(e) => { e.stopPropagation(); if (!moved.current) nav(`/donnees?ds=${i.dataset_ids[0]}`); }}>
+                      <title>Voir les données</title>
+                      <rect x={c.x + 3} y={c.y + c.h - 15} width={14} height={12} rx={3} fill="#2563eb" /><text x={c.x + 10} y={c.y + c.h - 5.5} textAnchor="middle" fontSize={9} fill="#fff">▦</text>
+                    </g>
+                  )}
+                  {(i.kpi_ids?.length ?? 0) > 0 && (
+                    <g onClick={(e) => { e.stopPropagation(); if (!moved.current) nav(`/tableau-de-bord?kpi=${i.kpi_ids![0]}`); }}>
+                      <title>Voir le KPI dans le tableau de bord</title>
+                      <rect x={c.x + 20} y={c.y + c.h - 15} width={14} height={12} rx={3} fill="#16a34a" /><text x={c.x + 27} y={c.y + c.h - 5.5} textAnchor="middle" fontSize={9} fill="#fff">◔</text>
+                    </g>
+                  )}
                   {i.statut === 'abandonne' && <line x1={c.x + 6} y1={c.y + c.h - 6} x2={c.x + c.w - 6} y2={c.y + 6} stroke="#b91c1c" strokeWidth={2} />}
                   <text textAnchor="middle" fontSize={CELL.font} fontWeight={i.priorite === 1 ? 700 : 400} fill={prioColor(i.priorite)}>
                     {c.lines.map((ln, k) => <tspan key={k} x={c.x + c.w / 2} y={top + k * CELL.lineH}>{ln}</tspan>)}

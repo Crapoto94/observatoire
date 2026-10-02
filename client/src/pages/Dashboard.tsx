@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
 import { api } from '../api';
 
@@ -29,7 +29,7 @@ const BADGE: Record<string, { label: string; color: string }> = {
   sans_fiche: { label: 'Sans fiche', color: '#94a3b8' },
 };
 
-function Card({ k }: { k: Kpi }) {
+function Card({ k, focus }: { k: Kpi; focus: boolean }) {
   const [open, setOpen] = useState(false);
   const delta = k.value != null && k.prev ? k.value - k.prev.value : null;
   const pct = delta != null && k.prev && k.prev.value !== 0 ? (delta / Math.abs(k.prev.value)) * 100 : null;
@@ -38,7 +38,7 @@ function Card({ k }: { k: Kpi }) {
   const b = BADGE[k.statut];
   const color = good === 'good' ? '#16a34a' : good === 'bad' ? '#dc2626' : '#2563eb';
   return (
-    <div className="kpi-card">
+    <div className={`kpi-card${focus ? ' focus' : ''}`} id={`kpi-${k.id}`}>
       <div className="kpi-top">
         <span className="muted small">{k.theme}</span>
         <span className="kpi-badge" style={{ background: b.color }} title={`${k.states.valide} validé(s), ${k.states.brouillon} brouillon(s) parmi ${k.indicators.length} fiche(s) rattachée(s)`}>{b.label}</span>
@@ -97,7 +97,10 @@ export default function Dashboard() {
   const [d, setD] = useState<Dash | null>(null);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState('');
+  const [params] = useSearchParams();
+  const focusId = params.get('kpi') || '';
   useEffect(() => { api<Dash>('/kpi').then(setD).catch((e) => setError(e.message)); }, []);
+  useEffect(() => { if (d && focusId) document.getElementById(`kpi-${focusId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, [d, focusId]);
   const themes = useMemo(() => [...new Set((d?.kpis ?? []).map((k) => k.theme))], [d]);
   const shown = (d?.kpis ?? []).filter((k) => !theme || k.theme === theme);
   const prioByTheme = useMemo(() => {
@@ -127,7 +130,7 @@ export default function Dashboard() {
         {themes.map((t) => <button key={t} className={theme === t ? 'on' : ''} onClick={() => setTheme(t)}>{t}</button>)}
       </div>
 
-      <div className="kpi-grid">{shown.map((k) => <Card key={k.id} k={k} />)}</div>
+      <div className="kpi-grid">{shown.map((k) => <Card key={k.id} k={k} focus={k.id === focusId} />)}</div>
       <p className="muted small">
         Valeur la plus récente disponible, évolution par rapport à la période précédente (vert : favorable, rouge : défavorable, bleu : neutre) et comparaison avec le Val-de-Marne et l'Île-de-France pour les taux et les prix.
         Le badge indique l'état de validation des fiches indicateurs correspondantes (rapprochement par intitulé).

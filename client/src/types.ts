@@ -52,6 +52,7 @@ export interface Indicator {
   origine: Origine | null;
   cartographie: Carto | null;
   dataset_ids: string[];
+  kpi_ids?: string[]; // KPI du tableau de bord correspondants
 }
 
 export type Origine = 'externe' | 'interne' | 'mixte';

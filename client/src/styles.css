@@ -212,3 +212,5 @@ ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent
 .st-ok { background: #2e9d4f; } .st-partiel { background: #d97706; } .st-reporté, .st-erreur { background: #dc2626; }
 .st-passé, .st-interrompu { background: #64748b; } .st-en-cours { background: #2563eb; }
 .run-log { background: #0f172a; color: #e2e8f0; padding: 8px 10px; border-radius: 6px; max-height: 260px; overflow: auto; font-size: 12px; white-space: pre-wrap; margin: 4px 0; }
+
+.kpi-card.focus { outline: 3px solid #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2); }
