@@ -89,4 +89,31 @@ module.exports = [
       labels: { ...mesure({ EQUIPEMENTS: "Nombre d'équipements sportifs" }), FAMILLE: { label: "Famille d'équipement", values: { _T: 'Tous équipements' } } },
     },
   },
+  {
+    id: 'gaspar', provider: 'gaspar', label: 'Risques naturels et technologiques (Géorisques, GASPAR)',
+    description: "Ministère de la Transition écologique, base GASPAR : arrêtés de reconnaissance de catastrophe naturelle par commune (année de début, type de risque, cumul sur 10 ans glissants) et risques majeurs recensés dans la commune (inondation, mouvements de terrain, transport de marchandises dangereuses, risque industriel…). Archive nationale téléchargée une fois. Un arrêté n'indique pas l'ampleur des dégâts.",
+    themes: ['environnement'], doc_url: 'https://www.data.gouv.fr/datasets/536995eea3a729239d20486b',
+    link: [{ theme: 'environnement', re: /risque|catastrophe|inondation/ }],
+    config: {
+      labels: {
+        ...mesure({ ARRETES_CATNAT: 'Arrêtés de catastrophe naturelle (année de début)', ARRETES_10ANS: 'Arrêtés de catastrophe naturelle sur 10 ans glissants', RISQUES_RECENSES: 'Risques majeurs recensés' }),
+        CATNAT_TYPE: { label: 'Type de catastrophe naturelle', values: { _T: 'Tous types', ICB: 'Inondations et coulées de boue', SEC: 'Sécheresse', MVT: 'Mouvement de terrain', GLT: 'Glissement de terrain', IRN: 'Inondations par remontée de nappe', TMP: 'Tempête', GRL: 'Grêle', EFA: 'Effondrement ou affaissement', ECB: 'Éboulement ou chute de blocs', AUTRE: 'Autre' } },
+        RISQUE_TYPE: { label: 'Risque majeur recensé', values: { _T: 'Nombre de risques recensés', 11: 'Inondation', 12: 'Mouvement de terrain', 16: 'Feu de forêt', 17: 'Phénomène lié à l’atmosphère', 21: 'Risque industriel', 22: 'Nucléaire', 23: 'Rupture de barrage', 24: 'Transport de marchandises dangereuses' } },
+      },
+    },
+  },
+  {
+    id: 'dpe', provider: 'tabular', label: 'Performance énergétique des logements (DPE, par commune)',
+    description: "ADEME, base des diagnostics de performance énergétique des logements existants, agrégée par commune (Terralyse, millésime 2026) : nombre de diagnostics par étiquette de A à G. Seules les communes avec assez de diagnostics sont publiées (environ 5 500). Les diagnostics ne couvrent pas l'ensemble du parc : ils sont réalisés à la vente, à la location ou lors de travaux.",
+    themes: ['logement', 'environnement'], doc_url: 'https://www.data.gouv.fr/datasets/6a9bea1e50326fc16ecb5bc7',
+    link: [{ theme: 'logement', re: /passoire|dpe|etiquette|performance energetique/ }, { theme: 'environnement', re: /passoire|dpe|etiquette|performance energetique/ }],
+    config: {
+      sources: [{ level: 'COM', resource: '83713035-9e89-44b7-a148-7fa378c6ba91', geoField: 'code_insee', period: '$YEAR' }],
+      columns: [
+        { field: 'nb_dpe', measure: 'NB_DPE' }, { field: 'nb_a', measure: 'DPE_A' }, { field: 'nb_b', measure: 'DPE_B' }, { field: 'nb_c', measure: 'DPE_C' },
+        { field: 'nb_d', measure: 'DPE_D' }, { field: 'nb_e', measure: 'DPE_E' }, { field: 'nb_f', measure: 'DPE_F' }, { field: 'nb_g', measure: 'DPE_G' },
+      ],
+      labels: mesure({ NB_DPE: 'Diagnostics valides', DPE_A: 'Étiquette A', DPE_B: 'Étiquette B', DPE_C: 'Étiquette C', DPE_D: 'Étiquette D', DPE_E: 'Étiquette E', DPE_F: 'Étiquette F', DPE_G: 'Étiquette G' }),
+    },
+  },
 ];

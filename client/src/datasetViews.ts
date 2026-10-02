@@ -381,6 +381,23 @@ export const VIEWS: Record<string, View> = {
       { label: 'Part des logements construits avant 1971', x: '@PERIOD', pins: { CRITERE: 'EPOQUE' }, ratio: ratio('MODALITE', ['EP_AV1946', 'EP_1946_1970'], ['EP_AV1946', 'EP_1946_1970', 'EP_1971_1990', 'EP_1991_2005', 'EP_2006_PLUS'], 'Logements construits avant 1971 / logements') },
     ],
   },
+  gaspar: {
+    note: "Base GASPAR (Géorisques). Un arrêté de catastrophe naturelle reconnaît un événement : il ne mesure ni son ampleur ni les dégâts. Les risques recensés sont ceux inscrits au dossier départemental sur les risques majeurs.",
+    presets: [
+      { label: 'Arrêtés de catastrophe naturelle par année', x: '@PERIOD', pins: { MESURE: 'ARRETES_CATNAT', CATNAT_TYPE: '_T' } },
+      { label: 'Arrêtés sur 10 ans glissants', x: '@PERIOD', pins: { MESURE: 'ARRETES_10ANS', CATNAT_TYPE: '_T' } },
+      { label: 'Arrêtés par type (cumul 10 ans, dernière année)', x: 'CATNAT_TYPE', pins: { MESURE: 'ARRETES_10ANS' } },
+      { label: 'Risques majeurs recensés', x: 'RISQUE_TYPE', pins: { MESURE: 'RISQUES_RECENSES' } },
+    ],
+  },
+  dpe: {
+    note: "Diagnostics de performance énergétique des logements existants (ADEME, agrégation Terralyse). Les diagnostics ne couvrent pas tout le parc.",
+    presets: [
+      { label: 'Répartition par étiquette (nombre)', x: 'MESURE', keep: { MESURE: ['DPE_A', 'DPE_B', 'DPE_C', 'DPE_D', 'DPE_E', 'DPE_F', 'DPE_G'] } },
+      { label: 'Part de logements classés F ou G', x: '@GEO', pins: {}, ratio: ratio('MESURE', ['DPE_F', 'DPE_G'], ['NB_DPE'], 'Étiquettes F et G / diagnostics') },
+      { label: 'Part de logements classés A ou B', x: '@GEO', pins: {}, ratio: ratio('MESURE', ['DPE_A', 'DPE_B'], ['NB_DPE'], 'Étiquettes A et B / diagnostics') },
+    ],
+  },
   finess: {
     note: "Établissements sanitaires et sociaux du fichier FINESS (stock à la date de l'import). Ce sont des établissements, pas des places ni des professionnels de santé.",
     presets: [
