@@ -38,6 +38,9 @@ function aggregate(datasetId) {
     const rows = all(`SELECT geo, period, dims, measure, value FROM data_rows WHERE dataset_id = ? AND geo IN (${ph}) AND value IS NOT NULL`, datasetId, ...g.members);
     const pops = Object.fromEntries(all(`SELECT code, population FROM geos WHERE code IN (${ph})`, ...g.members).map((r) => [r.code, r.population || 0]));
     const acc = new Map();
+    // jeu chargé pour moins de 90 % des communes membres : les sommes seraient trompeuses, seules les moyennes pondérées sont écrites
+    const covered = new Set(rows.map((r) => r.geo)).size;
+    const partial = covered < g.members.length * 0.9;
     for (const r of rows) {
       const k = `${r.period ?? ''}\u0001${r.dims}\u0001${r.measure}`;
       const a = acc.get(k) || acc.set(k, { period: r.period, dims: r.dims, measure: r.measure, sum: 0, w: 0, wv: 0, n: 0, intensive: null }).get(k);
@@ -50,6 +53,7 @@ function aggregate(datasetId) {
       run('DELETE FROM data_rows WHERE dataset_id = ? AND geo = ?', datasetId, g.code);
       const ins = db.prepare('INSERT INTO data_rows (dataset_id, geo, period, dims, measure, value, status) VALUES (?,?,?,?,?,?,?)');
       for (const a of acc.values()) {
+        if (partial && !a.intensive) continue;
         const value = a.intensive ? (a.w ? a.wv / a.w : a.sum / a.n) : a.sum;
         ins.run(datasetId, g.code, a.period, a.dims, a.measure, value, a.n < g.members.length ? `${a.n}/${g.members.length} communes` : null);
       }

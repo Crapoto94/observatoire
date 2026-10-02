@@ -94,8 +94,10 @@ function build() {
       let s = seriesOf(rowsOf(spec.dataset, geo), spec);
       // jeux communaux : le Val-de-Marne et l'Île-de-France sont recalculés à partir des communes (effectifs ou ratios de sommes)
       if (!s.length && spec.fromCommunes && (key === 'dep' || key === 'reg')) {
-        const all2 = [...carto.rowsFor(spec, communesOf(key)).values()].flat();
-        s = seriesOf(all2, spec);
+        const codes = communesOf(key);
+        const byGeo = carto.rowsFor(spec, codes);
+        // jeu encore peu chargé pour ce périmètre : une somme partielle serait trompeuse
+        if (byGeo.size >= codes.length * 0.6) s = seriesOf([...byGeo.values()].flat(), spec);
       }
       if (spec.kpiPerK) s = s.map((p) => { const pop = carto.popAt(pops[geo], p.period); return pop ? { period: p.period, value: (p.value / pop) * 1000 } : null; }).filter(Boolean);
       res[key] = s;
