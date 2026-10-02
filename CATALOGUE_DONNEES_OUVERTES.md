@@ -5,7 +5,7 @@ Chaque source retenue a été **interrogée pour Ivry-sur-Seine (94041)** avant 
 
 Principe d'import : on télécharge de préférence le fichier complet, ou filtré sur l'Île-de-France, puis on filtre et on agrège en interne par commune. Les requêtes commune par commune ne servent que lorsqu'aucune autre solution n'existe.
 
-## 1. Jeux intégrés à l'application (51)
+## 1. Jeux intégrés à l'application (53)
 
 ### INSEE, API Melodi (20 jeux, communes + département, métropole, région)
 
@@ -51,6 +51,8 @@ Portail : <https://opendata.agenceore.fr> (API `/data-fair/api/v1`).
 | Allocataires CAF par prestation (2020-2024) | [data.caf.fr, toutes prestations](https://data.caf.fr/explore/dataset/s_ben_com_f/) | commune | 17 610 foyers allocataires fin 2024 (35 920 personnes), dont 5 005 à la prime d'activité et 2 790 au RSA |
 | Risques naturels et technologiques (GASPAR) | [Géorisques / data.gouv.fr](https://www.data.gouv.fr/datasets/536995eea3a729239d20486b), archive nationale (8 Mo) | commune | 3 arrêtés de catastrophe naturelle sur 10 ans (2025), 2 risques majeurs recensés (inondation, transport de marchandises dangereuses) |
 | Performance énergétique des logements (DPE) | [ADEME / Terralyse](https://www.data.gouv.fr/datasets/6a9bea1e50326fc16ecb5bc7), millésime 2026, environ 5 500 communes | commune | 22 420 diagnostics, dont 11,5 % de logements classés F ou G |
+| Impôt sur le revenu par commune (IRCOM) | [DGFiP](https://www.data.gouv.fr/datasets/536998cba3a729239d20505e), une archive Excel par année de revenus (2021-2024) | commune | 42 024 foyers fiscaux, dont 43,7 % imposés ; revenu fiscal de référence moyen de 25 926 € par foyer (22 991 € en 2021) |
+| Professionnels de santé libéraux | [Région Île-de-France, annuaire santé](https://data.iledefrance.fr/explore/dataset/annuaire-et-localisation-des-professionnels-de-sante/), export CSV dédoublonné | commune | 57 professionnels conventionnés, dont 23 médecins généralistes (0,35 pour 1 000 habitants) et 15 chirurgiens-dentistes |
 | Indice de position sociale des écoles (IPS) | [Éducation nationale](https://data.education.gouv.fr/explore/dataset/fr-en-ips-ecoles-ap2022/), rentrées 2022 à 2024 | commune | IPS moyen des écoles publiques : 98,0 (2022) puis 99,5 (2024) |
 
 ### Open data hors INSEE chargés auparavant (11 jeux)
@@ -83,11 +85,10 @@ Portail : <https://opendata.agenceore.fr> (API `/data-fair/api/v1`).
 | Offre de soins, densité médicale | DREES, [APL](https://data.drees.solidarites-sante.gouv.fr/explore/dataset/530_l-accessibilite-potentielle-localisee-apl/) | l'API ne renvoie pas d'enregistrements | télécharger le fichier APL |
 | Demandeurs d'emploi | [France Travail, API Open Data](https://francetravail.io/data/api) | API soumise à clé | demande de clé |
 | Collecte des déchets | [SINOE](https://www.sinoe.org/), EPT Grand-Orly Seine Bièvre | pas de série communale ouverte | demande à l'EPT |
-| Impôt sur le revenu par commune (IRCOM) | DGFiP, [data.gouv.fr](https://www.data.gouv.fr/datasets/536998cba3a729239d20505e) : archives annuelles (18 Mo) de fichiers Excel anciens (.xls) par département | format .xls non lu par l'application (nécessite une bibliothèque dédiée) | revenu fiscal de référence, foyers imposables, impôt net par commune |
-| Quartiers prioritaires (QPV) | ANCT, [data.gouv.fr](https://www.data.gouv.fr/datasets/5a561801c751df42d7fca9b6) : périmètres et populations | contours à rapprocher des communes ; Filosofi par QPV à ajouter | indicateurs spécifiques aux QPV d'Ivry |
-| Annuaire des professionnels de santé | [Région Île-de-France](https://data.iledefrance.fr/explore/dataset/annuaire-et-localisation-des-professionnels-de-sante/) (348 000 lignes, une ligne par acte) | à dédoublonner par professionnel avant de compter | densité de médecins, infirmiers, dentistes par commune |
 | Résultats au brevet (DNB) par établissement | [Éducation nationale](https://data.education.gouv.fr/explore/dataset/fr-en-dnb-par-etablissement/) | s'arrête à la session 2021 | taux de réussite par commune |
 | Autres prestations CAF | [data.caf.fr](https://data.caf.fr/) | seul le RSA est publié à la commune dans les jeux trouvés | explorer le catalogue par prestation |
+
+- **Quartiers prioritaires (QPV)** : les contours (ANCT, géographie 2024) sont affichés en surcouche sur la cartographie : 298 quartiers en Île-de-France, 47 dans le Val-de-Marne, 36 dans le GOSB, dont 4 à Ivry (Pierre et Marie Curie, Gagarine, Ivry Port, Monmousseau). Les indicateurs propres aux QPV (revenus, population) restent à ajouter.
 
 ## 2 bis. Portails du GOSB, du Val-de-Marne et de la Région : ce qui a été trouvé
 

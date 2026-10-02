@@ -393,6 +393,14 @@ export const VIEWS: Record<string, View> = {
       { label: 'Prestations (dernière année)', x: 'MESURE', keep: { MESURE: ['FOYERS_AF', 'FOYERS_CF', 'FOYERS_ASF', 'FOYERS_PAJE_BASE', 'FOYERS_CMG', 'FOYERS_APL', 'FOYERS_ALS', 'FOYERS_ALF', 'FOYERS_RSA', 'FOYERS_PPA'] } },
     ],
   },
+  sante_pro: {
+    note: "Professionnels conventionnés de l'annuaire santé, dédoublonnés (nom, adresse, profession). Les médecins hospitaliers et les centres de santé ne sont pas comptés. Mesure l'offre de ville, pas l'accès réel aux soins.",
+    presets: [
+      { label: 'Médecins généralistes pour 1 000 habitants (comparaison de territoires)', x: '@GEO', mode: 'pop', pins: { MESURE: 'PROFESSIONNELS', PROFESSION: 'GENERALISTE' } },
+      { label: 'Professionnels par profession', x: 'PROFESSION', keep: { PROFESSION: ['GENERALISTE', 'DENTISTE', 'SAGE_FEMME', 'PEDIATRE', 'PSYCHIATRE', 'GYNECOLOGUE', 'OPHTALMOLOGUE', 'AUTRE_SPECIALISTE'] }, pins: { MESURE: 'PROFESSIONNELS' } },
+      { label: 'Professionnels par profession, pour 1 000 habitants', x: 'PROFESSION', mode: 'pop', keep: { PROFESSION: ['GENERALISTE', 'DENTISTE', 'SAGE_FEMME', 'PEDIATRE', 'PSYCHIATRE', 'GYNECOLOGUE', 'OPHTALMOLOGUE', 'AUTRE_SPECIALISTE'] }, pins: { MESURE: 'PROFESSIONNELS' } },
+    ],
+  },
   ircom: {
     note: "Impôt sur le revenu par commune (DGFiP). Montants en milliers d’euros. Le revenu fiscal de référence n’est pas le niveau de vie de l’INSEE (il ne tient pas compte de la composition du ménage ni des prestations).",
     presets: [

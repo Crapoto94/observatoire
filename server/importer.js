@@ -14,6 +14,7 @@ const finances = require('./connectors/finances');
 const gaspar = require('./connectors/gaspar');
 const ips = require('./connectors/ips');
 const ircom = require('./connectors/ircom');
+const sante = require('./connectors/sante');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
 
@@ -35,6 +36,7 @@ const CONNECTORS = {
   gaspar: gaspar.fetchGeo,
   ips: ips.fetchGeo,
   ircom: ircom.fetchGeo,
+  sante: sante.fetchGeo,
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -52,6 +54,7 @@ const BULK = {
   gaspar: { fn: gaspar.fetchMany, size: 100000 },
   ips: { fn: ips.fetchMany, size: 100000 },
   ircom: { fn: ircom.fetchMany, size: 100000 },
+  sante: { fn: sante.fetchMany, size: 100000 },
 };
 
 const jobs = new Map();

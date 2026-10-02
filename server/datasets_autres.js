@@ -167,4 +167,16 @@ module.exports = [
       },
     },
   },
+  {
+    id: 'sante_pro', provider: 'sante', label: 'Professionnels de santé libéraux (annuaire santé)',
+    description: "Annuaire et localisation des professionnels de santé en Île-de-France (Région, d'après l'annuaire santé de l'Assurance maladie) : nombre de professionnels par commune, dédoublonnés à partir des lignes par acte (nom, adresse, profession). Médecins généralistes, spécialistes, chirurgiens-dentistes, sages-femmes. Seuls les professionnels conventionnés de l'annuaire sont comptés : les médecins hospitaliers et les centres de santé n'apparaissent pas. Stock à la date de l'import ; un professionnel exerçant à plusieurs adresses est compté une fois par adresse.",
+    themes: ['cohesion'], doc_url: 'https://data.iledefrance.fr/explore/dataset/annuaire-et-localisation-des-professionnels-de-sante/',
+    link: [{ theme: 'cohesion', re: /offre de soins|medecin|densite medicale|sante/ }],
+    config: {
+      labels: {
+        ...mesure({ PROFESSIONNELS: 'Professionnels de santé' }),
+        PROFESSION: { label: 'Profession', values: { _T: 'Tous professionnels', GENERALISTE: 'Médecins généralistes', DENTISTE: 'Chirurgiens-dentistes', SAGE_FEMME: 'Sages-femmes', PEDIATRE: 'Pédiatres', PSYCHIATRE: 'Psychiatres', GYNECOLOGUE: 'Gynécologues', OPHTALMOLOGUE: 'Ophtalmologues', AUTRE_SPECIALISTE: 'Autres spécialistes' } },
+      },
+    },
+  },
 ];
