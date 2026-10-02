@@ -388,4 +388,6 @@ app.listen(PORT, '0.0.0.0', () => {
   }
   // Chargement de l'Île-de-France (carte) fait par le serveur, sans passer par le navigateur
   if (process.env.AUTO_IMPORT_IDF !== 'false') autoImportIdf();
+  // recalcul des agrégats de l'EPT (GOSB) à chaque démarrage : suit d'éventuelles corrections de règles
+  setTimeout(() => { try { require('./groups').aggregateAll(); } catch (e) { console.warn('[groupes]', e.message); } }, 15000);
 });

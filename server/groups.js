@@ -28,7 +28,7 @@ function ensureGroups() {
 
 // valeurs « intensives » : à moyenner (pondération par la population) plutôt qu'à additionner
 const INTENSIVE_DATASETS = new Set(['filosofi']);
-const INTENSIVE = /(^|_)(MED|MEDIAN|MEDIANE|PRIX|LOYER|TAUX|PR|GI|IR|S80S20|PART|PCT|POURCENT|RATIO|MOYEN|MOYENNE|DENSITE)(_|$)/i;
+const INTENSIVE = /(^|[_\s])(MED|MEDIAN|MEDIANE|PRIX|LOYER|TAUX|PR|GI|IR|S80S20|PART|PCT|POURCENT|RATIO|MOYEN|MOYENNE|DENSITE)($|[_\s])/i;
 
 function aggregate(datasetId) {
   const done = [];
