@@ -5,3 +5,5 @@ data/
 _tmp/
 *.log
 pulldocker.ini
+server/commit-count.txt
+server/whatsnew.txt

@@ -55,7 +55,7 @@ function mapRecords(records, spec, constDims = {}, constPeriod = null) {
   const periodOf = (v) => (spec.periodYear && v != null && v !== '' ? String(v).slice(0, 4) : basePeriodOf(v));
   const dimsOf = (r) => {
     const d = { ...constDims };
-    for (const f of spec.dimFields || []) d[f.dim] = r[f.field] == null ? '_Z' : String(r[f.field]);
+    for (const f of spec.dimFields || []) { const raw = r[f.field]; d[f.dim] = raw == null ? '_Z' : f.map && f.map[raw] !== undefined ? f.map[raw] : String(raw); }
     return d;
   };
   if (spec.count) {

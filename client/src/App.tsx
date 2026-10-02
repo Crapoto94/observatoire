@@ -8,12 +8,14 @@ import Catalogue from './pages/Catalogue';
 import Database from './pages/Database';
 import Cartographie from './pages/Cartographie';
 import Imports from './pages/Imports';
+import Nouveautes from './pages/Nouveautes';
 import Dashboard from './pages/Dashboard';
 
 export default function App() {
   const [build, setBuild] = useState('');
+  const [version, setVersion] = useState('');
   useEffect(() => {
-    fetch('/api/status').then((r) => r.json()).then((s) => setBuild(s.build ? new Date(s.build).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '')).catch(() => undefined);
+    fetch('/api/status').then((r) => r.json()).then((s) => { setVersion(s.version || ''); setBuild(s.build ? new Date(s.build).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : ''); }).catch(() => undefined);
   }, []);
   return (
     <div className="app">
@@ -44,10 +46,11 @@ export default function App() {
           <Route path="/cartographie" element={<Cartographie />} />
           <Route path="/catalogue" element={<Catalogue />} />
           <Route path="/imports" element={<Imports />} />
+          <Route path="/nouveautes" element={<Nouveautes />} />
           <Route path="/database" element={<Database />} />
         </Routes>
       </main>
-      {build && <footer className="build">Version du {build}</footer>}
+      {build && <footer className="build"><NavLink to="/nouveautes" title="Voir les nouveautés">v{version}</NavLink> · version du {build}</footer>}
     </div>
   );
 }

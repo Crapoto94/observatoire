@@ -197,59 +197,62 @@ export default function Indicateurs() {
       {error && <div className="error">{error}</div>}
 
       <div className="table-wrap">
-        <table className="grid">
+        <table className="grid ind-table">
           <thead>
             <tr>
-              <th onClick={() => toggleSort('theme')} className="sortable">Thème{arrow('theme')}</th>
-              <th onClick={() => toggleSort('niveau')} className="sortable">Niveau{arrow('niveau')}</th>
+              <th onClick={() => toggleSort('theme')} className="sortable">Thème{arrow('theme')}<span className="th-sub"> · niveau</span></th>
               <th onClick={() => toggleSort('libelle')} className="sortable">Indicateur{arrow('libelle')}</th>
-              <th onClick={() => toggleSort('priorite')} className="sortable">Prio{arrow('priorite')}</th>
-              <th>Statut</th>
-              <th>Faisabilité</th>
-              <th>Origine</th>
-              <th>Carto</th>
-              <th onClick={() => toggleSort('source')} className="sortable">Source (classeur){arrow('source')}</th>
-              <th>Lien d'origine</th>
-              <th>Lien corrigé</th>
-              <th>Périodicité</th>
+              <th onClick={() => toggleSort('priorite')} className="sortable">Suivi{arrow('priorite')}<span className="th-sub"> · prio, statut, faisabilité</span></th>
+              <th>Nature<span className="th-sub"> · origine, carto</span></th>
+              <th onClick={() => toggleSort('source')} className="sortable">Source{arrow('source')}<span className="th-sub"> · périodicité</span></th>
+              <th>Liens</th>
               <th>Proposition</th>
-              <th>Lien données</th>
-              <th>Jeux importés</th>
+              <th>Jeux, KPI</th>
               <th />
             </tr>
           </thead>
           <tbody>
             {rows.map((i) => (
               <tr key={i.id} className={i.notes ? 'flagged' : ''}>
-                <td><div>{i.theme_label}</div><div className="muted small">{i.groupe_label !== i.theme_label ? i.groupe_label : ''}</div></td>
-                <td><span className="chip" style={{ background: NIVEAU_FILL[i.niveau] }}>{NIVEAUX.find((n) => n.key === i.niveau)?.label}</span></td>
+                <td className="c-theme">
+                  <div>{i.theme_label}</div>
+                  <div className="muted small">{i.groupe_label !== i.theme_label ? i.groupe_label : ''}</div>
+                  <span className="chip" style={{ background: NIVEAU_FILL[i.niveau] }}>{NIVEAUX.find((n) => n.key === i.niveau)?.label}</span>
+                </td>
                 <td className="lib">
                   <strong>{i.libelle}</strong>
                   {i.libelle_carte && i.libelle_carte.toLowerCase() !== i.libelle.toLowerCase() && <div className="muted small">Carte : {i.libelle_carte}</div>}
                   {i.definition && <div className="small muted clamp2" title={i.definition}>{i.definition}</div>}
                   {i.notes && <div className="note small">⚠ {i.notes}</div>}
                 </td>
-                <td><PrioPill p={i.priorite} /></td>
-                <td><StatutPill s={i.statut} /></td>
-                <td>{i.faisabilite ? <span className={`faisa faisa-${i.faisabilite}`}>{FAISABILITES.find((f) => f.key === i.faisabilite)?.short}</span> : <span className="muted">—</span>}</td>
-                <td><OrigineChip o={i.origine} /></td>
-                <td><CartoChip c={i.cartographie} /></td>
-                <td className="clamp" title={i.source || ''}>{i.source || <span className="muted">—</span>}</td>
-                <td><LinkCell url={i.lien_origine} /></td>
-                <td><LinkCell url={i.lien_corrige} /></td>
-                <td>{i.periodicite || <span className="muted">—</span>}</td>
-                <td className="prop" title={i.proposition || ''}>{i.proposition || <span className="muted">—</span>}</td>
-                <td><LinkCell url={i.lien_donnees} /></td>
-                <td>
-                  {i.dataset_ids.length ? i.dataset_ids.map((d) => (
+                <td className="c-stack">
+                  <PrioPill p={i.priorite} />
+                  <StatutPill s={i.statut} />
+                  {i.faisabilite ? <span className={`faisa faisa-${i.faisabilite}`}>{FAISABILITES.find((f) => f.key === i.faisabilite)?.short}</span> : null}
+                </td>
+                <td className="c-stack"><OrigineChip o={i.origine} /><CartoChip c={i.cartographie} /></td>
+                <td className="clamp" title={i.source || ''}>
+                  <div className="clamp2">{i.source || <span className="muted">—</span>}</div>
+                  {i.periodicite && <div className="muted small">{i.periodicite}</div>}
+                </td>
+                <td className="c-links small">
+                  {i.lien_origine && <div><span className="muted">origine </span><LinkCell url={i.lien_origine} /></div>}
+                  {i.lien_corrige && <div><span className="muted">corrigé </span><LinkCell url={i.lien_corrige} /></div>}
+                  {i.lien_donnees && <div><span className="muted">données </span><LinkCell url={i.lien_donnees} /></div>}
+                  {!i.lien_origine && !i.lien_corrige && !i.lien_donnees && <span className="muted">—</span>}
+                </td>
+                <td className="prop" title={i.proposition || ''}>{i.proposition ? <div className="clamp3">{i.proposition}</div> : <span className="muted">—</span>}</td>
+                <td className="c-chips">
+                  {i.dataset_ids.map((d) => (
                     <Link key={d} className="chip ds" to={`/donnees?ds=${d}`} title="Voir les données">{dsLabel(d)}</Link>
-                  )) : <span className="muted">—</span>}
+                  ))}
                   {i.kpi_ids?.map((k) => <Link key={k} className="chip ds" to={`/tableau-de-bord?kpi=${k}`} title="Voir ce KPI dans le tableau de bord">KPI ▸ {k}</Link>)}
+                  {!i.dataset_ids.length && !i.kpi_ids?.length && <span className="muted">—</span>}
                 </td>
                 <td><button className="icon" title="Modifier" onClick={() => setEditing(i)}>✎</button></td>
               </tr>
             ))}
-            {!rows.length && <tr><td colSpan={16} className="empty">Aucun indicateur ne correspond aux filtres.</td></tr>}
+            {!rows.length && <tr><td colSpan={9} className="empty">Aucun indicateur ne correspond aux filtres.</td></tr>}
           </tbody>
         </table>
       </div>

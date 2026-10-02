@@ -381,6 +381,19 @@ export const VIEWS: Record<string, View> = {
       { label: 'Part des logements construits avant 1971', x: '@PERIOD', pins: { CRITERE: 'EPOQUE' }, ratio: ratio('MODALITE', ['EP_AV1946', 'EP_1946_1970'], ['EP_AV1946', 'EP_1946_1970', 'EP_1971_1990', 'EP_1991_2005', 'EP_2006_PLUS'], 'Logements construits avant 1971 / logements') },
     ],
   },
+  ft_defm: {
+    note: "Demandeurs d'emploi inscrits à France Travail (catégories A, B, C) au 4ᵉ trimestre de chaque année, par commune. Chiffres bruts arrondis à 5 : de petits écarts sont normaux entre le total et la somme des détails.",
+    presets: [
+      { label: "Demandeurs d'emploi (évolution)", x: '@PERIOD', pins: { MESURE: 'DEFM_ABC', SEXE: '_T', AGE: '_T' } },
+      { label: "Demandeurs d'emploi pour 1 000 habitants", x: '@PERIOD', mode: 'pop', pins: { MESURE: 'DEFM_ABC', SEXE: '_T', AGE: '_T' } },
+      { label: "Indice base 100 (évolution depuis le début)", x: '@PERIOD', mode: 'idx', pins: { MESURE: 'DEFM_ABC', SEXE: '_T', AGE: '_T' } },
+      { label: "Par tranche d'âge", x: 'AGE', keep: { AGE: ['Y_LT25', 'Y25T49', 'Y_GE50'] }, pins: { MESURE: 'DEFM_ABC', SEXE: '_T' } },
+      { label: 'Par sexe', x: 'SEXE', keep: { SEXE: ['H', 'F'] }, pins: { MESURE: 'DEFM_ABC', AGE: '_T' } },
+      { label: 'Part des femmes', x: '@PERIOD', pins: { MESURE: 'DEFM_ABC', AGE: '_T' }, ratio: ratio('SEXE', ['F'], ['_T'], 'Femmes / demandeurs d’emploi') },
+      { label: 'Part des moins de 25 ans', x: '@PERIOD', pins: { MESURE: 'DEFM_ABC', SEXE: '_T' }, ratio: ratio('AGE', ['Y_LT25'], ['_T'], 'Moins de 25 ans / demandeurs d’emploi') },
+      { label: 'Part des 50 ans et plus', x: '@PERIOD', pins: { MESURE: 'DEFM_ABC', SEXE: '_T' }, ratio: ratio('AGE', ['Y_GE50'], ['_T'], '50 ans et plus / demandeurs d’emploi') },
+    ],
+  },
   idfm_ferre: {
     note: "Validations du 1er trimestre 2026 aux stations ferrées de la commune (métro, RER, train, tramway), y compris les voyageurs qui ne résident pas dans la commune. Une commune sans station n'a pas de valeur.",
     presets: [

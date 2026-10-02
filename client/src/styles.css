@@ -229,3 +229,34 @@ ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent
 .trend-chip.gosb { background: #f1f5f9; padding: 1px 8px; border-radius: 10px; border: 1px solid #111827; }
 .carto-bigarrow { font-size: 34px; line-height: 1; font-weight: 700; display: flex; align-items: center; gap: 6px; }
 @media (max-width: 900px) { .carto-layout { grid-template-columns: 1fr; } .carto-legend { position: static; max-height: none; } }
+
+/* nouveautés */
+.wn-day h3 { margin: 14px 0 4px; text-transform: capitalize; }
+.wn-day ul { list-style: none; padding: 0; margin: 0; }
+.wn-day li { margin: 3px 0; }
+.build a { color: inherit; font-weight: 600; }
+
+/* conception des indicateurs : tient dans la largeur, sans défilement horizontal */
+.ind-table { min-width: 0 !important; table-layout: fixed; }
+.ind-table th, .ind-table td { overflow-wrap: anywhere; }
+.ind-table th { white-space: normal; }
+.ind-table .th-sub { font-weight: 400; font-size: 11px; color: var(--muted, #64748b); }
+.ind-table th:nth-child(1), .ind-table td:nth-child(1) { width: 11%; }
+.ind-table th:nth-child(2), .ind-table td:nth-child(2) { width: 25%; }
+.ind-table th:nth-child(3), .ind-table td:nth-child(3) { width: 9%; }
+.ind-table th:nth-child(4), .ind-table td:nth-child(4) { width: 8%; }
+.ind-table th:nth-child(5), .ind-table td:nth-child(5) { width: 12%; }
+.ind-table th:nth-child(6), .ind-table td:nth-child(6) { width: 11%; }
+.ind-table th:nth-child(7), .ind-table td:nth-child(7) { width: 14%; }
+.ind-table th:nth-child(8), .ind-table td:nth-child(8) { width: 9%; }
+.ind-table th:nth-child(9), .ind-table td:nth-child(9) { width: 3%; }
+.ind-table td.lib { min-width: 0; }
+.ind-table td.clamp, .ind-table td.prop { max-width: none; }
+.ind-table .clamp2 { max-width: none; }
+.clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.c-stack { display: table-cell; }
+.c-stack > * { display: block; width: fit-content; margin-bottom: 3px; }
+.c-chips .chip { display: inline-block; margin: 0 3px 3px 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: top; }
+.c-theme .chip { margin-top: 3px; display: inline-block; }
+.c-links a { word-break: break-all; }
+.ind-table.grid, .page:has(.ind-table) .table-wrap { overflow-x: hidden; }

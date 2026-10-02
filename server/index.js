@@ -45,13 +45,14 @@ const BUILD = buildDate();
 const status = (req, res) => {
   try {
     get('SELECT 1');
-    res.json({ ok: true, status: 'ok', db: 'ok', uptime: Math.round(process.uptime()), build: BUILD, version: require('../package.json').version });
+    res.json({ ok: true, status: 'ok', db: 'ok', uptime: Math.round(process.uptime()), build: BUILD, version: require('./version').info().version });
   } catch (e) {
     res.status(503).json({ ok: false, status: 'erreur', db: e.message });
   }
 };
 app.get('/api/health', status);
 app.get('/api/status', status);
+app.get('/api/version', (req, res) => res.json(require('./version').info()));
 // Cartographie : couches communales, valeurs, tendances
 app.get('/api/cartographie/layers', (req, res) => { try { res.json(require('./cartographie').list()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/cartographie/layer/:id', (req, res) => {
