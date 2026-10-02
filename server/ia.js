@@ -40,7 +40,7 @@ const MAX_TOOL_CHARS = 3200; // ≈ 900 jetons par résultat d'outil
 const MAX_HISTORY = 6;
 
 const SYSTEM = `Assistant de l'Observatoire de la ville d'Ivry-sur-Seine (94041, membre du GOSB = Grand-Orly Seine Bièvre).
-Règles : réponds UNIQUEMENT avec les données renvoyées par les outils (aucune connaissance externe pour un chiffre ou un fait local). Appelle un outil avant toute réponse chiffrée ; si l'information manque, dis-le et propose le jeu le plus proche. Cite le jeu, le territoire et la période de chaque chiffre. Sépare faits et interprétation prudente. Classements : communes de plus de 5 000 habitants ; valeurs « pour 1 000 hab. » et moyennes du GOSB = ordres de grandeur. Français, concis : réponse d'abord, puis 3 à 6 chiffres clés, puis limites. Territoires : Ivry (94041), GOSB, Val-de-Marne (94), Île-de-France (11).`;
+Règles : réponds UNIQUEMENT avec les données renvoyées par les outils (aucune connaissance externe pour un chiffre ou un fait local). Appelle un outil avant toute réponse chiffrée ; si l'information manque, dis-le et propose le jeu le plus proche. Cite le jeu, le territoire et la période de chaque chiffre. Sépare faits et interprétation prudente. Classements : communes de plus de 5 000 habitants ; valeurs « pour 1 000 hab. » et moyennes du GOSB = ordres de grandeur. Les liens vers les jeux de données associés sont ajoutés automatiquement sous ta réponse : ne fabrique aucun lien, mais nomme les jeux utilisés. Français, concis : réponse d'abord, puis 3 à 6 chiffres clés, puis limites. Territoires : Ivry (94041), GOSB, Val-de-Marne (94), Île-de-France (11).`;
 
 const obj = (properties, required) => ({ type: 'object', properties, ...(required ? { required } : {}) });
 const TOOLS = [
@@ -132,9 +132,38 @@ const TOOL_IMPL = {
     let rows = all('SELECT id, libelle, theme, theme_label, priorite, statut, source, periodicite, proposition FROM indicators');
     if (theme) rows = rows.filter((r) => r.theme === theme);
     if (query) { const q = norm(query).split(/\s+/).filter(Boolean); rows = rows.filter((r) => q.every((w) => norm(`${r.libelle} ${r.source} ${r.proposition}`).includes(w))); }
-    return { total: rows.length, indicateurs: rows.slice(0, Math.min(limit, 30)).map((r) => ({ libelle: r.libelle, theme: r.theme_label, priorite: r.priorite, statut: r.statut, source: r.source, proposition: String(r.proposition || '').slice(0, 220) })) };
+    const links = {};
+    for (const l of all('SELECT indicator_id, dataset_id FROM indicator_datasets')) (links[l.indicator_id] ||= []).push(l.dataset_id);
+    return { total: rows.length, indicateurs: rows.slice(0, Math.min(limit, 30)).map((r) => ({ jeux: links[r.id] || undefined, libelle: r.libelle, theme: r.theme_label, priorite: r.priorite, statut: r.statut, source: r.source, proposition: String(r.proposition || '').slice(0, 220) })) };
   },
 };
+
+/** Jeux de données (et KPI) associés à un appel d'outil, pour les liens affichés sous la réponse. */
+function sourcesOf(name, args, out) {
+  const ds = new Set(), kpis = new Set();
+  const add = (id) => { if (id && get('SELECT 1 FROM datasets WHERE id = ?', id)) ds.add(id); };
+  try {
+    if (name === 'query_data' || name === 'describe_dataset') add(args.dataset_id);
+    else if (name === 'get_kpis') {
+      const byId = Object.fromEntries(require('./kpi').KPIS.map((k) => [k.id, k.dataset]));
+      for (const line of out.kpis || []) { const id = String(line).split(' | ')[0]; if (byId[id]) { add(byId[id]); kpis.add(id); } }
+    } else if (name === 'rank_communes') {
+      const l = require('./cartographie').LAYERS.find((x) => x.id === args.layer_id);
+      if (l) { add(l.dataset); kpis.add(l.id); }
+    } else if (name === 'search_indicators') for (const i of out.indicateurs || []) (i.jeux || []).forEach(add);
+    else if (name === 'contexte') (out.jeux || []).forEach(add);
+  } catch { /* liens facultatifs */ }
+  return { ds, kpis };
+}
+
+function sourceList(dsIds, kpiIds) {
+  const labels = Object.fromEntries(all('SELECT id, label FROM datasets').map((d) => [d.id, d.label]));
+  const kpiLabels = Object.fromEntries(require('./kpi').KPIS.map((k) => [k.id, k.label]));
+  return [
+    ...[...dsIds].slice(0, 8).map((id) => ({ type: 'dataset', id, label: labels[id] || id, url: `/donnees?ds=${id}` })),
+    ...[...kpiIds].slice(0, 6).map((id) => ({ type: 'kpi', id, label: kpiLabels[id] || id, url: `/tableau-de-bord?kpi=${id}` })),
+  ];
+}
 
 const status = () => {
   const g = providerConfig('groq'), l = providerConfig('local');
@@ -191,12 +220,14 @@ async function chat(history, provider) {
   const maxChars = cfg.local ? 8000 : MAX_TOOL_CHARS;
   const messages = toMessages(history);
   const consulted = [];
+  const dsIds = new Set(), kpiIds = new Set();
+  const collect = (name, args, out) => { const r = sourcesOf(name, args, out); r.ds.forEach((x) => dsIds.add(x)); r.kpis.forEach((x) => kpiIds.add(x)); };
   try {
     for (let step = 0; step < MAX_STEPS; step++) {
       const j = await callModel(cfg, messages);
       const msg = j.choices?.[0]?.message;
       if (!msg) throw new Error('réponse vide du modèle');
-      if (!msg.tool_calls?.length) return { answer: msg.content || '', consulted, model: cfg.model, provider: cfg.name };
+      if (!msg.tool_calls?.length) return { answer: msg.content || '', consulted, sources: sourceList(dsIds, kpiIds), model: cfg.model, provider: cfg.name };
       messages.push({ role: 'assistant', content: msg.content || null, tool_calls: msg.tool_calls });
       for (const tc of msg.tool_calls) {
         let args = {}, out;
@@ -206,10 +237,11 @@ async function chat(history, provider) {
           out = fn ? fn(args) : { erreur: `outil inconnu : ${tc.function.name}` };
         } catch (e) { out = { erreur: e.message }; }
         consulted.push({ outil: tc.function.name, arguments: args });
+        collect(tc.function.name, args, out);
         messages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(out).slice(0, maxChars) });
       }
     }
-    return { answer: "Je n'ai pas pu conclure en un nombre raisonnable d'étapes : reformulez ou précisez la question.", consulted, model: cfg.model, provider: cfg.name };
+    return { answer: "Je n'ai pas pu conclure en un nombre raisonnable d'étapes : reformulez ou précisez la question.", consulted, sources: sourceList(dsIds, kpiIds), model: cfg.model, provider: cfg.name };
   } catch (e) {
     if (!e.noTools) throw e;
     // le modèle ne gère pas les appels de fonctions : repli sur un contexte préparé par l'observatoire
@@ -221,6 +253,7 @@ async function chat(history, provider) {
     return {
       answer: j.choices?.[0]?.message?.content || '',
       consulted: [{ outil: 'contexte', arguments: { mode: 'sans appel de fonctions', indicateurs: ctx.found.total, jeux: ctx.ds.map((d) => d.id) } }],
+      sources: (() => { const ds = new Set(); for (const r of [sourcesOf('contexte', {}, { jeux: ctx.ds.map((d) => d.id) }), sourcesOf('search_indicators', {}, ctx.found)]) r.ds.forEach((x) => ds.add(x)); return sourceList(ds, new Set()); })(),
       model: cfg.model, provider: cfg.name,
     };
   }

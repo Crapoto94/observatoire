@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { marked } from 'marked';
+import { Link } from 'react-router-dom';
 import { api } from '../api';
 
 interface Consulted { outil: string; arguments: Record<string, unknown> }
-interface Msg { role: 'user' | 'assistant'; content: string; consulted?: Consulted[]; error?: boolean; via?: string }
+interface Source { type: 'dataset' | 'kpi'; id: string; label: string; url: string }
+interface Msg { role: 'user' | 'assistant'; content: string; consulted?: Consulted[]; sources?: Source[]; error?: boolean; via?: string }
 type Provider = 'groq' | 'local';
 interface Status {
   selected: Provider;
@@ -63,10 +65,10 @@ export default function IA() {
     setInput('');
     setBusy(true);
     try {
-      const r = await api<{ answer: string; consulted: Consulted[]; provider?: string; model?: string }>('/ia/chat', {
+      const r = await api<{ answer: string; consulted: Consulted[]; sources?: Source[]; provider?: string; model?: string }>('/ia/chat', {
         body: { provider, messages: next.filter((m) => !m.error).map((m) => ({ role: m.role, content: m.content })) },
       });
-      setMsgs([...next, { role: 'assistant', content: r.answer, consulted: r.consulted, via: [r.provider, r.model].filter(Boolean).join(' · ') }]);
+      setMsgs([...next, { role: 'assistant', content: r.answer, consulted: r.consulted, sources: r.sources, via: [r.provider, r.model].filter(Boolean).join(' · ') }]);
     } catch (e) {
       setMsgs([...next, { role: 'assistant', content: (e as Error).message, error: true }]);
     } finally { setBusy(false); }
@@ -116,6 +118,12 @@ export default function IA() {
         {msgs.map((m, i) => (
           <div key={i} className={`bubble ${m.role}${m.error ? ' err' : ''}`}>
             {m.role === 'assistant' && !m.error ? <div className="markdown" dangerouslySetInnerHTML={{ __html: rendered[i] }} /> : <div>{m.content}</div>}
+            {m.sources && m.sources.length > 0 && (
+              <div className="ia-sources small">
+                <strong>Jeux de données associés :</strong>{' '}
+                {m.sources.map((x) => <Link key={`${x.type}-${x.id}`} className="chip ds" to={x.url} title={x.type === 'kpi' ? 'Voir ce KPI dans le tableau de bord' : 'Ouvrir ce jeu de données'}>{x.type === 'kpi' ? 'KPI ▸ ' : ''}{x.label}</Link>)}
+              </div>
+            )}
             {m.via && <div className="muted small">{m.via}</div>}
             {m.consulted && m.consulted.length > 0 && (
               <details className="small sources">
