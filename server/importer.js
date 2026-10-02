@@ -13,6 +13,7 @@ const ssmsi = require('./connectors/ssmsi');
 const finances = require('./connectors/finances');
 const gaspar = require('./connectors/gaspar');
 const ips = require('./connectors/ips');
+const ircom = require('./connectors/ircom');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
 
@@ -33,6 +34,7 @@ const CONNECTORS = {
   finances: finances.fetchGeo,
   gaspar: gaspar.fetchGeo,
   ips: ips.fetchGeo,
+  ircom: ircom.fetchGeo,
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -49,6 +51,7 @@ const BULK = {
   finances: { fn: finances.fetchMany, size: 200 },
   gaspar: { fn: gaspar.fetchMany, size: 100000 },
   ips: { fn: ips.fetchMany, size: 100000 },
+  ircom: { fn: ircom.fetchMany, size: 100000 },
 };
 
 const jobs = new Map();

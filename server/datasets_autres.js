@@ -151,4 +151,20 @@ module.exports = [
       },
     },
   },
+  {
+    id: 'ircom', provider: 'ircom', label: "Impôt sur le revenu par commune (IRCOM, DGFiP)",
+    description: "DGFiP, impôt sur le revenu par collectivité territoriale, revenus 2021 à 2024 : nombre de foyers fiscaux, revenu fiscal de référence, impôt net et foyers imposés par commune, au total et par tranche de revenu fiscal de référence (de moins de 10 000 € à plus de 100 000 €). Montants en milliers d'euros ; revenu fiscal moyen par foyer calculé. Les valeurs confidentielles (moins de 11 foyers) ne sont pas diffusées. Le revenu fiscal de référence diffère du niveau de vie de l'INSEE (Filosofi).",
+    themes: ['cohesion', 'emploi'], doc_url: 'https://www.data.gouv.fr/datasets/536998cba3a729239d20505e',
+    link: [{ theme: 'emploi', re: /bas revenus|revenu median|ecart de revenu/ }],
+    config: {
+      years: [
+        { year: 2024, resource: 'e626cd65-9c88-419e-8eff-d2165fe388ee' }, { year: 2023, resource: '65c61c89-ab5d-42dc-ac5b-03194f9d2efc' },
+        { year: 2022, resource: '35c857d5-7479-4c5f-9b0a-8036e24fbbb6' }, { year: 2021, resource: '261bc54d-d856-4d11-b4f8-f2b01e3073c6' },
+      ],
+      labels: {
+        ...mesure({ FOYERS_FISCAUX: 'Foyers fiscaux', RFR: 'Revenu fiscal de référence (milliers d’€)', IMPOT_NET: 'Impôt net (milliers d’€)', FOYERS_IMPOSES: 'Foyers fiscaux imposés', RFR_IMPOSES: 'Revenu fiscal de référence des foyers imposés (milliers d’€)', RFR_MOYEN: 'Revenu fiscal de référence moyen par foyer (€)' }),
+        TRANCHE: { label: 'Tranche de revenu fiscal de référence', values: { _T: 'Toutes tranches', T1: 'Moins de 10 000 €', T2: '10 001 à 12 000 €', T3: '12 001 à 15 000 €', T4: '15 001 à 20 000 €', T5: '20 001 à 30 000 €', T6: '30 001 à 50 000 €', T7: '50 001 à 100 000 €', T8: 'Plus de 100 000 €' } },
+      },
+    },
+  },
 ];

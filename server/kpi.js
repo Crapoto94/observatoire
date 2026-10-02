@@ -45,6 +45,9 @@ const KPIS = [
   { id: 'ppa', label: 'Foyers percevant la prime d’activité (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_PPA' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
   { id: 'aides_logement', label: 'Foyers percevant l’APL (pour 1 000 hab.)', theme: 'Logement', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_APL' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
   { id: 'ips_public', label: 'IPS moyen des écoles publiques', theme: 'Éducation', dataset: 'ips_ecoles', where: { MESURE: 'IPS_MOYEN', SECTEUR: 'public' }, cmp: true, dir: 'up', ind: /^$/ },
+  { id: 'foyers_imposes', label: 'Part des foyers fiscaux imposés', theme: 'Cohésion sociale', dataset: 'ircom', where: { TRANCHE: '_T' }, ratio: { dim: 'MESURE', num: ['FOYERS_IMPOSES'], den: ['FOYERS_FISCAUX'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'rfr_moyen', label: 'Revenu fiscal de référence moyen par foyer', theme: 'Cohésion sociale', dataset: 'ircom', where: { TRANCHE: '_T' }, ratio: { dim: 'MESURE', num: ['RFR'], den: ['FOYERS_FISCAUX'] }, factor: 1000, unit: '€', cmp: true, fromCommunes: true, dir: 'up', ind: /revenu median|revenus medians/ },
+  { id: 'bas_revenus', label: 'Part des foyers fiscaux sous 10 000 € de revenu fiscal de référence', theme: 'Cohésion sociale', dataset: 'ircom', where: { MESURE: 'FOYERS_FISCAUX' }, ratio: { dim: 'TRANCHE', num: ['T1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
   { id: 'logements', label: 'Logements', theme: 'Logement', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: '_T' }, dir: 'none', ind: /nombre de logements|parc de logements/ },
   { id: 'vacance', label: 'Part de logements vacants (parc privé)', theme: 'Logement', dataset: 'lovac', where: {}, ratio: { dim: 'MESURE', num: ['PP_VACANT'], den: ['PP_TOTAL'] }, unit: '%', cmp: true, dir: 'down', ind: /vacan/ },
   { id: 'sru', label: 'Taux de logements sociaux (SRU)', theme: 'Logement', dataset: 'sru', where: { MESURE: 'TAUX_SRU' }, unit: '%', cmp: true, dir: 'up', ind: /sru|logements sociaux/ },
@@ -76,7 +79,7 @@ function seriesOf(rows, spec) {
   }
   const out = [];
   for (const [period, m] of by) {
-    if (spec.ratio) { if (m.den) out.push({ period, value: (m.num / m.den) * 100 }); } else if (m.n) out.push({ period, value: m.num });
+    if (spec.ratio) { if (m.den) out.push({ period, value: (m.num / m.den) * (spec.factor ?? 100) }); } else if (m.n) out.push({ period, value: m.num });
   }
   // année en cours : données encore incomplètes pour certaines sources (déclarations tardives)
   const thisYear = new Date().getFullYear();

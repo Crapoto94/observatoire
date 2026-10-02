@@ -393,6 +393,17 @@ export const VIEWS: Record<string, View> = {
       { label: 'Prestations (dernière année)', x: 'MESURE', keep: { MESURE: ['FOYERS_AF', 'FOYERS_CF', 'FOYERS_ASF', 'FOYERS_PAJE_BASE', 'FOYERS_CMG', 'FOYERS_APL', 'FOYERS_ALS', 'FOYERS_ALF', 'FOYERS_RSA', 'FOYERS_PPA'] } },
     ],
   },
+  ircom: {
+    note: "Impôt sur le revenu par commune (DGFiP). Montants en milliers d’euros. Le revenu fiscal de référence n’est pas le niveau de vie de l’INSEE (il ne tient pas compte de la composition du ménage ni des prestations).",
+    presets: [
+      { label: 'Revenu fiscal de référence moyen par foyer (€)', x: '@PERIOD', pins: { MESURE: 'RFR_MOYEN', TRANCHE: '_T' } },
+      { label: 'Part des foyers imposés', x: '@PERIOD', pins: { TRANCHE: '_T' }, ratio: ratio('MESURE', ['FOYERS_IMPOSES'], ['FOYERS_FISCAUX'], 'Foyers imposés / foyers fiscaux') },
+      { label: 'Répartition des foyers par tranche de revenu', x: 'TRANCHE', keep: { TRANCHE: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'] }, pins: { MESURE: 'FOYERS_FISCAUX' } },
+      { label: 'Part des foyers sous 10 000 €', x: '@PERIOD', pins: { MESURE: 'FOYERS_FISCAUX' }, ratio: ratio('TRANCHE', ['T1'], ['_T'], 'Foyers sous 10 000 € / foyers fiscaux') },
+      { label: 'Part des foyers au-dessus de 50 000 €', x: '@PERIOD', pins: { MESURE: 'FOYERS_FISCAUX' }, ratio: ratio('TRANCHE', ['T7', 'T8'], ['_T'], 'Foyers au-dessus de 50 000 € / foyers fiscaux') },
+      { label: 'Foyers fiscaux', x: '@PERIOD', pins: { MESURE: 'FOYERS_FISCAUX', TRANCHE: '_T' } },
+    ],
+  },
   ips_ecoles: {
     note: "IPS moyen des écoles de la commune (moyenne simple). Plus l'indice est élevé, plus le milieu des élèves est favorisé ; la moyenne nationale est d'environ 105. Reflète la mixité sociale des écoles, pas leur qualité.",
     presets: [
