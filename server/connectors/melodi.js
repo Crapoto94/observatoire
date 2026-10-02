@@ -12,22 +12,33 @@ async function throttle(url) {
   if (at > Date.now()) await new Promise((r) => setTimeout(r, at - Date.now()));
 }
 
+// Disjoncteur par hôte : après 3 appels consécutifs échoués malgré les relances, l'hôte est considéré injoignable pendant 3 min
+// (les jeux concernés sont alors reportés immédiatement au lieu de bloquer l'import)
+const breaker = new Map();
+const BREAK_AFTER = 3, BREAK_MS = 3 * 60000;
+
 // Les coupures réseau du serveur durent parfois une vingtaine de secondes : relances espacées de 2 s à 30 s
 async function fetchJson(url, tries = 7) {
   let last;
+  const host = new URL(url).hostname;
+  const br = breaker.get(host) || breaker.set(host, { fails: 0, until: 0 }).get(host);
+  if (br.until > Date.now()) throw new Error(`hôte injoignable depuis le serveur : ${host} (nouvelle tentative plus tard)`);
   for (let t = 1; t <= tries; t++) {
     try {
       await throttle(url);
       const r = await fetch(url, { signal: AbortSignal.timeout(120000), headers: { Accept: 'application/json' } });
       if (r.status === 429) throw new Error(`HTTP 429 sur ${url}`);
       if (!r.ok) throw new Error(`HTTP ${r.status} sur ${url}`);
-      return await r.json();
+      const j = await r.json();
+      br.fails = 0;
+      return j;
     } catch (e) {
       last = e;
       if (/HTTP 4(?!29)dd/.test(e.message)) throw e; // erreur définitive (404, 400…) : inutile de relancer
       await new Promise((res) => setTimeout(res, Math.min(60000, 2000 * 2 ** (t - 1))));
     }
   }
+  if (++br.fails >= BREAK_AFTER) { br.until = Date.now() + BREAK_MS; br.fails = 0; }
   throw last;
 }
 

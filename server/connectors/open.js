@@ -1,5 +1,7 @@
 // Connecteurs open data hors INSEE : API tabulaire data.gouv.fr, portails Opendatasoft, fichiers geo-dvf, API Recherche d'entreprises.
 // Chaque connecteur expose fetchGeo(config, geo) -> lignes { period, dims, measure, value } ou null si le niveau géographique n'est pas géré.
+const readline = require('readline');
+const { Readable } = require('stream');
 const { fetchJson, fetchRetry } = require('./melodi');
 
 // ---------------- outils communs ----------------
@@ -97,7 +99,62 @@ async function resolveResource(src) {
   return hit.id;
 }
 
+// ---------------- téléchargement du fichier CSV d'une ressource data.gouv.fr, indexé par code territoire ----------------
+// Évite les milliers de requêtes de l'API tabulaire : le fichier est téléchargé une fois, puis filtré en interne.
+// Sert aussi de secours quand l'API tabulaire n'est pas joignable depuis le serveur.
+function splitCsv(line, delim) {
+  const cells = [];
+  let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) {
+      if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === delim) { cells.push(cur); cur = ''; } else cur += c;
+  }
+  cells.push(cur);
+  return cells;
+}
+
+const csvCache = new Map(); // ressource -> { at, geoField, map }
+async function csvIndex(resource, geoField) {
+  const hit = csvCache.get(resource);
+  if (hit && hit.geoField === geoField && Date.now() - hit.at < 30 * 60000) return hit.map;
+  const res = await fetchRetry(`https://www.data.gouv.fr/api/1/datasets/r/${resource}`, { redirect: 'follow', signal: AbortSignal.timeout(900000) });
+  if (!res.ok) throw new Error(`téléchargement CSV : HTTP ${res.status} (${resource})`);
+  const rl = readline.createInterface({ input: Readable.fromWeb(res.body), crlfDelay: Infinity });
+  const map = new Map();
+  let head = null, delim = ';';
+  for await (const line of rl) {
+    if (!line) continue;
+    if (!head) {
+      delim = (line.match(/;/g) || []).length >= (line.match(/,/g) || []).length ? ';' : ',';
+      head = splitCsv(line, delim).map((h) => h.replace(/^\uFEFF/, '').trim());
+      if (!head.includes(geoField)) throw new Error(`colonne « ${geoField} » absente du fichier CSV (${resource})`);
+      continue;
+    }
+    const cells = splitCsv(line, delim);
+    const rec = {};
+    head.forEach((h, i) => { rec[h] = cells[i] === '' || cells[i] === undefined ? null : cells[i]; });
+    const code = rec[geoField];
+    if (code == null) continue;
+    (map.get(code) || map.set(code, []).get(code)).push(rec);
+  }
+  csvCache.set(resource, { at: Date.now(), geoField, map });
+  if (csvCache.size > 4) csvCache.delete(csvCache.keys().next().value);
+  return map;
+}
+
 async function tabularRecords(resource, geoField, code) {
+  try {
+    return await tabularApiRecords(resource, geoField, code);
+  } catch (e) {
+    // API tabulaire injoignable : repli sur le fichier CSV complet
+    return (await csvIndex(resource, geoField)).get(code) || [];
+  }
+}
+
+async function tabularApiRecords(resource, geoField, code) {
   const out = [];
   for (let page = 1; page <= 50; page++) {
     const j = await fetchJson(`${TAB}/${resource}/data/?${encodeURIComponent(geoField)}__exact=${encodeURIComponent(code)}&page_size=200&page=${page}`);
@@ -229,4 +286,4 @@ async function fetchEntreprises(config, geo) {
   return rows;
 }
 
-module.exports = { mergeRows, fetchTabular, fetchOds, fetchGeoDvf, fetchEntreprises, parseNum, mapRecords, resolveResource, dvfRows, TAB };
+module.exports = { csvIndex, mergeRows, fetchTabular, fetchOds, fetchGeoDvf, fetchEntreprises, parseNum, mapRecords, resolveResource, dvfRows, TAB };

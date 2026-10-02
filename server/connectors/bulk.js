@@ -57,7 +57,17 @@ async function tabularMany(config, geos, progress = () => {}) {
     try {
       const resource = await open.resolveResource(src);
       const byGeo = new Map();
-      const parts = chunk(comm.map((g) => g.code), 80);
+      // priorité au téléchargement du fichier complet (filtré en interne) ; l'API tabulaire sert de repli
+      try {
+        progress('téléchargement du fichier CSV' + (src.period ? ` (${src.period})` : ''));
+        const idx = await open.csvIndex(resource, src.geoField);
+        for (const g of comm) if (idx.has(g.code)) byGeo.set(g.code, idx.get(g.code));
+        progress(`fichier lu : ${byGeo.size} communes concernées`);
+      } catch (e) {
+        progress(`CSV indisponible (${e.message}), repli sur l'API tabulaire`);
+        byGeo.clear();
+      }
+      const parts = byGeo.size ? [] : chunk(comm.map((g) => g.code), 80);
       for (const [pi, part] of parts.entries()) {
         progress(`communes ${pi * 80 + 1}-${pi * 80 + part.length} sur ${comm.length}`);
         for (let page = 1; page <= 80; page++) {
