@@ -40,7 +40,8 @@ function aggregate(datasetId) {
     const acc = new Map();
     // jeu chargé pour moins de 90 % des communes membres : les sommes seraient trompeuses, seules les moyennes pondérées sont écrites
     const covered = new Set(rows.map((r) => r.geo)).size;
-    const partial = covered < g.members.length * 0.9;
+    const imported = all("SELECT 1 FROM import_runs WHERE dataset_id = ? AND scope IN ('idf', 'gosb') AND status IN ('ok', 'partiel') LIMIT 1", datasetId).length > 0;
+    const partial = !imported && covered < g.members.length * 0.9;
     for (const r of rows) {
       const k = `${r.period ?? ''}\u0001${r.dims}\u0001${r.measure}`;
       const a = acc.get(k) || acc.set(k, { period: r.period, dims: r.dims, measure: r.measure, sum: 0, w: 0, wv: 0, n: 0, intensive: null }).get(k);

@@ -101,7 +101,8 @@ function build() {
         const codes = communesOf(key);
         const byGeo = carto.rowsFor(spec, codes);
         // jeu encore peu chargé pour ce périmètre : une somme partielle serait trompeuse
-        if (byGeo.size >= codes.length * 0.6) s = seriesOf([...byGeo.values()].flat(), spec);
+        const imported = all("SELECT 1 FROM import_runs WHERE dataset_id = ? AND scope = 'idf' AND status IN ('ok', 'partiel') LIMIT 1", spec.dataset).length > 0; // jeu importé pour toute l'Île-de-France : l'absence de ligne signifie « aucun »
+        if (imported || byGeo.size >= codes.length * 0.6) s = seriesOf([...byGeo.values()].flat(), spec);
       }
       if (spec.kpiPerK) s = s.map((p) => { const pop = carto.popAt(pops[geo], p.period); return pop ? { period: p.period, value: (p.value / pop) * 1000 } : null; }).filter(Boolean);
       res[key] = s;
