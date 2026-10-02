@@ -8,7 +8,7 @@ type Provider = 'groq' | 'local';
 interface Status {
   selected: Provider;
   groq: { configured: boolean; model: string };
-  local: { configured: boolean; kind: 'ollama' | 'vllm'; url: string; model: string };
+  local: { configured: boolean; model: string; kind: 'ollama' | 'vllm' };
 }
 
 const SUGGESTIONS = [
@@ -28,10 +28,9 @@ const TOOL_LABEL: Record<string, string> = {
   get_kpis: 'Indicateurs clés', list_datasets: 'Liste des jeux', describe_dataset: 'Description d’un jeu', query_data: 'Données',
   rank_communes: 'Classement des communes', list_layers: 'Couches', search_indicators: 'Indicateurs de la conception', contexte: 'Extrait préparé de l’observatoire',
 };
-const DEFAULT_URL = { ollama: 'http://localhost:11434', vllm: 'http://localhost:8000' } as const;
 
 // Assistant IA : questions en langage naturel, réponses fondées uniquement sur les données de l'observatoire.
-// Modèle au choix : Groq (en ligne) ou serveur local Ollama / vLLM.
+// Le choix du fournisseur (Groq ou IA locale) se fait ici ; la configuration (clé, URL, modèle) est dans le fichier .env du serveur.
 export default function IA() {
   const [status, setStatus] = useState<Status | null>(null);
   const [provider, setProvider] = useState<Provider | null>(() => {
@@ -42,18 +41,11 @@ export default function IA() {
   });
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [cfgOpen, setCfgOpen] = useState(false);
-  const [form, setForm] = useState({ kind: 'ollama' as 'ollama' | 'vllm', url: '', model: '', groqModel: '' });
-  const [models, setModels] = useState<string[]>([]);
-  const [cfgMsg, setCfgMsg] = useState('');
   const end = useRef<HTMLDivElement>(null);
 
-  const load = () => api<Status>('/ia/status').then((s) => {
-    setStatus(s);
-    setForm({ kind: s.local.kind, url: s.local.url, model: s.local.model, groqModel: s.groq.model });
-    setProvider((p) => p ?? s.selected);
-  }).catch(() => undefined);
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    api<Status>('/ia/status').then((s) => { setStatus(s); setProvider((p) => p ?? s.selected); }).catch(() => undefined);
+  }, []);
   useEffect(() => {
     try { localStorage.setItem('ia-chat', JSON.stringify(msgs.slice(-30))); } catch { /* stockage indisponible */ }
     end.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,26 +53,7 @@ export default function IA() {
 
   const choose = (p: Provider) => { setProvider(p); try { localStorage.setItem('ia-provider', p); } catch { /* stockage indisponible */ } };
   const ready = !!status && !!provider && (provider === 'groq' ? status.groq.configured : status.local.configured);
-  const shown = provider === 'local' ? (status?.local.kind === 'vllm' ? 'vLLM' : 'Ollama') : 'Groq';
-
-  const save = async () => {
-    setCfgMsg('');
-    try {
-      const s = await api<Status>('/ia/settings', { method: 'PUT', body: { provider, groqModel: form.groqModel, local: { kind: form.kind, url: form.url, model: form.model } } });
-      setStatus(s);
-      setCfgMsg('Réglages enregistrés.');
-    } catch (e) { setCfgMsg((e as Error).message); }
-  };
-  const detect = async () => {
-    setCfgMsg('');
-    try {
-      await api('/ia/settings', { method: 'PUT', body: { local: { kind: form.kind, url: form.url } } });
-      const r = await api<{ models: string[] }>('/ia/models?provider=local');
-      setModels(r.models);
-      setCfgMsg(r.models.length ? `${r.models.length} modèle(s) détecté(s).` : 'Serveur joint, mais aucun modèle listé.');
-      if (r.models.length && !r.models.includes(form.model)) setForm((f) => ({ ...f, model: r.models[0] }));
-    } catch (e) { setModels([]); setCfgMsg((e as Error).message); }
-  };
+  const shown = provider === 'local' ? 'IA locale' : 'Groq';
 
   const send = async (text: string) => {
     const q = text.trim();
@@ -111,58 +84,25 @@ export default function IA() {
       <div className="ia-provider">
         <span className="muted small">Modèle :</span>
         <label className={`inline${provider === 'groq' ? ' on' : ''}`}>
-          <input type="radio" name="prov" checked={provider === 'groq'} onChange={() => choose('groq')} /> Groq (en ligne){status && !status.groq.configured ? ' · non configuré' : status ? ` · ${status.groq.model}` : ''}
+          <input type="radio" name="prov" checked={provider === 'groq'} onChange={() => choose('groq')} /> Groq{status ? (status.groq.configured ? ` · ${status.groq.model}` : ' · non configuré') : ''}
         </label>
         <label className={`inline${provider === 'local' ? ' on' : ''}`}>
-          <input type="radio" name="prov" checked={provider === 'local'} onChange={() => choose('local')} /> Local (Ollama / vLLM){status && !status.local.configured ? ' · non configuré' : status ? ` · ${status.local.model}` : ''}
+          <input type="radio" name="prov" checked={provider === 'local'} onChange={() => choose('local')} /> IA locale{status ? (status.local.configured ? ` · ${status.local.model}` : ' · non configurée') : ''}
         </label>
-        <button className="secondary" onClick={() => setCfgOpen(!cfgOpen)}>{cfgOpen ? 'Fermer' : 'Configurer'}</button>
       </div>
-
-      {cfgOpen && (
-        <div className="ia-config">
-          <div className="filters">
-            <label className="field small"><span>Type de serveur local</span>
-              <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as 'ollama' | 'vllm', url: form.url || DEFAULT_URL[e.target.value as 'ollama' | 'vllm'] })}>
-                <option value="ollama">Ollama</option><option value="vllm">vLLM</option>
-              </select>
-            </label>
-            <label className="field grow"><span>URL du serveur</span>
-              <input value={form.url} placeholder={DEFAULT_URL[form.kind]} onChange={(e) => setForm({ ...form, url: e.target.value })} />
-            </label>
-            <button className="secondary" onClick={detect} disabled={!form.url}>Détecter les modèles</button>
-          </div>
-          <div className="filters">
-            <label className="field grow"><span>Modèle local</span>
-              <input list="ia-models" value={form.model} placeholder={form.kind === 'ollama' ? 'ex. qwen2.5:14b' : 'ex. Qwen/Qwen2.5-14B-Instruct'} onChange={(e) => setForm({ ...form, model: e.target.value })} />
-              <datalist id="ia-models">{models.map((m) => <option key={m} value={m} />)}</datalist>
-            </label>
-            <label className="field grow"><span>Modèle Groq</span>
-              <input value={form.groqModel} onChange={(e) => setForm({ ...form, groqModel: e.target.value })} />
-            </label>
-            <button onClick={save}>Enregistrer</button>
-          </div>
-          <p className="muted small">
-            Le serveur local doit exposer l'API compatible OpenAI (Ollama : <code>http://hôte:11434</code> ; vLLM : <code>http://hôte:8000</code>, lancé avec <code>--enable-auto-tool-choice</code> et un
-            <code> --tool-call-parser</code> pour les appels de fonctions). Depuis Docker, « localhost » désigne le conteneur : utilisez l'adresse IP du serveur. Un modèle sans appels de fonctions est géré :
-            l'observatoire lui fournit alors directement un extrait des données. La clé Groq reste dans le fichier <code>.env</code> du serveur.
-          </p>
-          {cfgMsg && <div className="small">{cfgMsg}</div>}
-        </div>
-      )}
 
       <div className="note-box small">
         L'assistant répond <strong>uniquement à partir des données de l'observatoire</strong> (indicateurs de la conception, jeux importés, KPI, classements).{' '}
         {provider === 'local'
-          ? `Les données consultées sont transmises à votre serveur ${shown}, et ne quittent pas votre réseau si celui-ci est interne.`
+          ? "Les données consultées sont transmises à l'IA locale configurée sur le serveur."
           : 'Les données consultées sont transmises à Groq pour rédiger la réponse.'}{' '}
         Vérifiez les chiffres importants dans les pages Données ou Tableau de bord.
       </div>
       {status && provider && !ready && (
         <div className="warn">
           {provider === 'groq'
-            ? <>Groq n'est pas configuré : ajoutez <code>GROQ_API_KEY=votre_clé</code> dans le fichier <code>.env</code> à côté de <code>docker-compose.yml</code>, puis <code>docker compose up -d</code>.</>
-            : <>Le modèle local n'est pas configuré : cliquez sur « Configurer » pour saisir l'URL du serveur et le modèle.</>}
+            ? <>Groq n'est pas configuré : ajoutez <code>GROQ_API_KEY=votre_clé</code> dans le fichier <code>.env</code> du serveur (à côté de <code>docker-compose.yml</code>), puis <code>docker compose up -d</code>.</>
+            : <>L'IA locale n'est pas configurée : ajoutez <code>LOCAL_LLM_URL</code> et <code>LOCAL_LLM_MODEL</code> (et <code>LOCAL_LLM_KIND=ollama</code> ou <code>vllm</code>) dans le fichier <code>.env</code> du serveur, puis <code>docker compose up -d</code>.</>}
         </div>
       )}
 

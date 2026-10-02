@@ -3,12 +3,6 @@
 // Les données renvoyées par les outils sont transmises à Groq pour la rédaction de la réponse.
 const { all, get } = require('./db');
 
-const { db, run } = require('./db');
-
-db.exec('CREATE TABLE IF NOT EXISTS ia_settings (key TEXT PRIMARY KEY, value TEXT)');
-const getSetting = (k, d = '') => get('SELECT value FROM ia_settings WHERE key = ?', k)?.value ?? d;
-const setSetting = (k, v) => run('INSERT INTO ia_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', k, v == null ? '' : String(v));
-
 // URL d'un serveur compatible OpenAI : on ajoute /v1 si l'adresse n'a pas de chemin
 function baseOf(url) {
   const u = String(url || '').trim().replace(/\/+$/, '');
@@ -16,26 +10,27 @@ function baseOf(url) {
   try { return new URL(u).pathname.replace(/\/+$/, '') ? u : `${u}/v1`; } catch { return u; }
 }
 
+// Toute la configuration vient du fichier .env du serveur (GROQ_*, LOCAL_LLM_*) ; la page ne fait que choisir le fournisseur.
 function localConfig() {
   return {
-    kind: getSetting('local.kind') || process.env.LOCAL_LLM_KIND || 'ollama',
-    url: getSetting('local.url') || process.env.LOCAL_LLM_URL || '',
-    model: getSetting('local.model') || process.env.LOCAL_LLM_MODEL || '',
+    kind: process.env.LOCAL_LLM_KIND === 'vllm' ? 'vllm' : 'ollama',
+    url: process.env.LOCAL_LLM_URL || '',
+    model: process.env.LOCAL_LLM_MODEL || '',
   };
 }
 
-/** Configuration d'un fournisseur : 'groq' ou 'local' (Ollama / vLLM). */
+/** Configuration d'un fournisseur : 'groq' ou 'local' (IA locale : Ollama ou vLLM). */
 function providerConfig(provider) {
   if (provider === 'local') {
     const c = localConfig();
-    return { id: 'local', name: c.kind === 'vllm' ? 'vLLM' : 'Ollama', base: baseOf(c.url), model: c.model, key: process.env.LOCAL_LLM_API_KEY || '', ok: !!(c.url && c.model), local: true, kind: c.kind };
+    return { id: 'local', name: 'IA locale', base: baseOf(c.url), model: c.model, key: process.env.LOCAL_LLM_API_KEY || '', ok: !!(c.url && c.model), local: true, kind: c.kind };
   }
   const key = process.env.GROQ_API_KEY || '';
-  return { id: 'groq', name: 'Groq', base: process.env.IA_BASE_URL || 'https://api.groq.com/openai/v1', model: getSetting('groq.model') || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', key, ok: !!key, local: false };
+  return { id: 'groq', name: 'Groq', base: process.env.IA_BASE_URL || 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', key, ok: !!key, local: false };
 }
 
 const defaultProvider = () => {
-  const chosen = getSetting('provider');
+  const chosen = process.env.IA_PROVIDER;
   if (chosen === 'local' || chosen === 'groq') return chosen;
   return providerConfig('groq').ok ? 'groq' : providerConfig('local').ok ? 'local' : 'groq';
 };
@@ -142,46 +137,11 @@ const TOOL_IMPL = {
 };
 
 const status = () => {
-  const g = providerConfig('groq'), l = providerConfig('local'), c = localConfig();
-  return {
-    selected: defaultProvider(),
-    groq: { configured: g.ok, model: g.model },
-    local: { configured: l.ok, kind: c.kind, url: c.url, model: c.model },
-  };
+  const g = providerConfig('groq'), l = providerConfig('local');
+  return { selected: defaultProvider(), groq: { configured: g.ok, model: g.model }, local: { configured: l.ok, model: l.model, kind: l.kind } };
 };
 
-function saveSettings(b = {}) {
-  if (b.provider === 'groq' || b.provider === 'local') setSetting('provider', b.provider);
-  if (b.groqModel !== undefined) setSetting('groq.model', String(b.groqModel).trim());
-  if (b.local) {
-    if (b.local.kind === 'ollama' || b.local.kind === 'vllm') setSetting('local.kind', b.local.kind);
-    if (b.local.url !== undefined) {
-      const u = String(b.local.url).trim();
-      if (u && !/^https?:\/\//i.test(u)) throw new Error("l'URL du modèle local doit commencer par http:// ou https://");
-      setSetting('local.url', u);
-    }
-    if (b.local.model !== undefined) setSetting('local.model', String(b.local.model).trim());
-  }
-  return status();
-}
-
 const unreachable = (cfg, e) => new Error(`Impossible de joindre ${cfg.name} (${cfg.base}) : ${e.cause?.code || e.message}. Depuis Docker, « localhost » désigne le conteneur : utilisez l'adresse IP ou le nom du serveur qui héberge le modèle.`);
-
-/** Modèles proposés par le serveur local (API OpenAI /models, ou /api/tags pour Ollama). */
-async function listModels(provider = 'local') {
-  const cfg = providerConfig(provider);
-  if (!cfg.base) throw new Error("URL du serveur non renseignée");
-  const headers = cfg.key ? { Authorization: `Bearer ${cfg.key}` } : {};
-  try {
-    const r = await fetch(`${cfg.base}/models`, { headers, signal: AbortSignal.timeout(15000) });
-    if (r.ok) return ((await r.json()).data || []).map((m) => m.id);
-    if (cfg.kind === 'ollama') {
-      const t = await fetch(`${new URL(cfg.base).origin}/api/tags`, { signal: AbortSignal.timeout(15000) });
-      if (t.ok) return ((await t.json()).models || []).map((m) => m.name);
-    }
-    throw new Error(`HTTP ${r.status}`);
-  } catch (e) { throw unreachable(cfg, e); }
-}
 
 async function callModel(cfg, messages, { tools = true, attempt = 0 } = {}) {
   let res;
@@ -226,7 +186,7 @@ function contextFor(question) {
 async function chat(history, provider) {
   const cfg = providerConfig(provider === 'local' || provider === 'groq' ? provider : defaultProvider());
   if (!cfg.ok) {
-    throw new Error(cfg.local ? "Modèle local non configuré : renseignez l'URL du serveur et le modèle (bouton « Configurer »)." : "Clé Groq absente : définissez GROQ_API_KEY dans le fichier .env du serveur.");
+    throw new Error(cfg.local ? "IA locale non configurée : définissez LOCAL_LLM_URL et LOCAL_LLM_MODEL dans le fichier .env du serveur." : "Clé Groq absente : définissez GROQ_API_KEY dans le fichier .env du serveur.");
   }
   const maxChars = cfg.local ? 8000 : MAX_TOOL_CHARS;
   const messages = toMessages(history);
@@ -266,4 +226,4 @@ async function chat(history, provider) {
   }
 }
 
-module.exports = { chat, status, saveSettings, listModels, TOOL_IMPL };
+module.exports = { chat, status, TOOL_IMPL };
