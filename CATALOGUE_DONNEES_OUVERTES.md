@@ -5,7 +5,7 @@ Chaque source retenue a été **interrogée pour Ivry-sur-Seine (94041)** avant 
 
 Principe d'import : on télécharge de préférence le fichier complet, ou filtré sur l'Île-de-France, puis on filtre et on agrège en interne par commune. Les requêtes commune par commune ne servent que lorsqu'aucune autre solution n'existe.
 
-## 1. Jeux intégrés à l'application (46)
+## 1. Jeux intégrés à l'application (51)
 
 ### INSEE, API Melodi (20 jeux, communes + département, métropole, région)
 
@@ -48,6 +48,10 @@ Portail : <https://opendata.agenceore.fr> (API `/data-fair/api/v1`).
 | Finances de la commune (comptes individuels) | [DGFiP, data.economie.gouv.fr](https://data.economie.gouv.fr/explore/?q=comptes+individuels+des+communes) : un fichier par période (2011-2015, 2016, 2017, 2018, 2019-2020, 2021, 2022, 2023-2024, 2025) | commune | dette 1 433 €/hab., personnel 1 445 €/hab. (2025) ; moyenne de la strate fournie |
 | Offre sanitaire et sociale (FINESS) | [Région Île-de-France](https://data.iledefrance.fr/explore/dataset/finess/) | commune | 80 établissements, dont 16 pharmacies |
 | Équipements sportifs | [Région Île-de-France](https://data.iledefrance.fr/explore/dataset/recensement-des-equipements-sportifs/) | commune | 112 équipements |
+| Allocataires CAF par prestation (2020-2024) | [data.caf.fr, toutes prestations](https://data.caf.fr/explore/dataset/s_ben_com_f/) | commune | 17 610 foyers allocataires fin 2024 (35 920 personnes), dont 5 005 à la prime d'activité et 2 790 au RSA |
+| Risques naturels et technologiques (GASPAR) | [Géorisques / data.gouv.fr](https://www.data.gouv.fr/datasets/536995eea3a729239d20486b), archive nationale (8 Mo) | commune | 3 arrêtés de catastrophe naturelle sur 10 ans (2025), 2 risques majeurs recensés (inondation, transport de marchandises dangereuses) |
+| Performance énergétique des logements (DPE) | [ADEME / Terralyse](https://www.data.gouv.fr/datasets/6a9bea1e50326fc16ecb5bc7), millésime 2026, environ 5 500 communes | commune | 22 420 diagnostics, dont 11,5 % de logements classés F ou G |
+| Indice de position sociale des écoles (IPS) | [Éducation nationale](https://data.education.gouv.fr/explore/dataset/fr-en-ips-ecoles-ap2022/), rentrées 2022 à 2024 | commune | IPS moyen des écoles publiques : 98,0 (2022) puis 99,5 (2024) |
 
 ### Open data hors INSEE chargés auparavant (11 jeux)
 
@@ -85,6 +89,7 @@ Portail : <https://opendata.agenceore.fr> (API `/data-fair/api/v1`).
 
 - **Grand-Orly Seine Bièvre** : aucun portail de données ouvertes. Le profil [data.gouv.fr du GOSB](https://www.data.gouv.fr/organizations/grand-orly-seine-bievre/) ne publie aucun jeu. Des couches cartographiques « ept12 » (structures de l'emploi, ports fluviaux, syndicats de déchets, bus structurants) existent via l'Apur sur geo.data.gouv.fr, mais ne sont plus mises à jour. Le [PLUi, pré-diagnostic socio-économique](https://www.grandorlyseinebievre.fr/fileadmin/PORTAIL/PLUi/Majnov2023/20221110_PLUi_PreDiagnosticSocioEconomique_v2.pdf) est un document PDF exploitable pour le cadrage.
 - **Département du Val-de-Marne** : pas de portail ouvert trouvé (les adresses testées ne répondent pas) et aucune organisation du département sur data.gouv.fr.
+- **Résultats au brevet (DNB) par établissement** : publiés par l'Éducation nationale mais seulement jusqu'à la session 2021 ; non intégrés pour cette raison.
 - **Ville d'Ivry** : les adresses data.ivry94.fr et opendata.ivry94.fr répondent « Accès restreint ».
 - **Région Île-de-France** ([data.iledefrance.fr](https://data.iledefrance.fr/)) : portail riche, déjà utilisé (occupation du sol, nuisances, îlots de chaleur, multi-exposition). Intégrés cette fois : FINESS et équipements sportifs. Repérés mais non intégrés : annuaire des professionnels de santé (348 000 lignes, une ligne par acte : à dédoublonner), établissements pour personnes âgées (sans code commune), répertoire des bibliothèques (sans code INSEE), hébergement touristique, mobilités scolaires, registre des cantines, indices de position sociale des lycées (lycées seulement).
 

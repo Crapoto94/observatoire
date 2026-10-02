@@ -12,6 +12,7 @@ const idfm = require('./connectors/idfm');
 const ssmsi = require('./connectors/ssmsi');
 const finances = require('./connectors/finances');
 const gaspar = require('./connectors/gaspar');
+const ips = require('./connectors/ips');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
 
@@ -31,6 +32,7 @@ const CONNECTORS = {
   ssmsi: ssmsi.fetchGeo,
   finances: finances.fetchGeo,
   gaspar: gaspar.fetchGeo,
+  ips: ips.fetchGeo,
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -46,6 +48,7 @@ const BULK = {
   ssmsi: { fn: ssmsi.fetchMany, size: 100000 },
   finances: { fn: finances.fetchMany, size: 200 },
   gaspar: { fn: gaspar.fetchMany, size: 100000 },
+  ips: { fn: ips.fetchMany, size: 100000 },
 };
 
 const jobs = new Map();

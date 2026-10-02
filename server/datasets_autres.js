@@ -139,4 +139,16 @@ module.exports = [
       }),
     },
   },
+  {
+    id: 'ips_ecoles', provider: 'ips', label: 'Indice de position sociale des écoles (IPS)',
+    description: "Éducation nationale : indice de position sociale (IPS) des écoles, rentrées 2022 à aujourd'hui. L'IPS résume le niveau socio-économique des familles des élèves (plus il est élevé, plus le milieu est favorisé ; la moyenne nationale est d'environ 105). Moyenne des écoles de la commune, non pondérée par les effectifs, par secteur public et privé. Mesure la mixité sociale scolaire.",
+    themes: ['cohesion'], doc_url: 'https://data.education.gouv.fr/explore/dataset/fr-en-ips-ecoles-ap2022/',
+    link: [{ theme: 'cohesion', re: /mixite|position sociale|ips/ }],
+    config: {
+      labels: {
+        ...mesure({ IPS_MOYEN: "IPS moyen des écoles", NB_ECOLES: "Écoles prises en compte" }),
+        SECTEUR: { label: 'Secteur', values: { _T: 'Public et privé', public: 'Public', prive: 'Privé' } },
+      },
+    },
+  },
 ];

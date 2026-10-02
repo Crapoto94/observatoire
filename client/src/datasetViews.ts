@@ -393,6 +393,14 @@ export const VIEWS: Record<string, View> = {
       { label: 'Prestations (dernière année)', x: 'MESURE', keep: { MESURE: ['FOYERS_AF', 'FOYERS_CF', 'FOYERS_ASF', 'FOYERS_PAJE_BASE', 'FOYERS_CMG', 'FOYERS_APL', 'FOYERS_ALS', 'FOYERS_ALF', 'FOYERS_RSA', 'FOYERS_PPA'] } },
     ],
   },
+  ips_ecoles: {
+    note: "IPS moyen des écoles de la commune (moyenne simple). Plus l'indice est élevé, plus le milieu des élèves est favorisé ; la moyenne nationale est d'environ 105. Reflète la mixité sociale des écoles, pas leur qualité.",
+    presets: [
+      { label: 'IPS moyen des écoles publiques', x: '@PERIOD', pins: { MESURE: 'IPS_MOYEN', SECTEUR: 'public' } },
+      { label: 'IPS moyen : public et privé', x: '@PERIOD', series: 'SECTEUR', pins: { MESURE: 'IPS_MOYEN' }, keep: { SECTEUR: ['public', 'prive'] } },
+      { label: "Nombre d'écoles prises en compte", x: '@PERIOD', pins: { MESURE: 'NB_ECOLES', SECTEUR: '_T' } },
+    ],
+  },
   gaspar: {
     note: "Base GASPAR (Géorisques). Un arrêté de catastrophe naturelle reconnaît un événement : il ne mesure ni son ampleur ni les dégâts. Les risques recensés sont ceux inscrits au dossier départemental sur les risques majeurs.",
     presets: [

@@ -7,7 +7,7 @@ const { all } = require('./db');
 const THEME = {
   'Démographie': ['demographie', 'Démographie'], 'Emploi': ['emploi', 'Emploi & économie'], 'Cohésion sociale': ['cohesion', 'Cohésion sociale & santé'],
   'Logement': ['logement', 'Logement & urbanisme'], 'Environnement': ['environnement', 'Environnement & STE'], 'Mobilité': ['mobilite', 'Mobilité'],
-  'Vie associative': ['cohesion', 'Cohésion sociale & santé'], 'Sécurité': ['cohesion', 'Cohésion sociale & santé'], 'Finances locales': ['cohesion', 'Cohésion sociale & santé'], 'Santé': ['cohesion', 'Cohésion sociale & santé'], 'Sport': ['cohesion', 'Cohésion sociale & santé'],
+  'Vie associative': ['cohesion', 'Cohésion sociale & santé'], 'Sécurité': ['cohesion', 'Cohésion sociale & santé'], 'Finances locales': ['cohesion', 'Cohésion sociale & santé'], 'Santé': ['cohesion', 'Cohésion sociale & santé'], 'Sport': ['cohesion', 'Cohésion sociale & santé'], 'Éducation': ['cohesion', 'Cohésion sociale & santé'],
 };
 
 const f1 = (v) => (v == null ? '—' : v.toLocaleString('fr-FR', { maximumFractionDigits: 1 }));
