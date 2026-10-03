@@ -212,13 +212,10 @@ app.put('/api/ia/logs/:id/rating', auth.requireAuth, (req, res) => {
 app.get('/api/autres', (req, res) => { try { res.json(require('./autres').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/emploi', (req, res) => { try { res.json(require('./emploi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/kpi', (req, res) => { try { res.json(require('./kpi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
-app.get('/api/database', auth.requireAdmin, (req, res) => {
-  // Garde-fou HTTP et réponse synthétique : dbstats ne parcourt jamais data_rows.
-  res.setTimeout(15000, () => {
-    if (!res.headersSent) res.status(504).json({ error: 'Le calcul synthétique de la base a dépassé 15 secondes.' });
-  });
-  try { res.json(require('./dbstats').stats()); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+app.get('/api/database', auth.requireAdmin, async (req, res) => {
+  // Le calcul reste isolé du serveur HTTP et s'arrête après 15 s si son coût évolue.
+  try { res.json(await require('./dbstats').statsAsync()); }
+  catch (e) { res.status(/15 secondes/.test(e.message) ? 504 : 500).json({ error: e.message }); }
 });
 
 // ---------------- Indicateurs ----------------

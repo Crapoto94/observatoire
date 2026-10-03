@@ -2,10 +2,21 @@
 // peut être volumineuse et l'écran Paramètres doit répondre rapidement.
 const fs = require('fs');
 const path = require('path');
-const { all, get } = require('./db');
-const { currentJob } = require('./importer');
+const { Worker, isMainThread, parentPort } = require('worker_threads');
 
 const FILE = path.join(__dirname, '..', 'data', 'observatoire.sqlite');
+let all, get, currentJob = () => null;
+if (isMainThread) {
+  ({ all, get } = require('./db'));
+  currentJob = require('./importer').currentJob;
+} else {
+  // Ouvre directement la base sans charger db.js (qui exécute le DDL de démarrage)
+  // ni importer.js dans le worker.
+  const { DatabaseSync } = require('node:sqlite');
+  const workerDb = new DatabaseSync(FILE, { readOnly: true });
+  all = (sql, ...params) => workerDb.prepare(sql).all(...params);
+  get = (sql, ...params) => workerDb.prepare(sql).get(...params);
+}
 const size = (f) => { try { return fs.statSync(f).size; } catch { return 0; } };
 
 function stats() {
@@ -47,4 +58,30 @@ function stats() {
   };
 }
 
-module.exports = { stats };
+function statsAsync() {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(__filename);
+    const timeout = setTimeout(() => {
+      worker.terminate();
+      reject(new Error('Le calcul synthétique de la base a dépassé 15 secondes et a été arrêté.'));
+    }, 15000);
+    timeout.unref?.();
+    worker.once('message', (result) => {
+      clearTimeout(timeout);
+      if (result?.__error) { reject(new Error(result.__error)); return; }
+      result.job = currentJob() ? { scope: currentJob().scope, done: currentJob().done, total: currentJob().total, errors: currentJob().errors } : null;
+      resolve(result);
+    });
+    worker.once('error', (e) => { clearTimeout(timeout); reject(e); });
+    worker.once('exit', (code) => {
+      if (code && code !== 0) { clearTimeout(timeout); reject(new Error(`Analyse de la base interrompue (code ${code})`)); }
+    });
+  });
+}
+
+if (!isMainThread) {
+  try { parentPort.postMessage(stats()); }
+  catch (e) { parentPort.postMessage({ __error: e.message }); }
+}
+
+module.exports = { stats, statsAsync };
