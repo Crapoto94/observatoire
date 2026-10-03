@@ -148,10 +148,15 @@ app.get('/api/qpv', async (req, res) => {
     res.json({ items: qpv.list(String(req.query.scope || 'idf')) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-// Assistant IA (Groq) : réponses fondées sur les données de l'observatoire uniquement
+// Assistant IA : réponses fondées sur les données de l'observatoire uniquement
 const ia = require('./ia');
 app.get('/api/ia/status', (req, res) => res.json(ia.status()));
-app.post('/api/ia/chat', async (req, res) => {
+// Modèles proposés pour une source d'IA (IA locale = API Ville, Groq, autonome) — sélecteur de modèle
+app.get('/api/ia/models', auth.requireAuth, wrap(async (req, res) => res.json(await ia.models(String(req.query.provider || 'local')))));
+// Prompts utilisés par l'assistant (Paramètres → IA)
+app.get('/api/ia/prompts', auth.requireAuth, (req, res) => res.json(ia.prompts()));
+// Question/réponse en une fois (sans suivi de progression) — repli si le front n'utilise pas les jobs.
+app.post('/api/ia/chat/sync', async (req, res) => {
   const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
   if (!messages.length || messages[messages.length - 1].role !== 'user') return res.status(400).json({ error: 'question manquante' });
   const question = String(messages[messages.length - 1].content || '');
@@ -169,14 +174,36 @@ app.post('/api/ia/chat', async (req, res) => {
     res.status(502).json({ error: e.message });
   }
 });
-// Modèles proposés pour une source d'IA (Ville/APM, Groq, locale) — sert au sélecteur de modèle
-app.get('/api/ia/models', auth.requireAuth, wrap(async (req, res) => res.json(await ia.models(String(req.query.provider || 'ville')))));
-// Prompts utilisés par l'assistant (Paramètres → IA)
-app.get('/api/ia/prompts', auth.requireAuth, (req, res) => res.json(ia.prompts()));
-// Journal des demandes IA : lecture (données et modèles) et évaluation de la qualité
+// Génération progressive : démarre un job (réponse immédiate avec un jobId), à suivre via /api/ia/job/:id.
+app.post('/api/ia/chat/start', (req, res) => {
+  const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+  if (!messages.length || messages[messages.length - 1].role !== 'user') return res.status(400).json({ error: 'question manquante' });
+  req._iaQuestion = String(messages[messages.length - 1].content || '');
+  req._iaT0 = Date.now();
+  const jobId = ia.startChat(messages, { provider: req.body?.provider, model: req.body?.model, level: req.body?.level });
+  res.json({ jobId });
+});
+// État d'un job de génération. À l'achèvement, la réponse est journalisée (une seule fois) et le
+// logId est renvoyé pour permettre la notation 1-4 étoiles depuis le fil de conversation.
+app.get('/api/ia/job/:id', (req, res) => {
+  const job = ia.getChatJob(req.params.id);
+  if (!job) return res.status(404).json({ status: 'error', error: 'Job introuvable ou expiré' });
+  if (job.status === 'completed' && job.result && job.logId === undefined) {
+    job.logId = ia.logChat({
+      userId: req.user?.id ?? null, username: req.user?.username ?? 'anonyme', provider: job.result.provider, model: job.result.model,
+      question: req.query.question ? String(req.query.question).slice(0, 4000) : '', answer: job.result.answer,
+      consulted: job.result.consulted, sources: job.result.sources, durationMs: Date.now() - (job.createdAt || Date.now()), status: 'ok',
+    });
+  } else if (job.status === 'error' && job.logId === undefined) {
+    job.logId = ia.logChat({ userId: req.user?.id ?? null, username: req.user?.username ?? 'anonyme', provider: req.query.provider || null, question: req.query.question ? String(req.query.question).slice(0, 4000) : '', durationMs: Date.now() - (job.createdAt || Date.now()), status: 'erreur', error: job.error });
+  }
+  const { result, ...rest } = job;
+  res.json({ ...rest, ...(result ? { answer: result.answer, consulted: result.consulted, sources: result.sources, provider: result.provider, model: result.model } : {}) });
+});
+// Journal des demandes IA : lecture (données et modèles) et évaluation de la qualité (1-4 étoiles)
 app.get('/api/ia/logs', auth.requireAuth, (req, res) => {
   const q = req.query;
-  res.json(ia.listLogs({ limit: q.limit, offset: q.offset, user: q.user, rating: q.rating }));
+  res.json(ia.listLogs({ limit: q.limit, offset: q.offset, user: q.user, rating: q.rating, low: q.low === '1' }));
 });
 app.put('/api/ia/logs/:id/rating', auth.requireAuth, (req, res) => {
   const r = ia.rateLog(Number(req.params.id), req.body?.rating, req.body?.comment);

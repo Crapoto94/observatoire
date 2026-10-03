@@ -26,10 +26,9 @@ export default function IaSettings() {
   const [error, setError] = useState('');
 
   const loadLogs = (f = filter) => {
-    const q = f === 'none' ? '?rating=none' : f === 'low' ? '?limit=200' : '';
+    const q = f === 'none' ? '?rating=none' : f === 'low' ? '?low=1' : '';
     api<{ total: number; items: Log[] }>(`/ia/logs${q}`).then((r) => {
-      const items = f === 'low' ? r.items.filter((l) => l.rating != null && l.rating <= 3) : r.items;
-      setLogs(items); setTotal(f === 'low' ? items.length : r.total);
+      setLogs(r.items); setTotal(r.total);
     }).catch((e) => setError(e.message));
   };
   useEffect(() => { api<Prompts>('/ia/prompts').then(setPrompts).catch((e) => setError(e.message)); loadLogs('all'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -72,7 +71,7 @@ export default function IaSettings() {
             <select value={filter} onChange={(e) => { const f = e.target.value as typeof filter; setFilter(f); loadLogs(f); }}>
               <option value="all">Toutes les demandes</option>
               <option value="none">Sans évaluation</option>
-              <option value="low">Notes faibles (≤ 3)</option>
+              <option value="low">Notes faibles (≤ 2)</option>
             </select>
           </label>
           <span className="muted small">{total} demande(s)</span>
@@ -110,10 +109,11 @@ export default function IaSettings() {
 
 function Stars({ value }: { value: number | null }) {
   if (value == null) return <span className="muted small">non évaluée</span>;
-  return <span className="stars" title={`${value}/5`}>{'★'.repeat(value)}<span className="muted">{'★'.repeat(5 - value)}</span></span>;
+  const v = Math.min(4, Math.max(0, value));
+  return <span className="stars" title={`${value}/4`}>{'★'.repeat(v)}<span className="muted">{'★'.repeat(4 - v)}</span></span>;
 }
 
-// Évaluation de la qualité proposée au demandeur : note 1-5 et commentaire facultatif.
+// Évaluation de la qualité proposée au demandeur : note 1-4 étoiles et commentaire facultatif.
 function Rating({ current, comment, onRate }: { current: number | null; comment: string | null; onRate: (rating: number, comment: string) => void }) {
   const [note, setNote] = useState(current ?? 0);
   const [text, setText] = useState(comment ?? '');
@@ -122,8 +122,8 @@ function Rating({ current, comment, onRate }: { current: number | null; comment:
     <div className="ia-rating">
       <span className="muted small">Qualité de la réponse :</span>
       <span className="stars-input">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} type="button" className={n <= note ? 'on' : ''} onClick={() => { setNote(n); setDone(false); }} title={`${n}/5`}>★</button>
+        {[1, 2, 3, 4].map((n) => (
+          <button key={n} type="button" className={n <= note ? 'on' : ''} onClick={() => { setNote(n); setDone(false); }} title={`${n}/4`}>★</button>
         ))}
       </span>
       <input className="ia-rating-comment" placeholder="Commentaire (facultatif)" value={text} onChange={(e) => { setText(e.target.value); setDone(false); }} />

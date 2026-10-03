@@ -319,6 +319,16 @@ ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent
 /* choix du modèle IA */
 .ia-provider { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 8px 0; }
 .ia-provider label.on { font-weight: 600; }
+.ia-controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; }
+.ia-selectors { display: flex; flex-wrap: wrap; gap: 12px; }
+.ia-selectors select { min-width: 200px; }
+/* génération progressive : bulle en cours + curseur clignotant (cf. fenêtre de génération) */
+.bubble.streaming { border-style: dashed; }
+.gen-inline { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.gen-cursor { display: inline-block; margin-left: 2px; animation: gen-cursor-blink 1s step-start infinite; color: var(--accent); }
+@keyframes gen-cursor-blink { 50% { opacity: 0; } }
+/* évaluation de la réponse par le demandeur : 1 à 4 étoiles + commentaire */
+.ia-feedback { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
 .ia-config { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; background: var(--panel); }
 .ia-config .grow { flex: 1; min-width: 220px; }
 .ia-config input { width: 100%; }
