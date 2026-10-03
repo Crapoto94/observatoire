@@ -6,13 +6,23 @@ import type { Kpi } from './Dashboard';
 // Paramétrage fin d'une tuile (roue dentée) : titre, typographie, couleurs, éléments affichés, type de
 // graphique, bornes par indicateur, et sélection multi-indicateurs. Les options s'appliquent au rendu
 // du tableau de bord et au PDF envoyé par e-mail.
-export default function TileSettings({ item, kpis, onSave, onClose }: {
-  item: Item; kpis: Record<string, Kpi>;
+export default function TileSettings({ item, kpis, series, onSave, onClose }: {
+  item: Item; kpis: Record<string, Kpi>; series: string[];
   onSave: (title: string, style: TileStyle, kpiIds?: string[]) => void; onClose: () => void;
 }) {
   const [title, setTitle] = useState(item.title);
   const [s, setS] = useState<TileStyle>({ ...DEFAULT_TILE_STYLE, ...tileStyle(item.config) });
   const set = <K extends keyof TileStyle>(k: K, v: TileStyle[K]) => setS((o) => ({ ...o, [k]: v }));
+  // Fixe une borne (début/fin) d'un axe : '' = axe commun, sinon l'index de la série (axe séparé).
+  const setAxisBound = (key: string, field: 'min' | 'max', raw: string) => {
+    const v = raw.trim() === '' ? null : Number(raw);
+    setS((o) => {
+      const axisBounds = { ...(o.axisBounds || {}) };
+      const cur = { ...(axisBounds[key] || {}), [field]: Number.isNaN(v as number) ? null : v };
+      if (cur.min == null && cur.max == null) delete axisBounds[key]; else axisBounds[key] = cur;
+      return { ...o, axisBounds };
+    });
+  };
   const isKpi = item.kind === 'kpi';
   const [ids, setIds] = useState<string[]>(item.config.kpiIds?.length ? item.config.kpiIds : (item.config.kpiId ? [item.config.kpiId] : []));
   const toggleId = (id: string) => setIds((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
@@ -69,6 +79,21 @@ export default function TileSettings({ item, kpis, onSave, onClose }: {
               <label className="field"><span>Bornes par indicateur</span>
                 <select value={s.boundsPerSeries === false ? 'non' : 'oui'} onChange={(e) => set('boundsPerSeries', e.target.value === 'oui')} title="Chaque indicateur a sa propre échelle d'axe">
                   <option value="oui">Oui (échelles indépendantes)</option><option value="non">Non (échelle commune)</option></select></label>
+              <div className="ts-full">
+                <span className="muted small">Bornes d'axe (début / fin) — laisser vide pour automatique{s.boundsPerSeries !== false && series.length > 1 ? ', une échelle par indicateur' : ''}</span>
+                <div className="axis-bounds">
+                  {(s.boundsPerSeries !== false && series.length > 1 ? series.map((name, i) => ({ key: String(i), label: name })) : [{ key: '', label: 'Axe commun' }]).map(({ key, label }) => {
+                    const b = s.axisBounds?.[key] || {};
+                    return (
+                      <div key={key || 'common'} className="axis-bound-row">
+                        <span className="axis-bound-name small" title={label}>{label}</span>
+                        <input type="number" placeholder="début" value={b.min ?? ''} onChange={(e) => setAxisBound(key, 'min', e.target.value)} />
+                        <input type="number" placeholder="fin" value={b.max ?? ''} onChange={(e) => setAxisBound(key, 'max', e.target.value)} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
               {(s.display === 'histo') && (
                 <>
                   <label className="field"><span>Nombre de classes</span>

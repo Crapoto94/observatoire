@@ -36,8 +36,15 @@ export interface TileStyle {
   histoBins?: number;        // nombre de classes (0 = automatique)
   histoPerSeries?: boolean;  // un histogramme par indicateur (bornes propres à chacun)
   boundsPerSeries?: boolean; // chaque indicateur (série) a ses propres bornes d'axe (échelle indépendante)
+  // Bornes d'axe personnalisées. Clé : '' (axe commun) ou l'index de la série (axe séparé par indicateur).
+  // Chaque entrée : { min, max } facultatifs (vide = automatique).
+  axisBounds?: Record<string, { min?: number | null; max?: number | null }>;
   // tuile multi-indicateurs : hauteur relative de chaque mini-carte
   multiRows?: number;        // nombre de KPI affichés par ligne (multi-KPI)
+  // carte (tuile carto)
+  palette?: string[];        // couleurs des classes choroplèthes (du plus clair au plus foncé)
+  mapDisplay?: 'value' | 'evol'; // représentation : valeur ou évolution
+  showCityNames?: boolean;   // afficher le nom des communes sur la carte
   // cadre
   background?: string;       // couleur de fond de la tuile
   border?: boolean;          // bordure

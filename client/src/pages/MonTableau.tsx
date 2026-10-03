@@ -3,14 +3,16 @@ import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '../api';
 import { DataRow, DatasetData, Geo } from '../types';
-import { buildChart } from '../explorer';
+import { buildChart, quantileBreaks } from '../explorer';
+import CarteSvg, { PALETTE, Shape, Qpv } from './CarteSvg';
 import { buildConfigRows, ChartConfig, DEFAULT_TILE_STYLE, TileStyle, tileStyle } from '../dashConfig';
 import { Card, Kpi } from './Dashboard';
 import { isAdmin, useAuth } from '../auth';
 import { useModal } from '../modal';
 import TileSettings from './TileSettings';
 
-export interface Item { id: number; kind: 'kpi' | 'chart'; title: string; config: ChartConfig & { kpiId?: string; trend?: 'spark' | 'background' | 'none' }; x: number; y: number; w: number; h: number }
+export interface Item { id: number; kind: 'kpi' | 'chart' | 'map'; title: string; config: ChartConfig & MapConfig & { kpiId?: string; trend?: 'spark' | 'background' | 'none' }; x: number; y: number; w: number; h: number }
+interface MapConfig { layerId?: string; scope?: string; period?: string; viewBox?: number[] | null; arrows?: boolean; depts?: boolean; qpv?: boolean; layerLabel?: string; layerUnit?: string; layerDir?: 'up' | 'down' | 'none' }
 
 const REF = '94041';
 const COLS = 24;      // grille fine
@@ -203,7 +205,9 @@ export default function MonTableau() {
               <div className="board-body">
                 {it.kind === 'kpi'
                   ? <KpiWidget ids={it.config.kpiIds?.length ? it.config.kpiIds : (it.config.kpiId ? [it.config.kpiId] : [])} kpis={kpis} style={st} />
-                  : <ChartWidget cfg={it.config} chart={charts[it.id]} style={st} />}
+                  : it.kind === 'map'
+                    ? <MapWidget cfg={it.config} />
+                    : <ChartWidget cfg={it.config} chart={charts[it.id]} style={st} />}
               </div>
               <div className="resize-handle" onMouseDown={(e) => startResize(e, it)} title="Redimensionner" />
             </div>
@@ -215,6 +219,7 @@ export default function MonTableau() {
         <TileSettings
           item={settingsItem}
           kpis={kpis}
+          series={charts[settingsItem.id]?.names || []}
           onClose={() => setSettingsId(null)}
           onSave={(title, style, kpiIds) => {
             const config: ChartConfig = { ...settingsItem.config, style };
@@ -267,6 +272,11 @@ function ChartWidget({ cfg, chart, style }: { cfg: ChartConfig; chart?: ReturnTy
   const display = style.display || (cfg.x === '@PERIOD' ? 'line' : 'bar');
   // Chaque indicateur (série) a ses propres bornes : une échelle Y indépendante par série.
   const perSeries = style.boundsPerSeries !== false && chart.names.length > 1;
+  // Bornes d'axe personnalisées : clé '' = axe commun, sinon l'index de la série (axe séparé).
+  const domain = (key: string): [number | 'auto', number | 'auto'] => {
+    const b = style.axisBounds?.[key];
+    return b ? [b.min ?? 'auto', b.max ?? 'auto'] : ['auto', 'auto'];
+  };
 
   // Histogramme : répartition des valeurs en classes. Une classe par indicateur (bornes propres).
   if (display === 'histo') {
@@ -318,14 +328,14 @@ function ChartWidget({ cfg, chart, style }: { cfg: ChartConfig; chart?: ReturnTy
         {grid && <CartesianGrid strokeDasharray="3 3" />}
         {horizontal ? (
           <>
-            {axes && <XAxis type="number" tickFormatter={fmt} tick={xTick} />}
+            {axes && <XAxis type="number" tickFormatter={fmt} tick={xTick} domain={domain('')} />}
             {axes && <YAxis type="category" dataKey="x" width={Math.min(180, style.valueSize ? style.valueSize * 6 : 140)} interval={0} tick={xTick} />}
           </>
         ) : (
           <>
             {axes && <XAxis dataKey="x" interval={0} angle={cfg.x === '@PERIOD' ? 0 : -25} textAnchor={cfg.x === '@PERIOD' ? 'middle' : 'end'} height={cfg.x === '@PERIOD' ? 24 : 64} tick={xTick} />}
             {axes && yAxes.map((name, yi) => (
-              <YAxis key={name || `y${yi}`} yAxisId={perSeries ? `y${yi}` : 'y'} orientation={perSeries && yi % 2 ? 'right' : 'left'} tickFormatter={fmt} width={perSeries ? 40 : 46} tick={xTick} stroke={perSeries ? colorAt(yi) : undefined} />
+              <YAxis key={name || `y${yi}`} yAxisId={perSeries ? `y${yi}` : 'y'} orientation={perSeries && yi % 2 ? 'right' : 'left'} tickFormatter={fmt} width={perSeries ? 40 : 46} tick={xTick} stroke={perSeries ? colorAt(yi) : undefined} domain={domain(String(yi))} />
             ))}
           </>
         )}
@@ -340,5 +350,57 @@ function ChartWidget({ cfg, chart, style }: { cfg: ChartConfig; chart?: ReturnTy
           ))}
       </Chart>
     </ResponsiveContainer>
+  );
+}
+
+// Tuile carte : reprend EXACTEMENT le rendu de la page Cartographie (composant partagé CarteSvg) —
+// couches colorées, contour GOSB, contours départements, QPV, flèches de tendance et légende —
+// en conservant le ZOOM (viewBox) enregistré. Palette, noms de communes et zoom réglables par tuile.
+interface MapLayerData {
+  layer: { id: string; label: string; unit: string; dir: 'up' | 'down' | 'none' };
+  scope: string; period: string; periods: string[];
+  values: Record<string, { v: number; prev: number | null; prevPeriod: string | null; trend: { dir: 'up' | 'down' | 'flat'; pct: number | null } | null }>;
+  gosb: string[];
+}
+
+function MapWidget({ cfg }: { cfg: MapConfig & { style?: TileStyle } }) {
+  const st = (cfg.style || {}) as TileStyle;
+  const [shapes, setShapes] = useState<{ viewBox: number[]; items: Shape[] } | null>(null);
+  const [gosbShapes, setGosbShapes] = useState<{ items: Shape[] } | null>(null);
+  const [qpv, setQpv] = useState<Qpv[]>([]);
+  const [data, setData] = useState<MapLayerData | null>(null);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!cfg.layerId) { setErr('Carte sans couche'); return; }
+    let live = true;
+    api<{ viewBox: number[]; items: Shape[] }>(`/shapes?scope=${cfg.scope || 'idf'}`).then((s) => { if (live) setShapes(s); }).catch(() => undefined);
+    api<MapLayerData>(`/cartographie/layer/${cfg.layerId}?scope=${cfg.scope || 'idf'}${cfg.period ? `&period=${encodeURIComponent(cfg.period)}` : ''}`)
+      .then((d) => { if (live) setData(d); }).catch((e) => { if (live) setErr((e as Error).message); });
+    return () => { live = false; };
+  }, [cfg.layerId, cfg.scope, cfg.period]);
+  useEffect(() => { api<{ items: Shape[] }>('/shapes?scope=gosb').then(setGosbShapes).catch(() => setGosbShapes(null)); }, []);
+  useEffect(() => {
+    if (cfg.qpv === false) { setQpv([]); return; }
+    api<{ items: Qpv[] }>(`/qpv?scope=${cfg.scope || 'idf'}`).then((r) => setQpv(r.items)).catch(() => setQpv([]));
+  }, [cfg.qpv, cfg.scope]);
+
+  if (err) return <div className="empty small">{err}</div>;
+  if (!shapes) return <div className="empty small">Chargement de la carte…</div>;
+  const values = data?.values || {};
+  const nums = Object.values(values).map((v) => v.v).sort((a, b) => a - b);
+  const palette = st.palette && st.palette.length >= 2 ? st.palette : PALETTE;
+  const breaks = nums.length ? quantileBreaks(nums, palette.length) : [];
+  const view = cfg.viewBox || shapes.viewBox;
+  const unit = data?.layer.unit === '€' ? ' €' : data?.layer.unit === '%' ? ' %' : data?.layer.unit ? ` ${data.layer.unit}` : '';
+  return (
+    <div className="tile-map-wrap">
+      <CarteSvg
+        items={shapes.items} values={values} gosbOutline={gosbShapes?.items ?? []} viewBox={view}
+        palette={palette} breaks={breaks} unit={unit} layerDir={data?.layer.dir ?? 'none'}
+        arrows={cfg.arrows !== false} depts={cfg.depts !== false}
+        qpv={cfg.qpv === false ? [] : qpv} showNames={st.showCityNames === true}
+      />
+    </div>
   );
 }

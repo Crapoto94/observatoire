@@ -3,7 +3,7 @@
 // conserve son propre paramétrage (config JSON) et une position / taille dans la grille.
 const { all, get, run } = require('./db');
 
-const KIND = ['kpi', 'chart'];
+const KIND = ['kpi', 'chart', 'map'];
 
 const parse = (row) => ({
   id: row.id, kind: row.kind, title: row.title,
@@ -58,13 +58,23 @@ function ensureSettings() {
 
 const DEFAULT_KPIS = ['population', 'niveau_vie', 'pauvrete', 'chomage', 'rsa', 'dette_hab', 'logements', 'prix'];
 
-// Modèle par défaut : liste d'items { kind, title, config, x, y, w, h }.
+// Modèle livré avec le code (server/default-dashboard.json) : permet de transporter le tableau de bord
+// par défaut d'un environnement à l'autre (dev → prod) sans dépendre du contenu de la base.
+function bundledTemplate() {
+  try {
+    const items = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, 'default-dashboard.json'), 'utf8'));
+    if (Array.isArray(items) && items.length) return items;
+  } catch { /* pas de modèle livré : repli sur la liste par défaut */ }
+  return DEFAULT_KPIS.map((id, i) => ({ kind: 'kpi', title: '', config: { kpiId: id }, x: (i % 4) * 3, y: Math.floor(i / 4) * 3, w: 3, h: 3 }));
+}
+
+// Modèle par défaut : liste d'items { kind, title, config, x, y, w, h }. Priorité : base (réglé depuis
+// l'app), sinon modèle livré avec le code, sinon liste de référence.
 function defaultTemplate() {
   ensureSettings();
   const row = get('SELECT value FROM app_settings WHERE key = ?', SETTINGS_KEY);
   if (row?.value) { try { return JSON.parse(row.value); } catch { /* modèle illisible */ } }
-  // Modèle initial : quelques KPI de référence disposés sur deux rangées.
-  return DEFAULT_KPIS.map((id, i) => ({ kind: 'kpi', title: '', config: { kpiId: id }, x: (i % 4) * 3, y: Math.floor(i / 4) * 3, w: 3, h: 3 }));
+  return bundledTemplate();
 }
 
 function setDefaultTemplate(items) {

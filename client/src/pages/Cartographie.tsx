@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { quantileBreaks } from '../explorer';
+import { useModal } from '../modal';
 
 // Cartographie : couches (jeux disponibles) en légende, carte des communes avec contour du GOSB et flèches de tendance.
 const PALETTE = ['#eef4fc', '#c6dbf5', '#92bdee', '#5a97df', '#2f6fc7', '#14418a'];
@@ -35,6 +36,7 @@ function center(path: string): [number, number] {
 }
 
 export default function Cartographie() {
+  const modal = useModal();
   const [params, setParams] = useSearchParams();
   const [layers, setLayers] = useState<Layer[]>([]);
   const [layerId, setLayerId] = useState(params.get('couche') || 'chomage');
@@ -100,6 +102,20 @@ export default function Cartographie() {
   }, [layers]);
   const nameOf = (code: string) => items.find((s) => s.code === code)?.nom ?? code;
   const ranking = useMemo(() => inScope.map((s) => ({ code: s.code, nom: s.nom, v: values[s.code].v })).sort((a, b) => b.v - a.v), [inScope]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ajoute la carte affichée à « Mon tableau de bord », en conservant le zoom courant (viewBox), le
+  // périmètre, la couche et la période : la tuile reproduira exactement cette vue.
+  const [added, setAdded] = useState(false);
+  const addToDashboard = async () => {
+    const title = await modal.prompt({ title: 'Ajouter la carte à mon tableau de bord', message: 'Titre de la carte :', defaultValue: layer?.label || 'Carte', okLabel: 'Ajouter' });
+    if (!title) return;
+    try {
+      const config = { layerId, scope, period, viewBox: vb, arrows, depts, qpv: qpvOn, layerLabel: layer?.label, layerUnit: layer?.unit, layerDir: layer?.dir };
+      await api('/dashboard', { body: { kind: 'map', title, config } });
+      setAdded(true);
+      await modal.alert({ title: 'Carte ajoutée', message: `« ${title} » a été ajoutée à votre tableau de bord (zoom courant conservé).` });
+    } catch (e) { setError((e as Error).message); }
+  };
 
   // zoom molette et déplacement
   useEffect(() => {
@@ -180,6 +196,7 @@ export default function Cartographie() {
             <button className="secondary" onClick={() => shapes && setVb(shapes.viewBox)}>Vue complète</button>
             <label className="inline small"><input type="checkbox" checked={arrows} onChange={(e) => setArrows(e.target.checked)} /> Flèches de tendance par commune</label>
             {layer && <Link className="small" to={`/donnees?ds=${layer.dataset}`}>Voir les données du jeu</Link>}
+            <button className="secondary" disabled={!data || !shapes} onClick={addToDashboard} title="Reprend la couche, le périmètre, la période et le zoom affichés">{added ? '✓ ajoutée' : '+ Mon tableau de bord'}</button>
             {loading && <span className="muted small">Chargement…</span>}
           </div>
 

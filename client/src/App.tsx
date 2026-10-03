@@ -52,6 +52,7 @@ export default function App() {
           <NavLink to="/donnees">Données</NavLink>
           <NavLink to="/cartographie">Cartographie</NavLink>
           <NavLink to="/catalogue">Catalogue</NavLink>
+          <a className="nav-sig" href="http://sig.ivry.local/" target="_blank" rel="noreferrer" title="Ouvrir le SIG de la Ville dans un nouvel onglet">SIG Ville ↗</a>
           {admin && <NavLink to="/parametres">Paramètres</NavLink>}
         </nav>
         <div className="user-box">
