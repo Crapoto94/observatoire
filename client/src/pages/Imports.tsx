@@ -19,7 +19,8 @@ const duration = (a: string, b: string | null) => {
 const SCOPE: Record<string, string> = { idf: 'Île-de-France', favoris: 'Favoris' };
 
 // Journal des imports : une ligne par jeu et par tentative, avec méthode, source et détail
-export default function Imports() {
+// `embedded` : rendu sans en-tête de page, pour l'onglet « Journal des imports » des Paramètres.
+export default function Imports({ embedded = false }: { embedded?: boolean }) {
   const [res, setRes] = useState<Res | null>(null);
   const [f, setF] = useState({ dataset: '', status: '', scope: '', method: '', q: '', from: '', to: '' });
   const [page, setPage] = useState(0);
@@ -38,8 +39,8 @@ export default function Imports() {
   const pages = res ? Math.max(1, Math.ceil(res.total / PAGE)) : 1;
 
   return (
-    <section className="page imports">
-      <div className="page-head"><h1>Journal des imports</h1></div>
+    <section className={embedded ? 'imports' : 'page imports'}>
+      {!embedded && <div className="page-head"><h1>Journal des imports</h1></div>}
       {error && <div className="error">{error}</div>}
       <div className="runs-filters">
         <label className="field small"><span>Jeu</span>

@@ -20,10 +20,12 @@
     "express": "^5.1.0",
     "jszip": "^3.10.2",
     "marked": "^18.0.14",
+    "pdfkit": "^0.20.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.0.0",
     "recharts": "^3.0.0",
+    "svg-to-pdfkit": "^0.1.8",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

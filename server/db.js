@@ -144,6 +144,78 @@ CREATE TABLE IF NOT EXISTS import_runs (
 CREATE INDEX IF NOT EXISTS idx_runs_ds ON import_runs(dataset_id, started);
 `);
 
+// Comptes utilisateurs (annuaire Active Directory de la Ville, plus une entrée locale de secours),
+// sessions applicatives (jeton opaque) et tableaux de bord personnels.
+db.exec(`
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT NOT NULL UNIQUE,
+  display_name TEXT,
+  email TEXT,
+  role TEXT NOT NULL DEFAULT 'utilisateur',
+  provider TEXT NOT NULL DEFAULT 'ad',
+  password_hash TEXT,
+  connections INTEGER NOT NULL DEFAULT 0,
+  last_login TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS sessions (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  last_seen TEXT DEFAULT CURRENT_TIMESTAMP,
+  expires_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+CREATE TABLE IF NOT EXISTS dashboard_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  title TEXT,
+  config TEXT NOT NULL,
+  x INTEGER NOT NULL DEFAULT 0,
+  y INTEGER NOT NULL DEFAULT 0,
+  w INTEGER NOT NULL DEFAULT 4,
+  h INTEGER NOT NULL DEFAULT 3,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_dashboard_user ON dashboard_items(user_id);
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id INTEGER NOT NULL,
+  key TEXT NOT NULL,
+  value TEXT,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_id, key)
+);
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+-- Journal de l'assistant IA : une ligne par demande utilisateur (question, réponse, demandeur,
+-- modèle, sources, durée) et la note/commentaire de qualité proposés au demandeur.
+CREATE TABLE IF NOT EXISTS ia_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT DEFAULT CURRENT_TIMESTAMP,
+  user_id INTEGER,
+  username TEXT,
+  provider TEXT,
+  model TEXT,
+  question TEXT,
+  answer TEXT,
+  consulted TEXT,
+  sources TEXT,
+  duration_ms INTEGER,
+  status TEXT DEFAULT 'ok',
+  error TEXT,
+  rating INTEGER,
+  rating_comment TEXT,
+  rated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ia_logs_at ON ia_logs(at);
+`);
+
 const clean = (params) => params.map((p) => (p === undefined ? null : p));
 
 module.exports = {

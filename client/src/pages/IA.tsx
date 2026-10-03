@@ -94,6 +94,7 @@ export default function IA() {
       </div>
 
       <div className="note-box small">
+        <strong>Chaque demande est indépendante des précédentes</strong> : l'assistant ne conserve pas le fil de la conversation et repart des seules données de l'observatoire pour chaque question.{' '}
         L'assistant répond <strong>uniquement à partir des données de l'observatoire</strong> (indicateurs de la conception, jeux importés, KPI, classements).{' '}
         {provider === 'local'
           ? "Les données consultées sont transmises à l'IA locale configurée sur le serveur."

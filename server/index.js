@@ -1,3 +1,4 @@
+require('./env'); // charge .env avant tout : APM_API_URL/APM_API_KEY (AD), GROQ_API_KEY, LOCAL_LLM_*…
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -14,6 +15,7 @@ syncPopulations();
 
 const app = express();
 app.use(express.json({ limit: '5mb' }));
+app.use(require('./auth').attach); // identifie l'utilisateur à partir du jeton de session (Authorization: Bearer)
 
 const FIELDS = ['theme', 'theme_label', 'groupe', 'groupe_label', 'niveau', 'libelle', 'libelle_carte', 'priorite', 'source',
   'lien_origine', 'lien_corrige', 'periodicite', 'proposition', 'lien_donnees', 'notes', 'ordre', 'sous_ligne', 'excel_sheet', 'excel_row',
@@ -54,6 +56,82 @@ const status = (req, res) => {
 app.get('/api/health', status);
 app.get('/api/status', status);
 app.get('/api/version', (req, res) => res.json(require('./version').info()));
+
+// ---------------- Authentification (AD via l'API centrale + entrée locale admin/admin) ----------------
+const auth = require('./auth');
+app.post('/api/auth/login', wrap(async (req, res) => {
+  const r = await auth.login(req.body?.username, req.body?.password);
+  if (r.error) return res.status(r.status || 401).json({ error: r.error });
+  res.json(r);
+}));
+app.get('/api/auth/me', (req, res) => res.json({ user: req.user || null }));
+app.post('/api/auth/logout', (req, res) => {
+  const h = req.headers.authorization || '';
+  auth.logout(h.startsWith('Bearer ') ? h.slice(7) : null);
+  res.status(204).end();
+});
+// Menu admin : liste des comptes, nombre de connexions et date de dernière connexion
+app.get('/api/admin/users', auth.requireAdmin, (req, res) => res.json(auth.listUsers()));
+app.put('/api/admin/users/:id/role', auth.requireAdmin, (req, res) => {
+  const r = auth.setRole(Number(req.params.id), req.body?.role);
+  r.error ? res.status(r.status || 400).json({ error: r.error }) : res.json(r);
+});
+
+// ---------------- Paramètres (compte, préférences, état des services) ----------------
+const settings = require('./settings');
+app.get('/api/settings', auth.requireAuth, (req, res) => res.json({ settings: settings.getSettings(req.user.id) }));
+app.put('/api/settings', auth.requireAuth, (req, res) => res.json({ settings: settings.setSettings(req.user.id, req.body) }));
+// État des services : accessible à tout utilisateur connecté (info ; les détails admin restent réservés)
+app.get('/api/services/status', auth.requireAuth, (req, res) => res.json(settings.services()));
+
+// ---------------- Tableaux de bord personnels (KPI et graphiques) ----------------
+const dash = require('./dashboard');
+app.get('/api/dashboard', auth.requireAuth, (req, res) => res.json(dash.list(req.user.id)));
+app.post('/api/dashboard', auth.requireAuth, (req, res) => {
+  const r = dash.add(req.user.id, req.body);
+  r.error ? res.status(r.status || 400).json({ error: r.error }) : res.status(201).json(r.item);
+});
+app.put('/api/dashboard/:id', auth.requireAuth, (req, res) => {
+  const r = dash.update(req.user.id, Number(req.params.id), req.body);
+  r.error ? res.status(r.status || 400).json({ error: r.error }) : res.json(r.item);
+});
+app.delete('/api/dashboard/:id', auth.requireAuth, (req, res) => {
+  dash.remove(req.user.id, Number(req.params.id));
+  res.status(204).end();
+});
+// Modèle de tableau de bord par défaut (admin) : hérité par tout nouvel utilisateur à sa 1re connexion.
+app.get('/api/dashboard/default', auth.requireAdmin, (req, res) => res.json(dash.defaultTemplate()));
+app.put('/api/dashboard/default', auth.requireAdmin, (req, res) => res.json(dash.setDefaultTemplate(req.body?.items)));
+// Promeut le tableau de bord courant comme modèle par défaut (bouton « Définir par défaut », admin).
+app.post('/api/dashboard/default/from-current', auth.requireAdmin, (req, res) => res.json(dash.setDefaultTemplate(dash.list(req.user.id))));
+
+// Génère un PDF du tableau de bord et l'envoie par courriel via l'API centrale (cronable).
+app.post('/api/dashboard/email', auth.requireAuth, wrap(async (req, res) => {
+  const to = String(req.body?.to || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return res.status(400).json({ error: 'Adresse de destination invalide' });
+  const items = dash.list(req.user.id);
+  if (!items.length) return res.status(400).json({ error: 'Votre tableau de bord est vide.' });
+  const title = String(req.body?.title || '').trim() || `Mon tableau de bord — ${req.user.display_name || req.user.username}`;
+  const message = String(req.body?.message || '').trim();
+  const pdf = await require('./pdf').buildDashboardPdf({ title, items, user: req.user });
+  const content = `<p>${message ? message.replace(/[<>&]/g, '') + '<br/><br/>' : ''}Vous trouverez ci-joint le tableau de bord « ${title} » au format PDF, généré le ${new Date().toLocaleString('fr-FR')}.</p>`;
+  const r = await require('./mailer').sendMail({
+    to, subject: title, content, fromName: 'Observatoire de la ville',
+    attachments: [{ filename: 'tableau-de-bord.pdf', content: pdf.toString('base64') }],
+  });
+  r.ok ? res.json({ ok: true }) : res.status(502).json({ error: r.error });
+}));
+
+// Télécharge le PDF du tableau de bord sans l'envoyer (aperçu / enregistrement local).
+app.get('/api/dashboard.pdf', auth.requireAuth, wrap(async (req, res) => {
+  const items = dash.list(req.user.id);
+  const title = `Mon tableau de bord — ${req.user.display_name || req.user.username}`;
+  const pdf = await require('./pdf').buildDashboardPdf({ title, items, user: req.user });
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="tableau-de-bord.pdf"`);
+  res.end(pdf);
+}));
+
 // Cartographie : couches communales, valeurs, tendances
 app.get('/api/cartographie/layers', (req, res) => { try { res.json(require('./cartographie').list()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/cartographie/layer/:id', (req, res) => {
@@ -71,21 +149,43 @@ app.get('/api/qpv', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // Assistant IA (Groq) : réponses fondées sur les données de l'observatoire uniquement
-app.get('/api/ia/status', (req, res) => res.json(require('./ia').status()));
+const ia = require('./ia');
+app.get('/api/ia/status', (req, res) => res.json(ia.status()));
 app.post('/api/ia/chat', async (req, res) => {
   const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
   if (!messages.length || messages[messages.length - 1].role !== 'user') return res.status(400).json({ error: 'question manquante' });
+  const question = String(messages[messages.length - 1].content || '');
+  const t0 = Date.now();
   try {
-    res.json(await require('./ia').chat(messages, req.body?.provider));
+    const r = await ia.chat(messages, { provider: req.body?.provider, model: req.body?.model, level: req.body?.level });
+    const logId = ia.logChat({
+      userId: req.user?.id ?? null, username: req.user?.username ?? 'anonyme', provider: r.provider, model: r.model,
+      question, answer: r.answer, consulted: r.consulted, sources: r.sources, durationMs: Date.now() - t0, status: 'ok',
+    });
+    res.json({ ...r, logId });
   } catch (e) {
     console.warn('[ia]', e.message);
+    ia.logChat({ userId: req.user?.id ?? null, username: req.user?.username ?? 'anonyme', provider: req.body?.provider || null, question, durationMs: Date.now() - t0, status: 'erreur', error: e.message });
     res.status(502).json({ error: e.message });
   }
+});
+// Modèles proposés pour une source d'IA (Ville/APM, Groq, locale) — sert au sélecteur de modèle
+app.get('/api/ia/models', auth.requireAuth, wrap(async (req, res) => res.json(await ia.models(String(req.query.provider || 'ville')))));
+// Prompts utilisés par l'assistant (Paramètres → IA)
+app.get('/api/ia/prompts', auth.requireAuth, (req, res) => res.json(ia.prompts()));
+// Journal des demandes IA : lecture (données et modèles) et évaluation de la qualité
+app.get('/api/ia/logs', auth.requireAuth, (req, res) => {
+  const q = req.query;
+  res.json(ia.listLogs({ limit: q.limit, offset: q.offset, user: q.user, rating: q.rating }));
+});
+app.put('/api/ia/logs/:id/rating', auth.requireAuth, (req, res) => {
+  const r = ia.rateLog(Number(req.params.id), req.body?.rating, req.body?.comment);
+  r.error ? res.status(r.status || 400).json({ error: r.error }) : res.json(r);
 });
 app.get('/api/autres', (req, res) => { try { res.json(require('./autres').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/emploi', (req, res) => { try { res.json(require('./emploi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/kpi', (req, res) => { try { res.json(require('./kpi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
-app.get('/api/database', (req, res) => { try { res.json(require('./dbstats').stats({ check: req.query.check === '1' })); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.get('/api/database', auth.requireAdmin, (req, res) => { try { res.json(require('./dbstats').stats({ check: req.query.check === '1' })); } catch (e) { res.status(500).json({ error: e.message }); } });
 
 // ---------------- Indicateurs ----------------
 function withDatasets(rows) {
@@ -247,17 +347,17 @@ app.get('/api/datasets/:id/data', (req, res) => {
   res.json({ ...d, labels: d.labels ? JSON.parse(d.labels) : {}, rows });
 });
 
-app.post('/api/datasets/:id/import', (req, res) => {
+app.post('/api/datasets/:id/import', auth.requireAdmin, (req, res) => {
   if (!get('SELECT id FROM datasets WHERE id = ?', req.params.id)) return res.status(404).json({ error: 'introuvable' });
   res.status(202).json(startImport({ datasetIds: [req.params.id], geoCodes: req.body?.geos }));
 });
 
-app.post('/api/import', (req, res) => {
+app.post('/api/import', auth.requireAdmin, (req, res) => {
   res.status(202).json(startImport({ datasetIds: req.body?.datasets, geoCodes: req.body?.geos, scope: req.body?.scope }));
 });
 
 // Journal des imports : filtres dataset, statut, périmètre, méthode (api / csv), texte libre, dates
-app.get('/api/import-runs', (req, res) => {
+app.get('/api/import-runs', auth.requireAdmin, (req, res) => {
   const q = req.query, where = [], params = [];
   if (q.dataset) { where.push('dataset_id = ?'); params.push(String(q.dataset)); }
   if (q.status) { where.push('status = ?'); params.push(String(q.status)); }
@@ -280,19 +380,19 @@ app.get('/api/import-runs', (req, res) => {
     },
   });
 });
-app.get('/api/import-runs/:id', (req, res) => {
+app.get('/api/import-runs/:id', auth.requireAdmin, (req, res) => {
   const r = get('SELECT * FROM import_runs WHERE id = ?', req.params.id);
   r ? res.json({ ...r, log: JSON.parse(r.log || '[]') }) : res.status(404).json({ error: 'introuvable' });
 });
 
 // Passer le jeu en cours (il sera repris plus tard) ou arrêter l'import
-app.post('/api/jobs/:id/skip', (req, res) => {
+app.post('/api/jobs/:id/skip', auth.requireAdmin, (req, res) => {
   const j = jobs.get(Number(req.params.id));
   if (!j || j.status !== 'en cours') return res.status(404).json({ error: 'import introuvable ou terminé' });
   j.skip = j.current?.id || null;
   res.json({ ok: true, skipped: j.skip });
 });
-app.post('/api/jobs/:id/cancel', (req, res) => {
+app.post('/api/jobs/:id/cancel', auth.requireAdmin, (req, res) => {
   const j = jobs.get(Number(req.params.id));
   if (!j || j.status !== 'en cours') return res.status(404).json({ error: 'import introuvable ou terminé' });
   j.cancelled = true;
@@ -306,7 +406,7 @@ app.get('/api/jobs/:id', (req, res) => {
   j ? res.json(j) : res.status(404).json({ error: 'introuvable' });
 });
 
-app.get('/api/import-log', (req, res) => {
+app.get('/api/import-log', auth.requireAdmin, (req, res) => {
   res.json(all('SELECT * FROM import_log ORDER BY id DESC LIMIT 100'));
 });
 
@@ -371,7 +471,7 @@ app.get('/api/geos/search', wrap(async (req, res) => {
   res.json(j.map((c) => ({ code: c.code, nom: c.nom, dept: c.departement?.code, population: c.population })));
 }));
 
-app.post('/api/geos', (req, res) => {
+app.post('/api/geos', auth.requireAdmin, (req, res) => {
   const { code, nom, dept, population, level = 'COM', import: doImport } = req.body || {};
   if (!['COM', 'DEP', 'EPCI', 'REG'].includes(level)) return res.status(400).json({ error: 'niveau inconnu' });
   if (level === 'COM' && !/^\d[0-9AB]\d{3}$/.test(code || '')) return res.status(400).json({ error: 'code INSEE de commune invalide' });
@@ -383,7 +483,7 @@ app.post('/api/geos', (req, res) => {
   res.status(201).json({ geo: get('SELECT * FROM geos WHERE code = ?', code), job });
 });
 
-app.delete('/api/geos/:code', (req, res) => {
+app.delete('/api/geos/:code', auth.requireAdmin, (req, res) => {
   const g = get('SELECT * FROM geos WHERE code = ?', req.params.code);
   if (!g) return res.status(404).json({ error: 'introuvable' });
   if (g.fixed) return res.status(400).json({ error: 'la commune de référence ne peut pas être retirée' });

@@ -6,6 +6,8 @@ import CarteDonnees from './CarteDonnees';
 import EvolutionDonnees from './EvolutionDonnees';
 import { VIEWS } from '../datasetViews';
 import { Mode, MAX_CATEGORIES, Ratio, Sel, buildChart, buildSelection, cellValue, distinct, initialSelection, isMeasureDim, natCompare, pinnedDims, selectRows } from '../explorer';
+import { configFromSelection } from '../dashConfig';
+import { useModal } from '../modal';
 import { DataRow, Dataset, DatasetData, Geo, Indicator, Job, LEVEL_LABEL } from '../types';
 
 const REF = '94041';
@@ -18,6 +20,7 @@ const fmt = (v: number) => {
 };
 
 export default function Donnees() {
+  const modal = useModal();
   const [params, setParams] = useSearchParams();
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [geos, setGeos] = useState<Geo[]>([]);
@@ -101,12 +104,16 @@ export default function Donnees() {
   // import de toutes les communes d'Île-de-France (pour la carte) : un jeu ou tous les jeux
   const importIdf = async (allDatasets: boolean) => {
     const what = allDatasets ? `les ${datasets.length} jeux` : 'ce jeu';
-    if (!confirm(`Charger ${what} pour les ${idfCommunes || 1266} communes d'Île-de-France ?\nL'opération télécharge de gros volumes (plusieurs dizaines de minutes pour tous les jeux).`)) return;
+    const ok = await modal.confirm({ title: "Charger l'Île-de-France", message: `Charger ${what} pour les ${idfCommunes || 1266} communes d'Île-de-France ? L'opération télécharge de gros volumes (plusieurs dizaines de minutes pour tous les jeux).` });
+    if (!ok) return;
     try { follow(await api<Job>('/import', { body: { scope: 'idf', datasets: allDatasets ? undefined : [dsId] } })); } catch (e) { setError((e as Error).message); }
   };
   const pickCommune = (code: string) => { setOnlyRef(false); setCompare(code); };
   const refresh = async (all: boolean) => {
-    if (all && !confirm(`Mettre à jour les ${datasets.length} jeux de données publics pour les ${geos.length} territoires importés ?\nL'opération réinterroge toutes les sources (quelques minutes).`)) return;
+    if (all) {
+      const ok = await modal.confirm({ title: 'Mettre à jour les données', message: `Mettre à jour les ${datasets.length} jeux de données publics pour les ${geos.length} territoires importés ? L'opération réinterroge toutes les sources (quelques minutes).` });
+      if (!ok) return;
+    }
     try { follow(await api<Job>(all ? '/import' : `/datasets/${dsId}/import`, { body: {} })); } catch (e) { setError((e as Error).message); }
   };
 
@@ -198,6 +205,30 @@ export default function Donnees() {
     );
   }, [rows, rawFilters, rawSearch, geos, data]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Ajoute le graphique affiché (avec sa forme et son paramétrage actuels) à « Mon tableau de bord ».
+  const [adding, setAdding] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [dashTitle, setDashTitle] = useState('');
+  const [dashOpen, setDashOpen] = useState(false);
+  const defaultTitle = () => [preset?.label, measureText].filter(Boolean).join(' : ') || current?.label || dsId;
+  const addToDashboard = async (title: string) => {
+    if (!title.trim()) return;
+    setAdding(true);
+    try {
+      const popByGeo: Record<string, Record<string, number>> = {};
+      const geoNames: Record<string, string> = {};
+      for (const g of geos) { geoNames[g.code] = g.nom; if (g.pop_series) popByGeo[g.code] = g.pop_series; }
+      const cfg = configFromSelection(dsId, dimNames, hier, sel, shownGeos, {
+        dsLabel: current?.label, unit: measureText || preset?.label,
+        labels: data?.labels, popByGeo, geoNames,
+      });
+      await api('/dashboard', { body: { kind: 'chart', title: title.trim(), config: cfg } });
+      setNotice('Graphique ajouté à « Mon tableau de bord ».');
+      setDashOpen(false); setDashTitle('');
+    } catch (e) { setError((e as Error).message); }
+    finally { setAdding(false); }
+  };
+
   const exportCsv = () => {
     const cols = ['territoire', 'periode', ...dimNames, 'valeur', 'statut'];
     const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -242,7 +273,8 @@ export default function Donnees() {
     } catch (e) { setError((e as Error).message); }
   };
   const removeGeo = async (code: string) => {
-    if (!confirm(`Retirer ${geoName(code)} et ses données importées ?`)) return;
+    const ok = await modal.confirm({ title: 'Retirer le territoire', message: `Retirer ${geoName(code)} et ses données importées ?`, okLabel: 'Retirer', danger: true });
+    if (!ok) return;
     await api(`/geos/${code}`, { method: 'DELETE' });
     if (compare === code) setCompare('');
     await loadMeta(); await loadData();
@@ -285,7 +317,7 @@ export default function Donnees() {
                 <span>{job.current.done} / {job.current.total} territoires ({job.current.total ? Math.round((100 * job.current.done) / job.current.total) : 0} %)</span>
                 <span>
                   <button className="secondary" onClick={() => api(`/jobs/${job.id}/skip`, { body: {} }).catch(() => undefined)} title="Abandonne ce jeu, passe au suivant et le reprendra plus tard">Passer ce jeu</button>{' '}
-                  <button className="secondary" onClick={() => { if (confirm("Arrêter l'import en cours ?")) api(`/jobs/${job.id}/cancel`, { body: {} }).catch(() => undefined); }}>Arrêter</button>
+                  <button className="secondary" onClick={async () => { if (await modal.confirm({ title: "Arrêter l'import", message: "Arrêter l'import en cours ?", okLabel: 'Arrêter', danger: true })) api(`/jobs/${job.id}/cancel`, { body: {} }).catch(() => undefined); }}>Arrêter</button>
                 </span>
               </div>
               <div className="progress thin"><div style={{ width: `${job.current.total ? (100 * job.current.done) / job.current.total : 0}%` }} /></div>
@@ -532,6 +564,33 @@ export default function Donnees() {
                       ))}
                       {chart.truncated > 0 && <div className="warn small">Seules les {MAX_CATEGORIES} premières catégories (sur {MAX_CATEGORIES + chart.truncated}) sont affichées : restreignez avec les filtres ou le niveau de détail.</div>}
                       {chart.dupes > 0 && <div className="warn small">Plusieurs lignes correspondent à la même barre : leurs valeurs sont additionnées. Précisez les filtres pour éviter les doubles comptes.</div>}
+                      {chart.data.length > 0 && (
+                        <div className="add-dash">
+                          {notice ? (
+                            <div className="add-dash-done">
+                              <span className="add-dash-check">✓</span> {notice}{' '}
+                              <Link to="/mon-tableau" className="add-dash-link">Ouvrir mon tableau de bord →</Link>
+                            </div>
+                          ) : !dashOpen ? (
+                            <button type="button" className="add-dash-btn" onClick={() => { setDashOpen(true); setDashTitle(defaultTitle()); }}>
+                              <span className="add-dash-icon">＋</span>
+                              <span>Ajouter à mon tableau de bord</span>
+                            </button>
+                          ) : (
+                            <div className="add-dash-form">
+                              <label className="add-dash-field">
+                                <span className="muted small">Titre du graphique</span>
+                                <input autoFocus value={dashTitle} placeholder={defaultTitle()}
+                                  onChange={(e) => setDashTitle(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') addToDashboard(dashTitle); if (e.key === 'Escape') setDashOpen(false); }} />
+                              </label>
+                              <button type="button" disabled={adding || !dashTitle.trim()} onClick={() => addToDashboard(dashTitle)}>{adding ? 'Ajout…' : 'Ajouter'}</button>
+                              <button type="button" className="secondary" onClick={() => setDashOpen(false)}>Annuler</button>
+                              <span className="muted small">Le graphique reprend cette forme et ce paramétrage (comparatif, pour 1 000 habitants, filtres…).</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 

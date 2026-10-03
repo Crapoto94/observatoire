@@ -19,11 +19,15 @@ function localConfig() {
   };
 }
 
-/** Configuration d'un fournisseur : 'groq' ou 'local' (IA locale : Ollama ou vLLM). */
+/** Configuration d'un fournisseur : 'groq', 'local' (Ollama/vLLM autonome) ou 'ville' (API IA de l'APM). */
 function providerConfig(provider) {
   if (provider === 'local') {
     const c = localConfig();
     return { id: 'local', name: 'IA locale', base: baseOf(c.url), model: c.model, key: process.env.LOCAL_LLM_API_KEY || '', ok: !!(c.url && c.model), local: true, kind: c.kind };
+  }
+  if (provider === 'ville') {
+    // IA locale fournie par l'API centrale de la Ville (APM) : modèles listés via /api/v1/ai/models.
+    return { id: 'ville', name: 'IA Ville (APM)', apm: true, ok: require('./apmAi').enabled(), model: process.env.APM_AI_MODEL || '' };
   }
   const key = process.env.GROQ_API_KEY || '';
   return { id: 'groq', name: 'Groq', base: process.env.IA_BASE_URL || 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', key, ok: !!key, local: false };
@@ -31,9 +35,19 @@ function providerConfig(provider) {
 
 const defaultProvider = () => {
   const chosen = process.env.IA_PROVIDER;
-  if (chosen === 'local' || chosen === 'groq') return chosen;
-  return providerConfig('groq').ok ? 'groq' : providerConfig('local').ok ? 'local' : 'groq';
+  if (chosen === 'local' || chosen === 'groq' || chosen === 'ville') return chosen;
+  // Priorité : Groq si configuré, sinon l'IA de la Ville (APM), sinon l'IA locale autonome.
+  return providerConfig('groq').ok ? 'groq' : providerConfig('ville').ok ? 'ville' : 'local';
 };
+
+// Niveaux de détail proposés à l'utilisateur (même principe que le Transcript Manager) : la consigne
+// est injectée en tête du prompt pour que le modèle ajuste directement la longueur de sa réponse.
+const LEVEL_INSTRUCTIONS = {
+  sommaire: "CONSIGNE DE NIVEAU DE DÉTAIL — SOMMAIRE : réponse TRÈS CONCISE. Va droit au but (2 à 4 phrases ou une liste courte), sans développement ni rappel de contexte.\n\n",
+  normal: '',
+  detaille: "CONSIGNE DE NIVEAU DE DÉTAIL — DÉTAILLÉ : réponse développée et pédagogique. Explique le contexte, détaille chaque chiffre clé, nuance les interprétations et signale les limites des données.\n\n",
+};
+const LEVELS = ['sommaire', 'normal', 'detaille'];
 const MAX_STEPS = 5;
 const MAX_ROWS = 60;
 const MAX_TOOL_CHARS = 3200; // ≈ 900 jetons par résultat d'outil
@@ -166,9 +180,26 @@ function sourceList(dsIds, kpiIds) {
 }
 
 const status = () => {
-  const g = providerConfig('groq'), l = providerConfig('local');
-  return { selected: defaultProvider(), groq: { configured: g.ok, model: g.model }, local: { configured: l.ok, model: l.model, kind: l.kind } };
+  const g = providerConfig('groq'), l = providerConfig('local'), v = providerConfig('ville');
+  return {
+    selected: defaultProvider(), levels: LEVELS,
+    groq: { configured: g.ok, model: g.model },
+    local: { configured: l.ok, model: l.model, kind: l.kind },
+    ville: { configured: v.ok, model: v.model },
+  };
 };
+
+/** Modèles proposés pour une source : APM (Ville) = liste de l'API IA ; sinon modèle unique configuré. */
+async function models(provider) {
+  if (provider === 'ville') {
+    if (!require('./apmAi').enabled()) return { source: 'ville', models: [], defaultModel: null };
+    const list = await require('./apmAi').listModels();
+    const pref = list.filter((m) => /llama|mistral|qwen|gemma/i.test(m));
+    return { source: 'ville', models: list, defaultModel: process.env.APM_AI_MODEL || pref[0] || list[0] || null };
+  }
+  const cfg = providerConfig(provider === 'local' ? 'local' : 'groq');
+  return { source: provider === 'local' ? 'local' : 'groq', models: cfg.model ? [cfg.model] : [], defaultModel: cfg.model || null };
+}
 
 const unreachable = (cfg, e) => new Error(`Impossible de joindre ${cfg.name} (${cfg.base}) : ${e.cause?.code || e.message}. Depuis Docker, « localhost » désigne le conteneur : utilisez l'adresse IP ou le nom du serveur qui héberge le modèle.`);
 
@@ -211,14 +242,42 @@ function contextFor(question) {
   return { kpis, found, ds };
 }
 
-/** Conversation : history = [{role, content}], le dernier est la question. provider : 'groq' | 'local'. */
-async function chat(history, provider) {
-  const cfg = providerConfig(provider === 'local' || provider === 'groq' ? provider : defaultProvider());
+/** Conversation : history = [{role, content}], le dernier est la question.
+ *  options : { provider: 'groq'|'local'|'ville', model, level: 'sommaire'|'normal'|'detaille' }. */
+async function chat(history, options) {
+  // compatibilité : ancien appel chat(history, 'groq'|'local')
+  const opt = typeof options === 'string' ? { provider: options } : (options || {});
+  const question = String(history[history.length - 1]?.content || '');
+  const level = LEVELS.includes(opt.level) ? opt.level : 'normal';
+  const instruction = LEVEL_INSTRUCTIONS[level] || '';
+  const providerId = ['groq', 'local', 'ville'].includes(opt.provider) ? opt.provider : defaultProvider();
+  const cfg = providerConfig(providerId);
   if (!cfg.ok) {
-    throw new Error(cfg.local ? "IA locale non configurée : définissez LOCAL_LLM_URL et LOCAL_LLM_MODEL dans le fichier .env du serveur." : "Clé Groq absente : définissez GROQ_API_KEY dans le fichier .env du serveur.");
+    throw new Error(cfg.apm ? "IA de la Ville indisponible : APM_API_KEY non configurée dans le fichier .env du serveur."
+      : cfg.local ? "IA locale non configurée : définissez LOCAL_LLM_URL et LOCAL_LLM_MODEL dans le fichier .env du serveur."
+      : "Clé Groq absente : définissez GROQ_API_KEY dans le fichier .env du serveur.");
   }
+
+  // API IA de la Ville (APM) : pas d'appels de fonctions OpenAI — on prépare un contexte à partir des
+  // outils de l'observatoire, avec le modèle choisi par l'utilisateur et le niveau de détail demandé.
+  if (cfg.apm) {
+    const ctx = contextFor(question);
+    const prompt = `${instruction}${SYSTEM}\n\nDonnées de l'observatoire (seule source autorisée) :\n${JSON.stringify(ctx).slice(0, 12000)}\n\nQuestion : ${question}`;
+    const model = opt.model || cfg.model || undefined;
+    const answer = await require('./apmAi').query(prompt, model);
+    const ds = new Set();
+    for (const r of [sourcesOf('contexte', {}, { jeux: ctx.ds.map((d) => d.id) }), sourcesOf('search_indicators', {}, ctx.found)]) r.ds.forEach((x) => ds.add(x));
+    return {
+      answer: answer || '',
+      consulted: [{ outil: 'contexte', arguments: { mode: 'API IA de la Ville', niveau: level, modele: model || 'défaut', indicateurs: ctx.found.total, jeux: ctx.ds.map((d) => d.id) } }],
+      sources: sourceList(ds, new Set()),
+      model: model || 'défaut', provider: cfg.name,
+    };
+  }
+
   const maxChars = cfg.local ? 8000 : MAX_TOOL_CHARS;
   const messages = toMessages(history);
+  if (instruction) messages[0].content = instruction + messages[0].content;
   const consulted = [];
   const dsIds = new Set(), kpiIds = new Set();
   const collect = (name, args, out) => { const r = sourcesOf(name, args, out); r.ds.forEach((x) => dsIds.add(x)); r.kpis.forEach((x) => kpiIds.add(x)); };
@@ -259,4 +318,69 @@ async function chat(history, provider) {
   }
 }
 
-module.exports = { chat, status, TOOL_IMPL };
+// ---------------- Journal et traçabilité des demandes ----------------
+// Enregistre chaque demande (question, réponse, demandeur, modèle, outils, sources, durée) afin de
+// pouvoir la consulter dans « Paramètres → IA » et en évaluer la qualité (note + commentaire).
+const preview = (s, n) => String(s ?? '').slice(0, n);
+function logChat(entry) {
+  try {
+    const r = require('./db').run(
+      `INSERT INTO ia_logs (user_id, username, provider, model, question, answer, consulted, sources, duration_ms, status, error)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      entry.userId ?? null, entry.username ?? null, entry.provider ?? null, entry.model ?? null,
+      preview(entry.question, 4000), preview(entry.answer, 12000),
+      JSON.stringify(entry.consulted || []), JSON.stringify(entry.sources || []),
+      entry.durationMs ?? null, entry.status || 'ok', entry.error ? preview(entry.error, 1000) : null);
+    return Number(r.lastInsertRowid);
+  } catch { return null; }
+}
+
+function listLogs({ limit = 50, offset = 0, user, rating } = {}) {
+  const where = [], params = [];
+  if (user) { where.push('username = ?'); params.push(String(user)); }
+  if (rating === 'none') where.push('rating IS NULL');
+  else if (rating != null && rating !== '') { where.push('rating = ?'); params.push(Number(rating)); }
+  const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const total = require('./db').get(`SELECT COUNT(*) AS n FROM ia_logs ${w}`, ...params).n;
+  const items = require('./db').all(
+    `SELECT id, at, username, provider, model, question, answer, consulted, sources, duration_ms, status, error, rating, rating_comment, rated_at
+     FROM ia_logs ${w} ORDER BY id DESC LIMIT ? OFFSET ?`, ...params, Math.min(Number(limit) || 50, 200), Number(offset) || 0)
+    .map((r) => ({ ...r, consulted: safeParse(r.consulted, []), sources: safeParse(r.sources, []) }));
+  return { total, items };
+}
+
+const safeParse = (s, d) => { try { return JSON.parse(s || ''); } catch { return d; } };
+
+function rateLog(id, rating, comment) {
+  const r = Number(rating);
+  if (!Number.isInteger(r) || r < 1 || r > 5) return { error: 'La note doit être comprise entre 1 et 5', status: 400 };
+  const row = require('./db').get('SELECT id FROM ia_logs WHERE id = ?', id);
+  if (!row) return { error: 'Demande introuvable', status: 404 };
+  require('./db').run('UPDATE ia_logs SET rating = ?, rating_comment = ?, rated_at = CURRENT_TIMESTAMP WHERE id = ?', r, preview(comment, 1000) || null, id);
+  return { ok: true };
+}
+
+/** Liste des prompts utilisés par l'assistant et des données auxquelles ils s'adossent. */
+function prompts() {
+  return {
+    system: SYSTEM,
+    regles: [
+      'Répondre uniquement à partir des données renvoyées par les outils de l’observatoire.',
+      'Appeler un outil avant toute réponse chiffrée ; citer le jeu, le territoire et la période.',
+      'Séparer les faits de l’interprétation ; signaler les données manquantes.',
+      'Classements limités aux communes de plus de 5 000 habitants ; valeurs « pour 1 000 hab. » = ordres de grandeur.',
+      'Répondre en français, de façon concise : réponse, puis chiffres clés, puis limites.',
+    ],
+    territoires: { Ivry: '94041', GOSB: 'agrégat des 24 communes', 'Val-de-Marne': '94', 'Île-de-France': '11' },
+    outils: TOOLS.map((t) => ({ nom: t.function.name, description: t.function.description, parametres: t.function.parameters })),
+    niveaux: { sommaire: LEVEL_INSTRUCTIONS.sommaire.trim(), normal: 'Comportement par défaut (consigne ajoutée : aucune)', detaille: LEVEL_INSTRUCTIONS.detaille.trim() },
+    fournisseurs: {
+      selectionne: defaultProvider(),
+      groq: { configure: providerConfig('groq').ok, model: providerConfig('groq').model },
+      ville: { configure: providerConfig('ville').ok, model: providerConfig('ville').model, api: 'API IA de la Ville (APM)' },
+      local: { configure: providerConfig('local').ok, model: providerConfig('local').model },
+    },
+  };
+}
+
+module.exports = { chat, status, models, TOOL_IMPL, logChat, listLogs, rateLog, prompts, SYSTEM };

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, fmtDate } from '../api';
+import { useModal } from '../modal';
 import { CarteVersion, Indicator, NIVEAUX, NIVEAU_FILL, PRIO_COLOR, PRIO_TEXT } from '../types';
 import {
   CENTER, GROUPS, PAGE, PlacedGroup, Rect, THEMES, CELL, clampToRect, placeGroup, rectCenter,
@@ -21,6 +22,7 @@ function edge(from: Rect, to: Rect) {
 
 export default function Carte() {
   const nav = useNavigate();
+  const modal = useModal();
   const [items, setItems] = useState<Indicator[]>([]);
   const [error, setError] = useState('');
   const [levels, setLevels] = useState<Record<string, boolean>>({ contexte: true, suivi: true, evaluation: true, prospective: true });
@@ -44,12 +46,14 @@ export default function Carte() {
     api<{ label: string; created_at: string; indicators: Indicator[] }>(`/carte/versions/${versionId}`).then(setSnapshot).catch((e) => setError(e.message));
   }, [versionId]);
   const saveVersion = async () => {
-    const label = prompt('Nom de la version (ex. CODIR du 06/10/2026)', `Version du ${new Date().toLocaleDateString('fr-FR')}`);
+    const label = await modal.prompt({ title: 'Enregistrer une version', message: 'Nom de la version :', defaultValue: `Version du ${new Date().toLocaleDateString('fr-FR')}`, okLabel: 'Enregistrer' });
     if (!label) return;
     try { const v = await api<CarteVersion>('/carte/versions', { body: { label } }); await loadVersions(); setVersionId(String(v.id)); } catch (e) { setError((e as Error).message); }
   };
   const deleteVersion = async () => {
-    if (!versionId || !confirm('Supprimer cette version ?')) return;
+    if (!versionId) return;
+    const ok = await modal.confirm({ title: 'Supprimer la version', message: 'Supprimer cette version de la carte mentale ?', okLabel: 'Supprimer', danger: true });
+    if (!ok) return;
     await api(`/carte/versions/${versionId}`, { method: 'DELETE' });
     setVersionId(''); loadVersions();
   };

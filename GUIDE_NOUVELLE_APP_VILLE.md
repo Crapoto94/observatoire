@@ -242,6 +242,65 @@ Bonne pratique : après authentification AD réussie, générer **votre propre J
 applicatif** (signé par votre backend) pour gérer la session dans votre app, plutôt
 que de redemander le mot de passe à chaque requête.
 
+### 3.2.1 Certificat TLS auto-signé de l'API centrale
+
+⚠️ **L'API centrale `https://api.ivry.local` présente un certificat TLS auto-signé**
+(autorité interne à la Ville, absente du magasin de confiance public). Un appel HTTPS
+« standard » échoue donc au handshake, typiquement avec une erreur
+`self-signed certificate` / `DEPTH_ZERO_SELF_SIGNED_CERT` (Node.js) ou
+`unable to get local issuer certificate`. Ce n'est **pas** un problème de réseau ni de
+bonne URL : c'est le certificat qu'il faut prendre en compte.
+
+Deux façons de faire, dans cet ordre de préférence :
+
+1. **Fournir l'autorité de certification de la Ville** (recommandé) : récupérer le
+   fichier `.pem`/`.crt` de l'autorité interne auprès de l'équipe DSI et le pointer par
+   `VILLE_CA_FILE`. Le certificat est alors réellement vérifié.
+2. **Accepter le certificat auto-signé pour ces seuls appels** (à défaut d'autorité) :
+   désactiver la vérification **client par client** (le reste du processus garde la
+   vérification TLS active).
+
+> ⛔ **Ne jamais faire `NODE_TLS_REJECT_UNAUTHORIZED=0`** : cela désactiverait la
+> vérification TLS pour **tout** le processus (y compris les appels sortants vers
+> d'autres services), et non seulement pour l'API interne.
+
+À déclarer dans le `.env` :
+
+```dotenv
+# Autorité interne de la Ville (recommandé). Sinon, accepter l'auto-signé pour ces appels.
+VILLE_CA_FILE=              # chemin du .pem/.crt fourni par la DSI
+VILLE_ALLOW_SELF_SIGNED_CERTS=true   # repli : accepte l'auto-signé UNIQUEMENT pour les clients APM
+```
+
+Exemple d'agent HTTPS partagé, à utiliser pour **tous** les appels vers
+`api.ivry.local` (avec `axios`, ou avec `https.request`/`fetch` via un agent) :
+
+```js
+const fs = require('fs');
+const https = require('https');
+
+// Un seul agent pour les services internes : autorité fournie, sinon contournement limité à cet agent.
+function httpsAgentVille() {
+  const opts = {};
+  if (process.env.VILLE_CA_FILE) opts.ca = fs.readFileSync(process.env.VILLE_CA_FILE);
+  else if (process.env.VILLE_ALLOW_SELF_SIGNED_CERTS !== 'false') opts.rejectUnauthorized = false;
+  return new https.Agent(opts);
+}
+
+// Avec axios :
+const agent = httpsAgentVille();
+axios.post(`${process.env.APM_API_URL}/api/v1/ad/authenticate`,
+  { username, password },
+  { headers: { 'X-API-KEY': process.env.APM_API_KEY }, httpsAgent: agent });
+```
+
+> Le `fetch` natif de Node.js (undici) **n'accepte pas** `https.Agent` : passer par
+> `axios` (avec `httpsAgent`) ou `https.request({ agent })`. Pour `fetch`, définir un
+> `dispatcher` undici dédié plutôt que de toucher au TLS global.
+>
+> Comme le contournement se limite à l'agent APM, les autres appels HTTPS de
+> l'application continuent de vérifier normalement les certificats.
+
 ### 3.3 Envoyer un mail
 
 Pour envoyer un email, appeler `POST /api/v1/mail/send` avec la clé API. L'APM se

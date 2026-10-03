@@ -19,7 +19,8 @@ const bytes = (n: number) => (n >= 1e9 ? `${(n / 1e9).toFixed(2)} Go` : n >= 1e6
 const dur = (s: number) => (s >= 86400 ? `${Math.floor(s / 86400)} j ${Math.floor((s % 86400) / 3600)} h` : s >= 3600 ? `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min` : `${Math.floor(s / 60)} min`);
 
 // Page « Base de données » : volumétrie et santé de la base SQLite
-export default function Database() {
+// `embedded` : rendu sans en-tête de page, pour l'onglet « Base de données » des Paramètres.
+export default function Database({ embedded = false }: { embedded?: boolean }) {
   const [s, setS] = useState<Stats | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -30,7 +31,7 @@ export default function Database() {
   };
   useEffect(() => { load(); }, []);
 
-  if (!s) return <section className="page"><div className="page-head"><h1>Base de données</h1></div>{error ? <div className="error">{error}</div> : <div className="empty">Calcul en cours…</div>}</section>;
+  if (!s) return <section className={embedded ? '' : 'page'}>{!embedded && <div className="page-head"><h1>Base de données</h1></div>}{error ? <div className="error">{error}</div> : <div className="empty">Calcul en cours…</div>}</section>;
 
   const freePct = s.file.pages ? Math.round((100 * s.file.free) / s.file.pages) : 0;
   const covered = s.datasets.filter((d) => s.totals.idfCommunes && d.idf >= s.totals.idfCommunes * 0.95).length;
@@ -42,9 +43,9 @@ export default function Database() {
   );
 
   return (
-    <section className="page database">
-      <div className="page-head">
-        <h1>Base de données</h1>
+    <section className={embedded ? 'database' : 'page database'}>
+      <div className={embedded ? 'settings-subhead' : 'page-head'}>
+        {!embedded && <h1>Base de données</h1>}
         <div className="actions">
           <button className="secondary" disabled={busy} onClick={() => load(true)} title="PRAGMA quick_check : parcourt toute la base, peut durer plusieurs minutes">Vérifier l'intégrité</button>
           <button disabled={busy} onClick={() => load()}>{busy ? 'Calcul…' : '⟳ Actualiser'}</button>
