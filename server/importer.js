@@ -397,13 +397,13 @@ function autoImportIdf({ intervalMs = 30000 } = {}) {
       }
       groups.ensureGroups();
       if (!gosbTried && get("SELECT COUNT(*) AS n FROM data_rows WHERE geo = 'GOSB'").n === 0) { gosbTried = true; console.log('[import] chargement des 24 communes du GOSB'); startImport({ scope: 'gosb' }); return; }
-      const communes = get('SELECT COUNT(*) AS n FROM geo_shapes').n;
-      const loaded = Object.fromEntries(all('SELECT dataset_id, COUNT(DISTINCT geo) AS n FROM data_rows WHERE geo IN (SELECT code FROM geo_shapes) GROUP BY dataset_id').map((r) => [r.dataset_id, r.n]));
       // un jeu chargé avec succès pour l'Île-de-France depuis moins de 7 jours n'est pas rechargé automatiquement (import manuel toujours possible)
       const since = new Date(Date.now() - MIN_RELOAD_MS).toISOString();
       const recent = new Set(all("SELECT DISTINCT dataset_id FROM import_runs WHERE scope = 'idf' AND status IN ('ok', 'partiel') AND finished >= ?", since).map((r) => r.dataset_id));
       const todo = all('SELECT id FROM datasets').map((d) => d.id)
-        .filter((id) => !tried.has(id) && !recent.has(id) && (!communes || (loaded[id] || 0) < communes * 0.95));
+        // La couverture est suivie par journal d'import : ne pas regrouper toute data_rows
+        // à chaque passage du minuteur (plusieurs millions d'observations en production).
+        .filter((id) => !tried.has(id) && !recent.has(id));
       if (!todo.length) return;
       todo.forEach((id) => tried.add(id));
       console.log(`[import] Île-de-France : ${todo.length} jeu(x) à charger (${todo.join(', ')})`);

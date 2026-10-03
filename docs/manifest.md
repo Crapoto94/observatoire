@@ -45,7 +45,7 @@ L'application est organisée autour d'une **navigation principale** et de plusie
 | **IA** | `/ia` | Assistant conversationnel adossé aux données |
 | **Pilotage** | `/pilotage` | Suivi de la conception (cohérence, doublons, priorisation) |
 | **Carte mentale** | `/carte` | Vue relationnelle des indicateurs |
-| **Données** | `/donnees` | Explorateur tabulaire et graphique des jeux importés |
+| **Données** | `/donnees` | Explorateur tabulaire et graphique ; chargement/actualisation des jeux sur l'ensemble de l'Île-de-France si les sources le permettent |
 | **Cartographie** | `/cartographie` | Carte géographique par couche (contours GOSB, départements, QPV) |
 | **Catalogue** | `/catalogue` | Catalogue des jeux de données |
 | **Nouveautés** | `/nouveautes` | Historique des versions |

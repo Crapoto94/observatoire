@@ -101,21 +101,14 @@ export default function Donnees() {
       } catch { window.clearInterval(poll.current); }
     }, 1000);
   };
-  // import de toutes les communes d'Île-de-France (pour la carte) : un jeu ou tous les jeux
+  // import de toutes les communes d'Île-de-France : un jeu ou tous les jeux
   const importIdf = async (allDatasets: boolean) => {
     const what = allDatasets ? `les ${datasets.length} jeux` : 'ce jeu';
-    const ok = await modal.confirm({ title: "Charger l'Île-de-France", message: `Charger ${what} pour les ${idfCommunes || 1266} communes d'Île-de-France ? L'opération télécharge de gros volumes (plusieurs dizaines de minutes pour tous les jeux).` });
+    const ok = await modal.confirm({ title: "Charger / actualiser l'Île-de-France", message: `Charger ${what} pour les ${idfCommunes || 1266} communes d'Île-de-France ? L'opération télécharge de gros volumes (plusieurs dizaines de minutes pour tous les jeux).` });
     if (!ok) return;
     try { follow(await api<Job>('/import', { body: { scope: 'idf', datasets: allDatasets ? undefined : [dsId] } })); } catch (e) { setError((e as Error).message); }
   };
   const pickCommune = (code: string) => { setOnlyRef(false); setCompare(code); };
-  const refresh = async (all: boolean) => {
-    if (all) {
-      const ok = await modal.confirm({ title: 'Mettre à jour les données', message: `Mettre à jour les ${datasets.length} jeux de données publics pour les ${geos.length} territoires importés ? L'opération réinterroge toutes les sources (quelques minutes).` });
-      if (!ok) return;
-    }
-    try { follow(await api<Job>(all ? '/import' : `/datasets/${dsId}/import`, { body: {} })); } catch (e) { setError((e as Error).message); }
-  };
 
   // ---------- structure du jeu ----------
   const rows = data?.rows ?? [];
@@ -293,11 +286,8 @@ export default function Donnees() {
       <div className="page-head">
         <h1>Données</h1>
         <div className="actions">
-          <button className="secondary" onClick={() => importIdf(true)} disabled={job?.status === 'en cours'} title="Charge tous les jeux pour les 1 266 communes d'Île-de-France (carte) : plusieurs dizaines de minutes">
-            Charger l'Île-de-France
-          </button>
-          <button onClick={() => refresh(true)} disabled={job?.status === 'en cours'} title="Réinterroge toutes les sources publiques et remplace les données stockées">
-            {job?.status === 'en cours' ? 'Mise à jour en cours…' : '⟳ Tout mettre à jour'}
+          <button onClick={() => importIdf(true)} disabled={job?.status === 'en cours'} title="Charge ou actualise tous les jeux pour les communes d'Île-de-France">
+            {job?.status === 'en cours' ? 'Import Île-de-France en cours…' : '⟳ Tout actualiser en Île-de-France'}
           </button>
         </div>
       </div>
@@ -368,7 +358,7 @@ export default function Donnees() {
                     {current.doc_url && <> · <a href={current.doc_url} target="_blank" rel="noreferrer">Documentation du jeu ↗</a></>}
                   </p>
                 </div>
-                <button onClick={() => refresh(false)} disabled={job?.status === 'en cours'}>
+                <button onClick={() => importIdf(false)} disabled={job?.status === 'en cours'}>
                   {current.nb_rows ? 'Mettre à jour (réimporter)' : 'Importer'}
                 </button>
               </div>

@@ -36,11 +36,11 @@ function trendOf(cur, prev) {
 }
 
 function list() {
-  const shapes = new Set(all('SELECT code FROM geo_shapes').map((r) => r.code));
-  const cover = new Map();
-  for (const r of all('SELECT dataset_id, geo FROM data_rows GROUP BY dataset_id, geo')) {
-    if (shapes.has(r.geo)) cover.set(r.dataset_id, (cover.get(r.dataset_id) || 0) + 1);
-  }
+  // La couverture vient du dernier import IDF complet ; éviter de balayer data_rows
+  // à chaque ouverture de la carte (plusieurs millions d'observations).
+  const cover = new Map(all(`SELECT dataset_id, territories AS n FROM import_runs
+    WHERE id IN (SELECT MAX(id) FROM import_runs WHERE scope = 'idf' GROUP BY dataset_id)
+      AND status = 'ok' AND errors = 0 AND rows > 0`).map((r) => [r.dataset_id, r.n || 0]));
   return LAYERS.map((l) => ({ id: l.id, label: l.label, theme: l.theme, dataset: l.dataset, unit: l.unit || '', perK: !!l.perK, dir: l.dir, communes: cover.get(l.dataset) || 0 }));
 }
 
