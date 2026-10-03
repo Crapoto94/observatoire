@@ -24,10 +24,10 @@ const fmt = (v: number) => {
   return v.toLocaleString('fr-FR', { maximumFractionDigits: a >= 100 ? 0 : a >= 10 ? 1 : 2 });
 };
 const BADGE: Record<string, { label: string; color: string }> = {
-  valide: { label: 'Validé', color: '#2e9d4f' },
-  brouillon: { label: 'Brouillon', color: '#d97706' },
-  abandonne: { label: 'Abandonné', color: '#94a3b8' },
-  sans_fiche: { label: 'Sans fiche', color: '#94a3b8' },
+  valide: { label: 'Validé', color: '#18794e' },
+  brouillon: { label: 'Brouillon', color: '#9a6700' },
+  abandonne: { label: 'Abandonné', color: '#64748b' },
+  sans_fiche: { label: 'Sans fiche', color: '#64748b' },
 };
 
 export type TrendStyle = 'spark' | 'background' | 'none';

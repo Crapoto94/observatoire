@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DEFAULT_TILE_STYLE, TileStyle, tileStyle } from '../dashConfig';
 import type { Item } from './MonTableau';
 import type { Kpi } from './Dashboard';
+import { PALETTE } from './CarteSvg';
 
 // Paramétrage fin d'une tuile (roue dentée) : titre, typographie, couleurs, éléments affichés, type de
 // graphique, bornes par indicateur, et sélection multi-indicateurs. Les options s'appliquent au rendu
@@ -24,6 +25,8 @@ export default function TileSettings({ item, kpis, series, onSave, onClose }: {
     });
   };
   const isKpi = item.kind === 'kpi';
+  const isMap = item.kind === 'map';
+  const isChart = item.kind === 'chart';
   const [ids, setIds] = useState<string[]>(item.config.kpiIds?.length ? item.config.kpiIds : (item.config.kpiId ? [item.config.kpiId] : []));
   const toggleId = (id: string) => setIds((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
   const allKpis = Object.values(kpis);
@@ -68,7 +71,7 @@ export default function TileSettings({ item, kpis, series, onSave, onClose }: {
                 <option value={1}>1</option><option value={2}>2</option><option value={3}>3</option><option value={4}>4</option>
               </select></label>
           )}
-          {!isKpi && (
+          {isChart && (
             <>
               <label className="field"><span>Type d'affichage</span>
                 <select value={s.display || 'line'} onChange={(e) => set('display', e.target.value as TileStyle['display'])}>
@@ -114,7 +117,43 @@ export default function TileSettings({ item, kpis, series, onSave, onClose }: {
                 <input type="color" value={s.chartColor || '#2563eb'} onChange={(e) => set('chartColor', e.target.value)} /></label>
             </>
           )}
+          {isMap && (
+            <>
+              <div className="ts-full ts-map-section"><h3>Couleurs de la carte</h3><div className="ts-map-palette">
+                {(s.palette?.length === PALETTE.length ? s.palette : PALETTE).map((color, index) => (
+                  <label className="field" key={index}><span>Classe {index + 1}</span>
+                    <input aria-label={`Couleur de la classe ${index + 1}`} type="color" value={color} onChange={(e) => {
+                      const palette = [...(s.palette?.length === PALETTE.length ? s.palette : PALETTE)];
+                      palette[index] = e.target.value; set('palette', palette);
+                    }} /></label>
+                ))}
+              </div></div>
+              <h3 className="ts-full">Contours et symboles</h3>
+              <label className="field"><span>Limites des communes</span><input type="color" value={s.mapBoundaryColor || '#ffffff'} onChange={(e) => set('mapBoundaryColor', e.target.value)} /></label>
+              <label className="field"><span>Épaisseur des limites</span><input type="number" min={0.1} max={3} step={0.1} value={s.mapBoundaryWidth ?? 0.6} onChange={(e) => set('mapBoundaryWidth', Number(e.target.value))} /></label>
+              <label className="field"><span>Contour des départements</span><input type="color" value={s.mapDeptColor || '#6b7280'} onChange={(e) => set('mapDeptColor', e.target.value)} /></label>
+              <label className="field"><span>Épaisseur département</span><input type="number" min={0.2} max={8} step={0.2} value={s.mapDeptWidth ?? 3} onChange={(e) => set('mapDeptWidth', Number(e.target.value))} /></label>
+              <label className="field"><span>Contour GOSB</span><input type="color" value={s.mapGosbColor || '#111827'} onChange={(e) => set('mapGosbColor', e.target.value)} /></label>
+              <label className="field"><span>Épaisseur GOSB</span><input type="number" min={0.2} max={10} step={0.2} value={s.mapGosbWidth ?? 4} onChange={(e) => set('mapGosbWidth', Number(e.target.value))} /></label>
+              <label className="field"><span>Contour d'Ivry</span><input type="color" value={s.mapIvryColor || '#dc2626'} onChange={(e) => set('mapIvryColor', e.target.value)} /></label>
+              <label className="field"><span>Remplissage QPV</span><input type="color" value={s.mapQpvFill || '#7c3aed'} onChange={(e) => set('mapQpvFill', e.target.value)} /></label>
+              <label className="field"><span>Contour QPV</span><input type="color" value={s.mapQpvStroke || '#7c3aed'} onChange={(e) => set('mapQpvStroke', e.target.value)} /></label>
+              <label className="field"><span>Épaisseur QPV</span><input type="number" min={0.2} max={5} step={0.1} value={s.mapQpvWidth ?? 1.2} onChange={(e) => set('mapQpvWidth', Number(e.target.value))} /></label>
+              <label className="field"><span>Taille des flèches</span><input type="number" min={0.5} max={3} step={0.1} value={s.mapArrowScale ?? 1} onChange={(e) => set('mapArrowScale', Number(e.target.value))} /></label>
+              <label className="field"><span>Taille des noms</span><input type="number" min={0.5} max={3} step={0.1} value={s.mapNameScale ?? 1} onChange={(e) => set('mapNameScale', Number(e.target.value))} /></label>
+            </>
+          )}
         </div>
+
+        {isMap && (
+          <fieldset className="ts-checks">
+            <legend>Éléments cartographiques</legend>
+            <label className="inline small"><input type="checkbox" checked={s.showMapArrows !== false} onChange={(e) => set('showMapArrows', e.target.checked)} /> Flèches de tendance</label>
+            <label className="inline small"><input type="checkbox" checked={s.showDeptContours !== false} onChange={(e) => set('showDeptContours', e.target.checked)} /> Contours des départements</label>
+            <label className="inline small"><input type="checkbox" checked={s.showQpv !== false} onChange={(e) => set('showQpv', e.target.checked)} /> Quartiers prioritaires (QPV)</label>
+            <label className="inline small"><input type="checkbox" checked={!!s.showCityNames} onChange={(e) => set('showCityNames', e.target.checked)} /> Noms des communes</label>
+          </fieldset>
+        )}
 
         {isKpi && (
           <fieldset className="ts-checks ts-kpi-pick">

@@ -12,7 +12,7 @@ import { useModal } from '../modal';
 import TileSettings from './TileSettings';
 
 export interface Item { id: number; kind: 'kpi' | 'chart' | 'map'; title: string; config: ChartConfig & MapConfig & { kpiId?: string; trend?: 'spark' | 'background' | 'none' }; x: number; y: number; w: number; h: number }
-interface MapConfig { layerId?: string; scope?: string; period?: string; viewBox?: number[] | null; arrows?: boolean; depts?: boolean; qpv?: boolean; layerLabel?: string; layerUnit?: string; layerDir?: 'up' | 'down' | 'none' }
+interface MapConfig { layerId?: string; scope?: string; period?: string; viewBox?: number[] | null; arrows?: boolean; depts?: boolean; qpv?: boolean; legendPosition?: { x: number; y: number }; layerLabel?: string; layerUnit?: string; layerDir?: 'up' | 'down' | 'none' }
 
 const REF = '94041';
 const COLS = 24;      // grille fine
@@ -123,7 +123,7 @@ export default function MonTableau() {
   };
 
   const save = (it: Item) => api(`/dashboard/${it.id}`, { method: 'PUT', body: { x: it.x, y: it.y, w: it.w, h: it.h } }).catch(() => undefined);
-  const patch = (it: Item, body: Partial<{ title: string; config: ChartConfig }>) => {
+  const patch = (it: Item, body: Partial<{ title: string; config: Item['config'] }>) => {
     setItems((list) => list.map((i) => (i.id === it.id ? { ...i, ...body } : i)));
     api(`/dashboard/${it.id}`, { method: 'PUT', body }).catch(() => undefined);
   };
@@ -206,7 +206,7 @@ export default function MonTableau() {
                 {it.kind === 'kpi'
                   ? <KpiWidget ids={it.config.kpiIds?.length ? it.config.kpiIds : (it.config.kpiId ? [it.config.kpiId] : [])} kpis={kpis} style={st} />
                   : it.kind === 'map'
-                    ? <MapWidget cfg={it.config} />
+                    ? <MapWidget cfg={it.config} onLegendPositionChange={(legendPosition) => patch(it, { config: { ...it.config, legendPosition } })} />
                     : <ChartWidget cfg={it.config} chart={charts[it.id]} style={st} />}
               </div>
               <div className="resize-handle" onMouseDown={(e) => startResize(e, it)} title="Redimensionner" />
@@ -363,7 +363,7 @@ interface MapLayerData {
   gosb: string[];
 }
 
-function MapWidget({ cfg }: { cfg: MapConfig & { style?: TileStyle } }) {
+function MapWidget({ cfg, onLegendPositionChange }: { cfg: MapConfig & { style?: TileStyle }; onLegendPositionChange: (position: { x: number; y: number }) => void }) {
   const st = (cfg.style || {}) as TileStyle;
   const [shapes, setShapes] = useState<{ viewBox: number[]; items: Shape[] } | null>(null);
   const [gosbShapes, setGosbShapes] = useState<{ items: Shape[] } | null>(null);
@@ -381,9 +381,9 @@ function MapWidget({ cfg }: { cfg: MapConfig & { style?: TileStyle } }) {
   }, [cfg.layerId, cfg.scope, cfg.period]);
   useEffect(() => { api<{ items: Shape[] }>('/shapes?scope=gosb').then(setGosbShapes).catch(() => setGosbShapes(null)); }, []);
   useEffect(() => {
-    if (cfg.qpv === false) { setQpv([]); return; }
+    if (cfg.qpv === false || cfg.style?.showQpv === false) { setQpv([]); return; }
     api<{ items: Qpv[] }>(`/qpv?scope=${cfg.scope || 'idf'}`).then((r) => setQpv(r.items)).catch(() => setQpv([]));
-  }, [cfg.qpv, cfg.scope]);
+  }, [cfg.qpv, cfg.scope, cfg.style?.showQpv]);
 
   if (err) return <div className="empty small">{err}</div>;
   if (!shapes) return <div className="empty small">Chargement de la carte…</div>;
@@ -398,8 +398,14 @@ function MapWidget({ cfg }: { cfg: MapConfig & { style?: TileStyle } }) {
       <CarteSvg
         items={shapes.items} values={values} gosbOutline={gosbShapes?.items ?? []} viewBox={view}
         palette={palette} breaks={breaks} unit={unit} layerDir={data?.layer.dir ?? 'none'}
-        arrows={cfg.arrows !== false} depts={cfg.depts !== false}
-        qpv={cfg.qpv === false ? [] : qpv} showNames={st.showCityNames === true}
+        arrows={st.showMapArrows ?? (cfg.arrows !== false)} depts={st.showDeptContours ?? (cfg.depts !== false)}
+        qpv={st.showQpv === false || cfg.qpv === false ? [] : qpv} showNames={st.showCityNames === true}
+        boundaryColor={st.mapBoundaryColor} boundaryWidth={st.mapBoundaryWidth}
+        deptColor={st.mapDeptColor} deptWidth={st.mapDeptWidth}
+        gosbColor={st.mapGosbColor} gosbWidth={st.mapGosbWidth} ivryColor={st.mapIvryColor}
+        qpvFill={st.mapQpvFill} qpvStroke={st.mapQpvStroke} qpvWidth={st.mapQpvWidth}
+        arrowScale={st.mapArrowScale} nameScale={st.mapNameScale}
+        legendPosition={cfg.legendPosition} onLegendPositionChange={onLegendPositionChange}
       />
     </div>
   );

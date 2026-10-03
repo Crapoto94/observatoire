@@ -40,6 +40,7 @@ export default function Indicateurs() {
   const [params, setParams] = useSearchParams();
   const [items, setItems] = useState<Indicator[]>([]);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [datasetsReady, setDatasetsReady] = useState(false);
   const [error, setError] = useState('');
   const [q, setQ] = useState('');
   const [theme, setTheme] = useState(params.get('theme') ?? '');
@@ -54,10 +55,12 @@ export default function Indicateurs() {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [editing, setEditing] = useState<Partial<Indicator> | null>(null);
 
-  const load = () =>
-    Promise.all([api<Indicator[]>('/indicators'), api<Dataset[]>('/datasets')])
-      .then(([i, d]) => { setItems(i); setDatasets(d); })
-      .catch((e) => setError(e.message));
+  const load = () => {
+    // La liste est prioritaire : ne pas la bloquer sur le chargement du catalogue de jeux.
+    api<Indicator[]>('/indicators').then(setItems).catch((e) => setError(e.message));
+    setDatasetsReady(false);
+    api<Dataset[]>('/datasets').then(setDatasets).catch((e) => setError((current) => current || e.message)).finally(() => setDatasetsReady(true));
+  };
   useEffect(() => { load(); }, []);
 
   // ouverture directe d'une fiche (?edit=ID) depuis la carte ou le pilotage
@@ -220,7 +223,9 @@ export default function Indicateurs() {
                   <span className="chip" style={{ background: NIVEAU_FILL[i.niveau] }}>{NIVEAUX.find((n) => n.key === i.niveau)?.label}</span>
                 </td>
                 <td className="lib">
-                  <strong>{i.libelle}</strong>
+                  <button className="indicator-open" onClick={() => setEditing(i)} title="Ouvrir la fiche de l’indicateur">
+                    {i.libelle}
+                  </button>
                   {i.libelle_carte && i.libelle_carte.toLowerCase() !== i.libelle.toLowerCase() && <div className="muted small">Carte : {i.libelle_carte}</div>}
                   {i.definition && <div className="small muted clamp2" title={i.definition}>{i.definition}</div>}
                   {i.notes && <div className="note small">⚠ {i.notes}</div>}
@@ -261,6 +266,7 @@ export default function Indicateurs() {
         <Editor
           value={editing}
           datasets={datasets}
+          datasetsReady={datasetsReady}
           themes={themes}
           items={items}
           onClose={closeEditor}
@@ -280,9 +286,10 @@ const FIELD_LABELS: Record<string, string> = {
   theme: 'Thème', groupe: 'Rubrique',
 };
 
-function Editor({ value, datasets, themes, items, onClose, onSaved }: {
+function Editor({ value, datasets, datasetsReady, themes, items, onClose, onSaved }: {
   value: Partial<Indicator>;
   datasets: Dataset[];
+  datasetsReady: boolean;
   themes: [string, string][];
   items: Indicator[];
   onClose: () => void;
@@ -352,10 +359,15 @@ function Editor({ value, datasets, themes, items, onClose, onSaved }: {
   };
 
   return (
-    <div className="modal-back" onMouseDown={onClose}>
-      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-        <h2>{isNew ? 'Nouvel indicateur' : 'Modifier l\'indicateur'}</h2>
-        <div className="tabs">
+    <div className="modal-back indicator-editor-back" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal indicator-editor" role="dialog" aria-modal="true" aria-labelledby="indicator-editor-title" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="indicator-editor-head">
+          <div><span className="eyebrow">Fiche indicateur {isNew ? '· création' : `· #${value.id}`}</span>
+            <h2 id="indicator-editor-title">{isNew ? 'Nouvel indicateur' : 'Modifier l’indicateur'}</h2>
+            <p className="muted small">Définition, source, rattachements et validation</p></div>
+          <button className="icon indicator-editor-close" aria-label="Fermer" onClick={onClose}>×</button>
+        </div>
+        <div className="tabs indicator-editor-tabs">
           {([['fiche', 'Fiche'], ['sources', 'Sources et données'], ['validation', 'Validation et faisabilité'], ['historique', `Historique (${history.length})`]] as const).map(([k, l]) => (
             <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)} disabled={k === 'historique' && isNew}>{l}</button>
           ))}
@@ -437,6 +449,8 @@ function Editor({ value, datasets, themes, items, onClose, onSaved }: {
                 {datasets.filter((d) => norm(d.label).includes(norm(dsFilter))).map((d) => (
                   <label key={d.id}><input type="checkbox" checked={f.dataset_ids!.includes(d.id)} onChange={() => toggleDs(d.id)} /> {d.label}</label>
                 ))}
+                {!datasetsReady && <span className="muted small">Chargement des jeux de données…</span>}
+                {datasetsReady && datasets.length === 0 && <span className="muted small">Aucun jeu de données disponible.</span>}
               </div>
             </div>
             {!isNew && value.excel_sheet != null && (

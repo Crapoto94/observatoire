@@ -45,6 +45,22 @@ export interface TileStyle {
   palette?: string[];        // couleurs des classes choroplèthes (du plus clair au plus foncé)
   mapDisplay?: 'value' | 'evol'; // représentation : valeur ou évolution
   showCityNames?: boolean;   // afficher le nom des communes sur la carte
+  // options visuelles de carte
+  showMapArrows?: boolean;
+  showDeptContours?: boolean;
+  showQpv?: boolean;
+  mapBoundaryColor?: string;
+  mapBoundaryWidth?: number;
+  mapDeptColor?: string;
+  mapDeptWidth?: number;
+  mapGosbColor?: string;
+  mapGosbWidth?: number;
+  mapIvryColor?: string;
+  mapQpvFill?: string;
+  mapQpvStroke?: string;
+  mapQpvWidth?: number;
+  mapArrowScale?: number;
+  mapNameScale?: number;
   // cadre
   background?: string;       // couleur de fond de la tuile
   border?: boolean;          // bordure
