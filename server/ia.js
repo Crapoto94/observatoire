@@ -10,28 +10,14 @@ function baseOf(url) {
   try { return new URL(u).pathname.replace(/\/+$/, '') ? u : `${u}/v1`; } catch { return u; }
 }
 
-// Toute la configuration vient du fichier .env du serveur (GROQ_*, LOCAL_LLM_*) ; la page ne fait que choisir le fournisseur.
-function localConfig() {
-  return {
-    kind: process.env.LOCAL_LLM_KIND === 'vllm' ? 'vllm' : 'ollama',
-    url: process.env.LOCAL_LLM_URL || '',
-    model: process.env.LOCAL_LLM_MODEL || '',
-  };
-}
-
 /** Configuration d'un fournisseur :
  *  - 'local'  : IA locale de la Ville fournie par l'API centrale (APM) — modèles via /api/v1/ai/models,
  *               génération via /query-async + /query-progress (réponse progressive). Choix de modèle ici.
- *  - 'groq'   : API compatible OpenAI (Groq).
- *  - 'auto'   : serveur autonome Ollama/vLLM configuré par .env (repli, sans appels de fonctions). */
+ *  - 'groq'   : API compatible OpenAI (Groq). */
 function providerConfig(provider) {
   if (provider === 'local') {
     // L'« IA locale » désigne l'APM de la Ville : c'est elle qui héberge le modèle local.
     return { id: 'local', name: 'IA locale (API Ville)', apm: true, ok: require('./apmAi').enabled(), model: process.env.APM_AI_MODEL || '' };
-  }
-  if (provider === 'auto') {
-    const c = localConfig();
-    return { id: 'auto', name: 'IA locale autonome', base: baseOf(c.url), model: c.model, key: process.env.LOCAL_LLM_API_KEY || '', ok: !!(c.url && c.model), local: true, kind: c.kind };
   }
   const key = process.env.GROQ_API_KEY || '';
   return { id: 'groq', name: 'Groq', base: process.env.IA_BASE_URL || 'https://api.groq.com/openai/v1', model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', key, ok: !!key, local: false };
@@ -39,9 +25,9 @@ function providerConfig(provider) {
 
 const defaultProvider = () => {
   const chosen = process.env.IA_PROVIDER;
-  if (chosen === 'local' || chosen === 'groq' || chosen === 'auto') return chosen;
-  // Priorité : Groq si configuré, sinon l'IA locale de la Ville (APM), sinon le serveur autonome.
-  return providerConfig('groq').ok ? 'groq' : providerConfig('local').ok ? 'local' : 'auto';
+  if (chosen === 'local' || chosen === 'groq') return chosen;
+  // Priorité : Groq si configuré, sinon l'IA locale de la Ville (APM).
+  return providerConfig('groq').ok ? 'groq' : 'local';
 };
 
 // Niveaux de détail proposés à l'utilisateur (même principe que le Transcript Manager) : la consigne
@@ -54,8 +40,15 @@ const LEVEL_INSTRUCTIONS = {
 const LEVELS = ['sommaire', 'normal', 'detaille'];
 const MAX_STEPS = 5;
 const MAX_ROWS = 60;
-const MAX_TOOL_CHARS = 3200; // ≈ 900 jetons par résultat d'outil
 const MAX_HISTORY = 6;
+
+// DGX Spark: contexte riche en une passe pour amortir le TTFT lent. Groq: appels
+// ciblés et réponses compactes pour rester dans son budget de jetons.
+const PROVIDER_INSTRUCTIONS = {
+  local: `Profil d'exécution : IA locale sur NVIDIA DGX Spark. Le contexte disponible est ample, mais le démarrage de génération (TTFT) est lent. Exploite en une passe les données fournies, compare les sources pertinentes et formule une réponse utile et étayée. Évite les appels d'outils redondants.`,
+  groq: `Profil d'exécution : Groq, génération rapide avec budget de contexte limité. Fais le minimum d'appels d'outils nécessaires, demande des résultats ciblés, puis réponds brièvement. N'inclus que les chiffres utiles et évite les répétitions.`,
+};
+const systemFor = (provider) => `${SYSTEM}\n\n${PROVIDER_INSTRUCTIONS[provider] || PROVIDER_INSTRUCTIONS.groq}`;
 
 const SYSTEM = `Assistant de l'Observatoire de la ville d'Ivry-sur-Seine (94041, membre du GOSB = Grand-Orly Seine Bièvre).
 Règles : réponds UNIQUEMENT avec les données renvoyées par les outils (aucune connaissance externe pour un chiffre ou un fait local). Appelle un outil avant toute réponse chiffrée ; si l'information manque, dis-le et propose le jeu le plus proche. Cite le jeu, le territoire et la période de chaque chiffre. Sépare faits et interprétation prudente. Classements : communes de plus de 5 000 habitants ; valeurs « pour 1 000 hab. » et moyennes du GOSB = ordres de grandeur. Les liens vers les jeux de données associés sont ajoutés automatiquement sous ta réponse : ne fabrique aucun lien, mais nomme les jeux utilisés. Français, concis : réponse d'abord, puis 3 à 6 chiffres clés, puis limites. Territoires : Ivry (94041), GOSB, Val-de-Marne (94), Île-de-France (11).`;
@@ -63,7 +56,7 @@ Règles : réponds UNIQUEMENT avec les données renvoyées par les outils (aucun
 const obj = (properties, required) => ({ type: 'object', properties, ...(required ? { required } : {}) });
 const TOOLS = [
   { type: 'function', function: { name: 'get_kpis', description: "KPI d'Ivry (dernière valeur, précédente) avec GOSB, Val-de-Marne, Île-de-France. Filtre facultatif par thème (Logement, Emploi, Sécurité, Finances locales, Santé, Cohésion sociale, Environnement, Démographie, Mobilité, Sport).", parameters: obj({ theme: { type: 'string' } }) } },
-  { type: 'function', function: { name: 'list_datasets', description: 'Jeux de données importés (id, libellé). Filtre facultatif par mot-clé.', parameters: obj({ query: { type: 'string' } }) } },
+  { type: 'function', function: { name: 'list_datasets', description: 'Jeux importés. Recherche aussi les concepts proches : une demande sur pistes cyclables doit vérifier les stationnements vélo OpenStreetMap et les présenter comme données associées, pas comme pistes.', parameters: obj({ query: { type: 'string' } }) } },
   { type: 'function', function: { name: 'describe_dataset', description: "Dimensions, codes de modalités, périodes d'un jeu (à appeler avant query_data).", parameters: obj({ dataset_id: { type: 'string' } }, ['dataset_id']) } },
   { type: 'function', function: { name: 'query_data', description: "Valeurs d'un jeu pour des territoires (codes ou noms : Ivry, GOSB, Val-de-Marne, Île-de-France, commune) et des filtres {DIM:[codes]}. Max 60 lignes.", parameters: obj({ dataset_id: { type: 'string' }, territoires: { type: 'array', items: { type: 'string' } }, filtres: { type: 'object', additionalProperties: { type: 'array', items: { type: 'string' } } }, periode_min: { type: 'string' }, periode_max: { type: 'string' } }, ['dataset_id']) } },
   { type: 'function', function: { name: 'rank_communes', description: "Classement des communes (> 5 000 hab.) sur une couche (id issu de get_kpis/list_layers), tendance et rang d'Ivry. perimetre : gosb (défaut), 94, idf.", parameters: obj({ layer_id: { type: 'string' }, perimetre: { type: 'string' }, top: { type: 'integer' } }, ['layer_id']) } },
@@ -98,8 +91,14 @@ const TOOL_IMPL = {
   },
   list_datasets({ query } = {}) {
     let rows = all('SELECT id, label, description, themes, nb_rows FROM datasets WHERE nb_rows > 0 ORDER BY label');
-    if (query) rows = rows.filter((r) => norm(`${r.label} ${r.description}`).includes(norm(query)));
-    return rows.map((r) => ({ id: r.id, libelle: r.label, themes: r.themes, lignes: r.nb_rows, resume: String(r.description || '').slice(0, 160) }));
+    if (query) {
+      const q = norm(query);
+      const bikeQuery = /velo|cycl|piste|voie douce|mobilite douce/.test(q);
+      rows = rows.filter((r) => norm(`${r.label} ${r.description} ${r.themes}`).includes(q) || (bikeQuery && r.id === 'velo_stationnement'));
+    }
+    return rows.map((r) => ({ id: r.id, libelle: r.label, themes: r.themes, lignes: r.nb_rows,
+      resume: String(r.description || '').slice(0, 220),
+      ...(r.id === 'velo_stationnement' ? { relation: 'Stationnement vélo, distinct des pistes cyclables.', carte: '/cartographie?couche=velo&perimetre=94' } : {}) }));
   },
   describe_dataset({ dataset_id }) {
     const d = get('SELECT * FROM datasets WHERE id = ?', dataset_id);
@@ -178,33 +177,37 @@ function sourceList(dsIds, kpiIds) {
   const labels = Object.fromEntries(all('SELECT id, label FROM datasets').map((d) => [d.id, d.label]));
   const kpiLabels = Object.fromEntries(require('./kpi').KPIS.map((k) => [k.id, k.label]));
   return [
-    ...[...dsIds].slice(0, 8).map((id) => ({ type: 'dataset', id, label: labels[id] || id, url: `/donnees?ds=${id}` })),
+    ...[...dsIds].slice(0, 8).flatMap((id) => [
+      { type: 'dataset', id, label: labels[id] || id, url: `/donnees?ds=${id}` },
+      ...(id === 'velo_stationnement' ? [{ type: 'map', id: 'velo', label: 'Carte · stationnements cyclables', url: '/cartographie?couche=velo&perimetre=94' }] : []),
+    ]),
     ...[...kpiIds].slice(0, 6).map((id) => ({ type: 'kpi', id, label: kpiLabels[id] || id, url: `/tableau-de-bord?kpi=${id}` })),
   ];
 }
 
 const status = () => {
-  const g = providerConfig('groq'), l = providerConfig('local'), a = providerConfig('auto');
+  const g = providerConfig('groq'), l = providerConfig('local');
   return {
     selected: defaultProvider(), levels: LEVELS,
     groq: { configured: g.ok, model: g.model },
     local: { configured: l.ok, model: l.model },
-    auto: { configured: a.ok, model: a.model, kind: a.kind },
   };
 };
 
 /** Modèles proposés pour une source :
  *  - 'local' / 'ville' : liste de l'API IA de la Ville (APM).
- *  - sinon : modèle unique configuré (Groq, ou serveur autonome). */
+ *  - sinon : modèle unique configuré (Groq). */
 async function models(provider) {
   if (provider === 'local' || provider === 'ville') {
     if (!require('./apmAi').enabled()) return { source: 'local', models: [], defaultModel: null };
     const list = await require('./apmAi').listModels();
-    const pref = list.filter((m) => /llama|mistral|qwen|gemma/i.test(m));
+    // Les modèles de la Ville marqués « (local) » sont ceux hébergés en local ; l'IA locale = APM, donc
+    // on propose toute la liste active en priorisant les modèles locaux (RGPD++ / (local)).
+    const pref = list.filter((m) => /\(local\)|rgpd/i.test(m));
     return { source: 'local', models: list, defaultModel: process.env.APM_AI_MODEL || pref[0] || list[0] || null };
   }
-  const cfg = providerConfig(provider === 'auto' ? 'auto' : 'groq');
-  return { source: provider === 'auto' ? 'auto' : 'groq', models: cfg.model ? [cfg.model] : [], defaultModel: cfg.model || null };
+  const cfg = providerConfig('groq');
+  return { source: 'groq', models: cfg.model ? [cfg.model] : [], defaultModel: cfg.model || null };
 }
 
 const unreachable = (cfg, e) => new Error(`Impossible de joindre ${cfg.name} (${cfg.base}) : ${e.cause?.code || e.message}. Depuis Docker, « localhost » désigne le conteneur : utilisez l'adresse IP ou le nom du serveur qui héberge le modèle.`);
@@ -237,19 +240,19 @@ async function callModel(cfg, messages, { tools = true, attempt = 0 } = {}) {
   return res.json();
 }
 
-const toMessages = (history) => [{ role: 'system', content: SYSTEM }, ...history.slice(-MAX_HISTORY).map((m, i, arr) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, m.role === 'assistant' && i < arr.length - 1 ? 600 : 2000) }))];
+const toMessages = (history, provider = 'groq') => [{ role: 'system', content: systemFor(provider) }, ...history.slice(-MAX_HISTORY).map((m, i, arr) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content).slice(0, m.role === 'assistant' && i < arr.length - 1 ? 600 : 2000) }))];
 
 // Modèle sans appel de fonctions : on lui fournit directement un extrait pertinent des données de l'observatoire
 function contextFor(question) {
   const words = [...new Set(norm(question).split(/[^a-z0-9]+/).filter((w) => w.length >= 4))];
   const kpis = TOOL_IMPL.get_kpis({});
   const found = TOOL_IMPL.search_indicators({ query: words.slice(0, 2).join(' '), limit: 8 });
-  const ds = TOOL_IMPL.list_datasets({}).filter((d) => words.some((w) => norm(`${d.libelle} ${d.resume}`).includes(w))).slice(0, 6);
+  const ds = TOOL_IMPL.list_datasets({ query: question }).slice(0, 6);
   return { kpis, found, ds };
 }
 
 /** Conversation : history = [{role, content}], le dernier est la question.
- *  options : { provider: 'groq'|'auto'|'local', model, level: 'sommaire'|'normal'|'detaille', job }.
+ *  options : { provider: 'groq'|'local', model, level: 'sommaire'|'normal'|'detaille', job }.
  *  `job` (facultatif) : objet suivi par le front (polling) — reçoit partialText/tokensReceived
  *  pendant la génération APM, pour un affichage progressif de la réponse. */
 async function chat(history, options) {
@@ -258,11 +261,10 @@ async function chat(history, options) {
   const question = String(history[history.length - 1]?.content || '');
   const level = LEVELS.includes(opt.level) ? opt.level : 'normal';
   const instruction = LEVEL_INSTRUCTIONS[level] || '';
-  const providerId = ['groq', 'auto', 'local'].includes(opt.provider) ? opt.provider : defaultProvider();
+  const providerId = ['groq', 'local'].includes(opt.provider) ? opt.provider : defaultProvider();
   const cfg = providerConfig(providerId);
   if (!cfg.ok) {
     throw new Error(cfg.apm ? "IA locale (API Ville) indisponible : APM_API_KEY non configurée dans le fichier .env du serveur."
-      : cfg.local ? "IA locale autonome non configurée : définissez LOCAL_LLM_URL et LOCAL_LLM_MODEL dans le fichier .env du serveur."
       : "Clé Groq absente : définissez GROQ_API_KEY dans le fichier .env du serveur.");
   }
 
@@ -270,7 +272,7 @@ async function chat(history, options) {
   // outils de l'observatoire, avec le modèle choisi par l'utilisateur et le niveau de détail demandé.
   if (cfg.apm) {
     const ctx = contextFor(question);
-    const prompt = `${instruction}${SYSTEM}\n\nDonnées de l'observatoire (seule source autorisée) :\n${JSON.stringify(ctx).slice(0, 12000)}\n\nQuestion : ${question}`;
+    const prompt = `${instruction}${systemFor('local')}\n\nDonnées pertinentes de l'observatoire (seule source autorisée) :\n${JSON.stringify(ctx).slice(0, 48000)}\n\nQuestion : ${question}`;
     const model = opt.model || cfg.model || undefined;
     // Génération progressive : /query-async + polling de la progression (remonte le texte partiel dans le job).
     const answer = await require('./apmAi').queryWithProgress(prompt, model, opt.job);
@@ -284,14 +286,15 @@ async function chat(history, options) {
     };
   }
 
-  const maxChars = cfg.local ? 8000 : MAX_TOOL_CHARS;
-  const messages = toMessages(history);
+  const maxChars = cfg.local ? 12000 : 2400;
+  const maxSteps = providerId === 'groq' ? 3 : MAX_STEPS;
+  const messages = toMessages(history, providerId);
   if (instruction) messages[0].content = instruction + messages[0].content;
   const consulted = [];
   const dsIds = new Set(), kpiIds = new Set();
   const collect = (name, args, out) => { const r = sourcesOf(name, args, out); r.ds.forEach((x) => dsIds.add(x)); r.kpis.forEach((x) => kpiIds.add(x)); };
   try {
-    for (let step = 0; step < MAX_STEPS; step++) {
+    for (let step = 0; step < maxSteps; step++) {
       const j = await callModel(cfg, messages);
       const msg = j.choices?.[0]?.message;
       if (!msg) throw new Error('réponse vide du modèle');
@@ -315,8 +318,8 @@ async function chat(history, options) {
     // le modèle ne gère pas les appels de fonctions : repli sur un contexte préparé par l'observatoire
     const question = String(history[history.length - 1].content);
     const ctx = contextFor(question);
-    const base = toMessages(history.slice(0, -1));
-    base.push({ role: 'user', content: `Données de l'observatoire (seule source autorisée) :\n${JSON.stringify(ctx).slice(0, 9000)}\n\nQuestion : ${question}` });
+    const base = toMessages(history.slice(0, -1), providerId);
+    base.push({ role: 'user', content: `Données pertinentes de l'observatoire (seule source autorisée) :\n${JSON.stringify(ctx).slice(0, cfg.apm ? 48000 : 7000)}\n\nQuestion : ${question}` });
     const j = await callModel(cfg, base, { tools: false });
     return {
       answer: j.choices?.[0]?.message?.content || '',
@@ -399,7 +402,8 @@ function rateLog(id, rating, comment) {
 /** Liste des prompts utilisés par l'assistant et des données auxquelles ils s'adossent. */
 function prompts() {
   return {
-    system: SYSTEM,
+    system: systemFor(defaultProvider()),
+    profils: { local: systemFor('local'), groq: systemFor('groq') },
     regles: [
       'Répondre uniquement à partir des données renvoyées par les outils de l’observatoire.',
       'Appeler un outil avant toute réponse chiffrée ; citer le jeu, le territoire et la période.',
@@ -412,9 +416,8 @@ function prompts() {
     niveaux: { sommaire: LEVEL_INSTRUCTIONS.sommaire.trim(), normal: 'Comportement par défaut (consigne ajoutée : aucune)', detaille: LEVEL_INSTRUCTIONS.detaille.trim() },
     fournisseurs: {
       selectionne: defaultProvider(),
-      groq: { configure: providerConfig('groq').ok, model: providerConfig('groq').model },
-      local: { configure: providerConfig('local').ok, model: providerConfig('local').model, api: 'API IA de la Ville (APM)' },
-      auto: { configure: providerConfig('auto').ok, model: providerConfig('auto').model },
+      groq: { configure: providerConfig('groq').ok, model: providerConfig('groq').model, strategie: PROVIDER_INSTRUCTIONS.groq },
+      local: { configure: providerConfig('local').ok, model: providerConfig('local').model, api: 'API IA de la Ville (APM) · NVIDIA DGX Spark', strategie: PROVIDER_INSTRUCTIONS.local },
     },
   };
 }

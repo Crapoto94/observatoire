@@ -4,16 +4,15 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 
 interface Consulted { outil: string; arguments: Record<string, unknown> }
-interface Source { type: 'dataset' | 'kpi'; id: string; label: string; url: string }
+interface Source { type: 'dataset' | 'kpi' | 'map'; id: string; label: string; url: string }
 interface Msg { role: 'user' | 'assistant'; content: string; consulted?: Consulted[]; sources?: Source[]; error?: boolean; via?: string; logId?: number; progress?: boolean; tokens?: number }
-type Provider = 'groq' | 'local' | 'auto';
+type Provider = 'groq' | 'local';
 type Level = 'sommaire' | 'normal' | 'detaille';
 interface Status {
   selected: Provider;
   levels: Level[];
   groq: { configured: boolean; model: string };
   local: { configured: boolean; model: string };
-  auto: { configured: boolean; model: string; kind: 'ollama' | 'vllm' };
 }
 type ModelInfo = { source: string; models: string[]; defaultModel: string | null };
 
@@ -54,7 +53,7 @@ const POLL_MS = 1500;
 export default function IA() {
   const [status, setStatus] = useState<Status | null>(null);
   const [provider, setProvider] = useState<Provider | null>(() => {
-    try { const p = localStorage.getItem('ia-provider'); return p === 'groq' || p === 'local' || p === 'auto' ? p : null; } catch { return null; }
+    try { const p = localStorage.getItem('ia-provider'); return p === 'groq' || p === 'local' ? p : null; } catch { return null; }
   });
   const [models, setModels] = useState<string[]>([]);
   const [model, setModel] = useState<string>(() => { try { return localStorage.getItem('ia-model') || ''; } catch { return ''; } });
@@ -76,7 +75,7 @@ export default function IA() {
     end.current?.scrollIntoView({ behavior: 'smooth' });
   }, [msgs]);
 
-  // Modèles de la source active : l'« IA locale » (API Ville) en propose plusieurs, Groq/autonome un seul.
+  // Modèles de la source active : l'« IA locale » (API Ville) en propose plusieurs, Groq un seul.
   useEffect(() => {
     if (!provider || !status) { setModels([]); return; }
     let live = true;
@@ -92,8 +91,8 @@ export default function IA() {
   const chooseModel = (m: string) => { setModel(m); try { localStorage.setItem('ia-model', m); } catch { /* stockage indisponible */ } };
   const chooseLevel = (l: Level) => { setLevel(l); try { localStorage.setItem('ia-level', l); } catch { /* stockage indisponible */ } };
 
-  const ready = !!status && !!provider && (provider === 'groq' ? status.groq.configured : provider === 'local' ? status.local.configured : status.auto.configured);
-  const shown = provider === 'local' ? 'IA locale (API Ville)' : provider === 'groq' ? 'Groq' : 'IA locale autonome';
+  const ready = !!status && !!provider && (provider === 'groq' ? status.groq.configured : status.local.configured);
+  const shown = provider === 'local' ? 'IA locale (API Ville)' : 'Groq';
 
   // Suit un job de génération en pollant son état et met à jour la bulle assistant au fil de l'eau.
   const pollJob = (jobId: string, q: string) => new Promise<void>((resolve) => {
@@ -168,9 +167,6 @@ export default function IA() {
           <label className={`inline${provider === 'local' ? ' on' : ''}`}>
             <input type="radio" name="prov" checked={provider === 'local'} onChange={() => choose('local')} /> IA locale (API Ville){status ? (status.local.configured ? '' : ' · non configurée') : ''}
           </label>
-          <label className={`inline${provider === 'auto' ? ' on' : ''}`}>
-            <input type="radio" name="prov" checked={provider === 'auto'} onChange={() => choose('auto')} /> IA locale autonome{status ? (status.auto.configured ? ` · ${status.auto.model}` : ' · non configurée') : ''}
-          </label>
         </div>
 
         <div className="ia-selectors">
@@ -202,9 +198,7 @@ export default function IA() {
         <div className="warn">
           {provider === 'groq'
             ? <>Groq n'est pas configuré : ajoutez <code>GROQ_API_KEY=votre_clé</code> dans le fichier <code>.env</code> du serveur (à côté de <code>docker-compose.yml</code>), puis <code>docker compose up -d</code>.</>
-            : provider === 'local'
-              ? <>L'IA locale (API Ville) n'est pas disponible : renseignez <code>APM_API_URL</code> et <code>APM_API_KEY</code> dans le fichier <code>.env</code> du serveur.</>
-              : <>L'IA locale autonome n'est pas configurée : ajoutez <code>LOCAL_LLM_URL</code> et <code>LOCAL_LLM_MODEL</code> dans le fichier <code>.env</code> du serveur.</>}
+            : <>L'IA locale (API Ville) n'est pas disponible : renseignez <code>APM_API_URL</code> et <code>APM_API_KEY</code> dans le fichier <code>.env</code> du serveur.</>}
         </div>
       )}
 
@@ -224,7 +218,7 @@ export default function IA() {
             {m.sources && m.sources.length > 0 && (
               <div className="ia-sources small">
                 <strong>Jeux de données associés :</strong>{' '}
-                {m.sources.map((x) => <Link key={`${x.type}-${x.id}`} className="chip ds" to={x.url} title={x.type === 'kpi' ? 'Voir ce KPI dans le tableau de bord' : 'Ouvrir ce jeu de données'}>{x.type === 'kpi' ? 'KPI ▸ ' : ''}{x.label}</Link>)}
+                {m.sources.map((x) => <Link key={`${x.type}-${x.id}`} className="chip ds" to={x.url} title={x.type === 'kpi' ? 'Voir ce KPI dans le tableau de bord' : x.type === 'map' ? 'Afficher cette couche sur la carte' : 'Ouvrir ce jeu de données'}>{x.type === 'kpi' ? 'KPI ▸ ' : x.type === 'map' ? 'Carte ▸ ' : ''}{x.label}</Link>)}
               </div>
             )}
             {m.via && <div className="muted small">{m.via}</div>}

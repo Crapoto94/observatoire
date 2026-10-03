@@ -9,7 +9,8 @@ interface Prompts {
   regles: string[];
   territoires: Record<string, string>;
   outils: Tool[];
-  fournisseurs: { selectionne: string; groq: string; local: string };
+  profils: { groq: string; local: string };
+  fournisseurs: { selectionne: string; groq: { configure: boolean; model: string; strategie: string }; local: { configure: boolean; model: string; api: string; strategie: string } };
 }
 interface Log {
   id: number; at: string; username: string | null; provider: string | null; model: string | null;
@@ -47,6 +48,11 @@ export default function IaSettings() {
           <textarea readOnly rows={6} value={prompts?.system ?? 'Chargement…'} /></label>
         {prompts && (
           <>
+            <h3>Profils optimisés par fournisseur</h3>
+            <div className="settings-grid">
+              <label className="field"><span>IA locale · DGX Spark · {prompts.fournisseurs.local.model || 'modèle par défaut'}</span><textarea readOnly rows={4} value={prompts.fournisseurs.local.strategie} /></label>
+              <label className="field"><span>Groq · {prompts.fournisseurs.groq.model || 'modèle non configuré'}</span><textarea readOnly rows={4} value={prompts.fournisseurs.groq.strategie} /></label>
+            </div>
             <h3>Règles</h3>
             <ul className="small">{prompts.regles.map((r, i) => <li key={i}>{r}</li>)}</ul>
             <h3>Territoires reconnus</h3>
@@ -58,7 +64,7 @@ export default function IaSettings() {
                 <tbody>{prompts.outils.map((t) => <tr key={t.nom}><td><code>{t.nom}</code></td><td className="small">{t.description}</td></tr>)}</tbody>
               </table>
             </div>
-            <p className="muted small">Fournisseur sélectionné : <b>{prompts.fournisseurs.selectionne}</b> · Groq : {prompts.fournisseurs.groq} · Local : {prompts.fournisseurs.local || 'non configuré'}</p>
+            <p className="muted small">Fournisseur sélectionné : <b>{prompts.fournisseurs.selectionne}</b> · Groq : {prompts.fournisseurs.groq.configure ? 'configuré' : 'non configuré'} · Local : {prompts.fournisseurs.local.configure ? 'configuré' : 'non configuré'}</p>
           </>
         )}
       </div>

@@ -3,7 +3,7 @@ const TOKEN_KEY = 'observatoire.token';
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 export const setToken = (t: string | null) => { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); };
 
-export async function api<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
+export async function api<T>(path: string, init?: { method?: string; body?: unknown; timeoutMs?: number }): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {};
   if (init?.body) headers['Content-Type'] = 'application/json';
@@ -12,6 +12,7 @@ export async function api<T>(path: string, init?: { method?: string; body?: unkn
     method: init?.method ?? (init?.body ? 'POST' : 'GET'),
     headers,
     body: init?.body ? JSON.stringify(init.body) : undefined,
+    ...(init?.timeoutMs ? { signal: AbortSignal.timeout(init.timeoutMs) } : {}),
   });
   if (r.status === 204) return undefined as T;
   const j = await r.json().catch(() => ({}));

@@ -1,0 +1,876 @@
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><meta content="web_standard" name="shell-type"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={"darkMode":"class","theme":{"extend":{"colors":{"surface-variant":"#dae2fd","secondary":"#006a61","outline-variant":"#c4c6cd","secondary-container":"#86f2e4","on-surface-variant":"#43474c","secondary-fixed":"#89f5e7","on-secondary-fixed":"#00201d","primary-fixed":"#d0e4ff","error":"#ba1a1a","primary-container":"#0f2438","on-surface":"#131b2e","on-primary-fixed":"#071d30","surface-container":"#eaedff","surface-bright":"#faf8ff","inverse-surface":"#283044","inverse-primary":"#b4c8e3","surface-container-highest":"#dae2fd","tertiary-container":"#002539","on-secondary-container":"#006f66","surface-container-high":"#e2e7ff","on-error-container":"#93000a","on-tertiary":"#ffffff","on-tertiary-fixed":"#001e2f","on-background":"#131b2e","on-primary-container":"#788ca4","inverse-on-surface":"#eef0ff","surface":"#faf8ff","tertiary":"#000e18","on-tertiary-container":"#0092d0","surface-container-low":"#f2f3ff","on-secondary-fixed-variant":"#005049","on-secondary":"#ffffff","surface-tint":"#4d6077","tertiary-fixed":"#c9e6ff","primary-fixed-dim":"#b4c8e3","surface-container-lowest":"#ffffff","error-container":"#ffdad6","secondary-fixed-dim":"#6bd8cb","outline":"#74777d","tertiary-fixed-dim":"#89ceff","background":"#faf8ff","on-primary-fixed-variant":"#35485e","on-tertiary-fixed-variant":"#004c6e","surface-dim":"#d2d9f4","on-primary":"#ffffff","primary":"#000e1d","on-error":"#ffffff"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"gutter":"1rem","space-md":"0.75rem","space-lg":"1rem","space-sm":"0.5rem","space-xs":"0.25rem","margin":"1rem","margin-lg":"2rem","space-xl":"1.5rem","margin-md":"1.5rem","gutter-lg":"1.5rem"},"fontFamily":{"body-lg":["Inter"],"metric-md":["Inter"],"metric-xl":["Inter"],"headline-sm":["Plus Jakarta Sans"],"body-md":["Inter"],"label-sm":["Inter"],"data-tabular":["JetBrains Mono"],"headline-md":["Plus Jakarta Sans"],"body-sm":["Inter"],"display-lg":["Plus Jakarta Sans"],"headline-lg":["Plus Jakarta Sans"],"label-mono":["JetBrains Mono"]},"fontSize":{"body-lg":["16px",{"lineHeight":"24px","letterSpacing":"-0.005em","fontWeight":"400"}],"metric-md":["20px",{"lineHeight":"26px","letterSpacing":"-0.02em","fontWeight":"600"}],"metric-xl":["32px",{"lineHeight":"38px","letterSpacing":"-0.03em","fontWeight":"700"}],"headline-sm":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","letterSpacing":"0em","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.04em","fontWeight":"600"}],"data-tabular":["13px",{"lineHeight":"18px","letterSpacing":"-0.01em","fontWeight":"500"}],"headline-md":["22px",{"lineHeight":"28px","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["12px",{"lineHeight":"16px","letterSpacing":"0.005em","fontWeight":"400"}],"display-lg":["36px",{"lineHeight":"44px","letterSpacing":"-0.025em","fontWeight":"700"}],"headline-lg":["28px",{"lineHeight":"36px","letterSpacing":"-0.02em","fontWeight":"600"}],"label-mono":["11px",{"lineHeight":"14px","letterSpacing":"0.02em","fontWeight":"500"}]}}}}</script></head><body class="bg-surface font-body-md text-on-surface antialiased min-h-screen"><header class="fixed top-0 left-0 right-0 z-50 bg-surface-container-lowest shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-28 flex flex-col justify-between"><div class="h-16 px-gutter-lg flex items-center justify-between gap-space-lg"><div class="flex items-center gap-space-md"><img alt="Logo Observatoire des Données du Territoire" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WTGJ779QZw6cnFY__WqkT69L6aSLjdXjPxUvqueLmlziQgVh6Q0BHfT-LCmukDzpuG9rknr-Nr0mX9SGcph7cGBCSNIMpa04--Yc4h6RofAhpvRE0qxJJScDClPGAX_kI4I4xW8neTNZwzTgDBrt2LMA_4QwDCNFr9jzkIIbs4vnNBPjQXRhfWHXkZvibBZdzylb10dHf7PX0vYLXkMsW-7jC-2OKt3PVjZXHxg_M-W_C1m69Wq4BMTPNb"><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface leading-tight">Observatoire des Données du Territoire</span><span class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Plateforme publique d'analyse territoriale</span></div></div><nav class="hidden xl:flex items-center gap-space-xs p-1 bg-surface-container-low rounded-lg" data-active-classes="bg-primary-container text-on-secondary shadow-sm rounded-lg"><a class="px-space-md py-space-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all font-body-md text-body-md font-medium" data-path="tableau-de-bord" href="#">Tableau de bord</a><a class="px-space-md py-space-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-all font-body-md text-body-md font-medium" data-path="carte-interactive" href="#">Carte interactive</a><a aria-current="page" class="px-space-md py-space-xs transition-all font-body-md font-medium bg-primary-container text-on-secondary shadow-sm rounded-lg" data-path="indicateurs" href="#">Indicateurs</a></nav><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-xs bg-surface-container-high px-space-md py-space-xs rounded-full text-on-surface"><span class="material-symbols-outlined text-secondary text-base">location_on</span><span class="font-label-mono text-label-mono">Ivry-sur-Seine (94200) • 2024</span></div><a class="hidden lg:flex items-center gap-space-xs font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors" href="#"><span class="material-symbols-outlined text-lg">menu_book</span>Documentation &amp; Méthodes</a><button aria-label="Notifications" class="p-space-xs rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors" type="button"><span class="material-symbols-outlined text-xl">notifications</span></button><div class="flex items-center gap-space-sm pl-space-sm"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCl53cBFAyq2871mCTxjtlIKhK6-ZLNprkW372hM9KDf5XDZcEjEmGt43G7JpHGqVRG89-cZUxirCkOeAbulX7O3NH54Z87aeRY7IIZdS_C9v0QFKbmwtLZ-GSG89g238QSeLYjBqGCz0rbiPnFuMGAiecA79NNQjTPdl_gb7o8Wge9buVz7cDF2DfO7XytHOsAPTs0HJVy49ODCtLqgmmZ-_AYdoDL9XwB7nqKXi9L7pONQEr_DgWypQ"><div class="hidden 2xl:flex flex-col text-left"><span class="font-body-sm text-body-sm font-medium text-on-surface leading-tight">Claire Delmas</span><span class="font-label-sm text-label-sm text-on-surface-variant leading-tight">Chargée d'études</span></div></div></div></div><div class="h-12 px-gutter-lg bg-surface-container-low flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-lg overflow-x-auto py-1"><div class="flex items-center gap-space-xs shrink-0"><span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Territoire :</span><span class="font-body-sm text-body-sm font-semibold text-on-surface">Ivry-sur-Seine (94200) - Val-de-Marne</span></div><div class="flex items-center gap-space-xs shrink-0"><span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Thématique :</span><span class="font-body-sm text-body-sm text-on-surface">Toutes thématiques</span></div><div class="flex items-center gap-space-xs shrink-0"><span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Période :</span><span class="font-data-tabular text-data-tabular text-on-surface">2020-2024</span></div></div><div class="flex items-center gap-space-sm shrink-0"><button class="flex items-center gap-space-xs bg-surface-container-lowest px-space-md py-space-xs rounded-lg text-on-surface hover:bg-surface-container-high transition-colors font-body-sm text-body-sm shadow-[0_1px_3px_rgba(15,23,42,0.04)]" type="button"><span class="material-symbols-outlined text-base">tune</span><span class="">Modifier le périmètre</span><span class="material-symbols-outlined text-base">expand_more</span></button><button class="flex items-center gap-space-xs bg-secondary text-on-secondary px-space-md py-space-xs rounded-lg hover:bg-on-secondary-container transition-colors font-body-sm text-body-sm" type="button"><span class="material-symbols-outlined text-base">download</span><span class="">Exporter les données</span></button></div></div></div></header><main class="w-full pt-28 bg-surface min-h-[calc(100vh-280px)]"><div class="flex flex-col w-full">
+<!-- Sub-header context ribbon -->
+<section class="w-full bg-surface-container-lowest px-gutter-lg py-space-xl">
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-space-lg">
+<div class="space-y-space-xs">
+<div class="flex items-center gap-space-sm text-secondary">
+<span class="material-symbols-outlined text-sm">database</span>
+<span class="font-label-mono text-label-mono uppercase tracking-wider text-secondary">Référentiel Territorial V2.4 • Open Data</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">Explorateur des indicateurs communaux</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Base de 209 indicateurs suivis, qualifiés et documentés pour l'Observatoire de la ville d'Ivry-sur-Seine.</p>
+</div>
+<!-- Quick meta status badges -->
+<div class="flex flex-wrap items-center gap-space-sm">
+<div class="flex items-center gap-space-xs bg-surface-container px-space-md py-space-xs rounded-full">
+<span class="inline-block w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-mono text-label-mono text-on-surface">Base consolidée : 12 Nov. 2024</span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container px-space-md py-space-xs rounded-full">
+<span class="material-symbols-outlined text-xs text-on-surface-variant">verified</span>
+<span class="font-label-mono text-label-mono text-on-surface">Licence Ouverte v2.0 (Etalab)</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Metric Overview / KPI Tiles -->
+<section class="w-full px-gutter-lg py-space-lg bg-surface">
+<div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-space-md"><div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant font-semibold">Total indicateurs</span>
+<span class="material-symbols-outlined text-on-surface-variant text-base">format_list_bulleted</span>
+</div>
+<div class="mt-space-sm">
+<span class="font-metric-xl text-metric-xl font-bold text-on-surface">209</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">indicateurs</span>
+</div>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">7 axes thématiques suivis</p>
+</div>
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant font-semibold">Statut de suivi</span>
+<span class="material-symbols-outlined text-on-surface-variant text-base">pending_actions</span>
+</div>
+<div class="mt-space-sm">
+<span class="font-metric-xl text-metric-xl font-bold text-on-surface">209</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">brouillons</span>
+</div>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">En cours de fiabilisation</p>
+</div>
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant font-semibold">Sources &amp; Données</span>
+<span class="material-symbols-outlined text-on-surface-variant text-base">hub</span>
+</div>
+<div class="mt-space-sm">
+<span class="font-metric-xl text-metric-xl font-bold text-secondary">160</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">externes</span>
+</div>
+<p class="mt-space-xs font-body-sm text-body-sm text-on-surface-variant">12 internes • 37 mixtes</p>
+</div>
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant font-semibold">Couverture carto</span>
+<span class="material-symbols-outlined text-on-surface-variant text-base">map</span>
+</div>
+<div class="mt-space-sm">
+<span class="font-metric-xl text-metric-xl font-bold text-on-surface">119</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">sur une carte</span>
+</div>
+<p class="mt-space-xs font-body-sm text-body-sm text-secondary font-medium">SIG &amp; maillage IRIS Ivry</p>
+</div></div>
+</section>
+<!-- Filter & Controls Section -->
+<section class="w-full px-gutter-lg pb-space-lg bg-surface">
+<div class="max-w-7xl mx-auto bg-surface-container-lowest rounded-xl shadow-sm p-space-lg space-y-space-md">
+<!-- Primary Search & Action Header -->
+<div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
+<!-- Search bar -->
+<div class="relative flex-1">
+<div class="absolute inset-y-0 left-0 pl-space-md flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">search</span>
+</div>
+<input class="w-full pl-10 pr-24 py-space-sm bg-surface-container-low rounded-lg text-on-surface placeholder:text-on-surface-variant font-body-md text-body-md focus:bg-surface-container-lowest focus:outline-none transition-all" id="indicatorSearch" placeholder="Rechercher par libellé, mot-clé, code (ex: population, ZAN, vélo, GES, DEMO)..." type="text">
+<div class="absolute inset-y-0 right-0 pr-space-md flex items-center gap-space-xs">
+<kbd class="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-mono">⌘K</kbd>
+</div>
+</div>
+<!-- Mode Switches & Quick Exports -->
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="px-space-md py-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container text-on-surface font-body-sm text-body-sm transition-colors flex items-center gap-space-xs" id="resetFiltersBtn" title="Effacer tous les critères" type="button">
+<span class="material-symbols-outlined text-base">restart_alt</span>
+<span class="">Réinitialiser</span>
+</button>
+<div class="h-6 w-[1px] bg-surface-container-high hidden sm:block"></div>
+<!-- Table vs Grid Toggle -->
+<div class="inline-flex p-0.5 bg-surface-container-low rounded-lg">
+<button class="px-space-md py-1 rounded bg-surface-container-lowest text-on-surface shadow-sm font-label-sm text-label-sm font-semibold flex items-center gap-1 transition-all" id="viewTableBtn" type="button">
+<span class="material-symbols-outlined text-sm">table_rows</span>
+<span class="">Tableau</span>
+</button>
+<button class="px-space-md py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-semibold flex items-center gap-1 transition-all" id="viewCardsBtn" type="button">
+<span class="material-symbols-outlined text-sm">grid_view</span>
+<span class="">Grille</span>
+</button>
+</div>
+<!-- Exporter -->
+<div class="relative group">
+<button class="px-space-md py-space-sm rounded-lg bg-primary-container text-on-secondary hover:bg-primary transition-all font-body-sm text-body-sm font-medium flex items-center gap-space-xs" type="button">
+<span class="material-symbols-outlined text-base">download</span>
+<span class="">Exporter la sélection</span>
+<span class="material-symbols-outlined text-xs">expand_more</span>
+</button>
+<!-- Dropdown menu -->
+<div class="absolute right-0 mt-1 w-44 bg-surface-container-lowest rounded-lg shadow-xl py-1 hidden group-hover:block z-20">
+<a class="flex items-center gap-space-xs px-space-md py-space-xs hover:bg-surface-container font-body-sm text-body-sm text-on-surface" href="#export-csv">
+<span class="material-symbols-outlined text-base text-secondary">description</span> CSV (Séparateur ;)
+              </a>
+<a class="flex items-center gap-space-xs px-space-md py-space-xs hover:bg-surface-container font-body-sm text-body-sm text-on-surface" href="#export-json">
+<span class="material-symbols-outlined text-base text-secondary">data_object</span> JSON Structuré
+              </a>
+<a class="flex items-center gap-space-xs px-space-md py-space-xs hover:bg-surface-container font-body-sm text-body-sm text-on-surface" href="#export-geojson">
+<span class="material-symbols-outlined text-base text-secondary">map</span> Couche GeoJSON
+              </a>
+</div>
+</div>
+</div>
+</div>
+<!-- Advanced Select Dropdowns -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-sm pt-space-xs">
+<!-- Thématique -->
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant flex items-center gap-1" for="themeFilter">
+<span class="material-symbols-outlined text-sm">category</span> Thématique
+          </label>
+<div class="relative">
+<select class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm rounded-lg px-space-md py-space-sm appearance-none pr-8 focus:outline-none focus:bg-surface-container" id="themeFilter">
+<option value="all">Toutes les thématiques (86)</option>
+<option value="demo">Démographie (18)</option>
+<option value="habitat">Habitat &amp; Logement (15)</option>
+<option value="mobilites">Mobilités (12)</option>
+<option value="climat">Énergie &amp; Climat (16)</option>
+<option value="eco">Économie (25)</option>
+</select>
+<span class="material-symbols-outlined text-base text-on-surface-variant absolute right-space-sm top-2.5 pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Territoire / Échelle -->
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant flex items-center gap-1" for="scaleFilter">
+<span class="material-symbols-outlined text-sm">location_city</span> Territoire / Échelle
+          </label>
+<div class="relative">
+<select class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm rounded-lg px-space-md py-space-sm appearance-none pr-8 focus:outline-none focus:bg-surface-container" id="scaleFilter">
+<option value="all">Toutes échelles géographiques</option>
+<option value="metro">Métropole du Grand Lyon</option>
+<option value="communes">Communes (59 mailles)</option>
+<option value="iris">IRIS infracommunaux</option>
+<option value="qpv">Quartiers prioritaires (QPV)</option>
+</select>
+<span class="material-symbols-outlined text-base text-on-surface-variant absolute right-space-sm top-2.5 pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Millésime / Période -->
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant flex items-center gap-1" for="periodFilter">
+<span class="material-symbols-outlined text-sm">calendar_month</span> Millésime / Période
+          </label>
+<div class="relative">
+<select class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm rounded-lg px-space-md py-space-sm appearance-none pr-8 focus:outline-none focus:bg-surface-container" id="periodFilter">
+<option value="all">Tous millésimes (Historique)</option>
+<option selected="" value="2024">2024 (Dernières données)</option>
+<option value="2023">2023</option>
+<option value="2022">2022</option>
+<option value="quinquennal">Évolution quinquennale</option>
+</select>
+<span class="material-symbols-outlined text-base text-on-surface-variant absolute right-space-sm top-2.5 pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Type de mesure -->
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant flex items-center gap-1" for="measureFilter">
+<span class="material-symbols-outlined text-sm">straighten</span> Type de mesure
+          </label>
+<div class="relative">
+<select class="w-full bg-surface-container-low text-on-surface font-body-sm text-body-sm rounded-lg px-space-md py-space-sm appearance-none pr-8 focus:outline-none focus:bg-surface-container" id="measureFilter">
+<option value="all">Tous les types de mesure</option>
+<option value="percentage">Taux / Pourcentage (%)</option>
+<option value="absolute">Valeur absolue (Volume/effectif)</option>
+<option value="ratio">Ratio &amp; par habitant</option>
+<option value="indice">Indice base 100</option>
+</select>
+<span class="material-symbols-outlined text-base text-on-surface-variant absolute right-space-sm top-2.5 pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Result Counter and Active Filters Pills -->
+<div class="flex flex-wrap items-center justify-between gap-space-sm pt-space-xs">
+<div class="flex flex-wrap items-center gap-space-sm">
+<span class="font-body-md text-body-md font-semibold text-on-surface">Affichage de <span class="font-data-tabular text-data-tabular font-bold text-secondary" id="displayedCount">8</span> indicateurs sur <span class="font-data-tabular text-data-tabular">209</span> disponibles</span>
+<span class="text-on-surface-variant hidden sm:inline">•</span>
+<!-- Filter badges -->
+<div class="flex flex-wrap items-center gap-space-xs">
+<span class="inline-flex items-center gap-1 bg-surface-container px-space-sm py-0.5 rounded-full font-label-sm text-label-sm text-on-surface">Territoire : Ivry-sur-Seine <button class="hover:text-error transition-colors" title="Retirer ce filtre" type="button"><span class="material-symbols-outlined text-xs">close</span></button></span>
+<span class="inline-flex items-center gap-1 bg-surface-container px-space-sm py-0.5 rounded-full font-label-sm text-label-sm text-on-surface">
+              Année : 2024
+              <button class="hover:text-error transition-colors" title="Retirer ce filtre" type="button">
+<span class="material-symbols-outlined text-xs">close</span>
+</button>
+</span>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<button class="font-label-sm text-label-sm text-secondary hover:underline flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-sm">bookmark_add</span>
+            Sauvegarder cette vue
+          </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Core Data Table View -->
+<section class="w-full px-gutter-lg pb-space-xl bg-surface" id="tableViewSection">
+<div class="max-w-7xl mx-auto bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse" id="indicatorsDataTable">
+<thead>
+<tr class="bg-surface-container-low text-on-surface-variant">
+<th class="py-space-md px-space-lg font-label-sm text-label-sm uppercase tracking-wider font-semibold cursor-pointer hover:text-on-surface select-none" scope="col">
+<div class="flex items-center gap-1">
+<span class="">Indicateur</span>
+<span class="material-symbols-outlined text-xs">unfold_more</span>
+</div>
+</th>
+<th class="py-space-md px-space-md font-label-sm text-label-sm uppercase tracking-wider font-semibold cursor-pointer hover:text-on-surface select-none" scope="col">
+<div class="flex items-center gap-1">
+<span class="">Thématique</span>
+<span class="material-symbols-outlined text-xs">unfold_more</span>
+</div>
+</th>
+<th class="py-space-md px-space-md font-label-sm text-label-sm uppercase tracking-wider font-semibold" scope="col">
+                Territoire
+              </th>
+<th class="py-space-md px-space-sm font-label-sm text-label-sm uppercase tracking-wider font-semibold text-center" scope="col">
+                Période
+              </th>
+<th class="py-space-md px-space-md font-label-sm text-label-sm uppercase tracking-wider font-semibold text-right cursor-pointer hover:text-on-surface select-none" scope="col">
+<div class="flex items-center justify-end gap-1">
+<span class="">Dernière valeur</span>
+<span class="material-symbols-outlined text-xs">unfold_more</span>
+</div>
+</th>
+<th class="py-space-md px-space-sm font-label-sm text-label-sm uppercase tracking-wider font-semibold" scope="col">
+                Unité
+              </th>
+<th class="py-space-md px-space-md font-label-sm text-label-sm uppercase tracking-wider font-semibold text-center" scope="col">
+                Tendance (5 ans)
+              </th>
+<th class="py-space-md px-space-lg font-label-sm text-label-sm uppercase tracking-wider font-semibold text-right" scope="col">
+                Actions
+              </th>
+</tr>
+</thead>
+<tbody class="divide-y-0" id="tableBodyRows"><tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-space-md px-space-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-secondary transition-colors">Taux de pauvreté</span>
+<span class="font-label-mono text-label-mono bg-surface-container px-1 rounded text-on-surface-variant">SOC-001</span>
+<span class="font-label-mono text-label-mono bg-surface-container-high px-1 rounded text-secondary font-semibold">P2</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Part des ménages sous le seuil de bas revenus (60 % du revenu médian) • Faisabilité Facile</span>
+</div>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>
+Cohésion &amp; Santé
+</span>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface">Ivry-sur-Seine</span>
+</td>
+<td class="py-space-md px-space-sm text-center whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular text-on-surface font-medium">2021</span>
+</td>
+<td class="py-space-md px-space-md text-right whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">28</span>
+</td>
+<td class="py-space-md px-space-sm whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface-variant">%</span>
+</td>
+<td class="py-space-md px-space-md text-center whitespace-nowrap">
+<div class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-mono font-semibold">
+<span class="material-symbols-outlined text-xs">map</span>
+<span class="">Filosofi</span>
+</div>
+</td>
+<td class="py-space-md px-space-lg text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-space-xs">
+<button aria-label="Aperçu rapide" class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Aperçu express" type="button">
+<span class="material-symbols-outlined text-base">visibility</span>
+</button>
+<a class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container-high hover:bg-surface-variant text-on-surface font-body-sm text-body-sm font-medium transition-colors" href="#fiche-SOC-001">
+<span class="">Fiche</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</td>
+</tr>
+
+<tr class="hover:bg-surface-container-low transition-colors group bg-surface-container-lowest">
+<td class="py-space-md px-space-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-secondary transition-colors">Évolution du taux de pauvreté</span>
+<span class="font-label-mono text-label-mono bg-surface-container px-1 rounded text-on-surface-variant">SOC-002</span>
+<span class="font-label-mono text-label-mono bg-surface-container-high px-1 rounded text-secondary font-semibold">P2</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Dynamique temporelle de la précarité monétaire • Externe • Carte possible</span>
+</div>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>
+Cohésion &amp; Santé
+</span>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface">Ivry-sur-Seine (IRIS)</span>
+</td>
+<td class="py-space-md px-space-sm text-center whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular text-on-surface font-medium">2015-2021</span>
+</td>
+<td class="py-space-md px-space-md text-right whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">+1.8</span>
+</td>
+<td class="py-space-md px-space-sm whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface-variant">pts</span>
+</td>
+<td class="py-space-md px-space-md text-center whitespace-nowrap">
+<div class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-emerald-50 text-emerald-700 font-label-mono text-label-mono font-semibold">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+<span class="">Filosofi</span>
+</div>
+</td>
+<td class="py-space-md px-space-lg text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-space-xs">
+<button aria-label="Aperçu rapide" class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Aperçu express" type="button">
+<span class="material-symbols-outlined text-base">visibility</span>
+</button>
+<a class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container-high hover:bg-surface-variant text-on-surface font-body-sm text-body-sm font-medium transition-colors" href="#fiche-SOC-002">
+<span class="">Fiche</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</td>
+</tr>
+
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-space-md px-space-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-secondary transition-colors">Indice de développement social local</span>
+<span class="font-label-mono text-label-mono bg-surface-container px-1 rounded text-on-surface-variant">SOC-003</span>
+<span class="font-label-mono text-label-mono bg-surface-container-high px-1 rounded text-secondary font-semibold">P2</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Indicateur synthétique communal et IRIS • Source Mixte (CCAS / Filosofi)</span>
+</div>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>
+Cohésion &amp; Santé
+</span>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface">Quartiers &amp; IRIS</span>
+</td>
+<td class="py-space-md px-space-sm text-center whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular text-on-surface font-medium">2023</span>
+</td>
+<td class="py-space-md px-space-md text-right whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">104.2</span>
+</td>
+<td class="py-space-md px-space-sm whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface-variant">indice 100</span>
+</td>
+<td class="py-space-md px-space-md text-center whitespace-nowrap">
+<div class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-mono font-semibold">
+<span class="material-symbols-outlined text-xs">hub</span>
+<span class="">Mixte</span>
+</div>
+</td>
+<td class="py-space-md px-space-lg text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-space-xs">
+<button aria-label="Aperçu rapide" class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Aperçu express" type="button">
+<span class="material-symbols-outlined text-base">visibility</span>
+</button>
+<a class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container-high hover:bg-surface-variant text-on-surface font-body-sm text-body-sm font-medium transition-colors" href="#fiche-SOC-003">
+<span class="">Fiche</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</td>
+</tr>
+
+<tr class="hover:bg-surface-container-low transition-colors group bg-surface-container-lowest">
+<td class="py-space-md px-space-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-secondary transition-colors">Projection des publics en difficulté</span>
+<span class="font-label-mono text-label-mono bg-surface-container px-1 rounded text-on-surface-variant">SOC-004</span>
+<span class="font-label-mono text-label-mono bg-surface-container-high px-1 rounded text-secondary font-semibold">P2</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Modèle de prospective sociale • Faisabilité Difficile • Données Insee &amp; Drees</span>
+</div>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>
+Cohésion &amp; Santé
+</span>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface">Ivry-sur-Seine</span>
+</td>
+<td class="py-space-md px-space-sm text-center whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular text-on-surface font-medium">2030 (proj.)</span>
+</td>
+<td class="py-space-md px-space-md text-right whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">18 200</span>
+</td>
+<td class="py-space-md px-space-sm whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface-variant">personnes</span>
+</td>
+<td class="py-space-md px-space-md text-center whitespace-nowrap">
+<div class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-mono font-semibold">
+<span class="material-symbols-outlined text-xs">query_stats</span>
+<span class="">Modèle</span>
+</div>
+</td>
+<td class="py-space-md px-space-lg text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-space-xs">
+<button aria-label="Aperçu rapide" class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Aperçu express" type="button">
+<span class="material-symbols-outlined text-base">visibility</span>
+</button>
+<a class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container-high hover:bg-surface-variant text-on-surface font-body-sm text-body-sm font-medium transition-colors" href="#fiche-SOC-004">
+<span class="">Fiche</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</td>
+</tr>
+
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-space-md px-space-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-secondary transition-colors">Nombre de bénéficiaires d'aides sociales</span>
+<span class="font-label-mono text-label-mono bg-surface-container px-1 rounded text-on-surface-variant">SOC-005</span>
+<span class="font-label-mono text-label-mono bg-surface-container-high px-1 rounded text-secondary font-semibold">P2</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Allocataires de minima sociaux et prestations CAF territoriales • Carte possible</span>
+</div>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>
+Cohésion &amp; Santé
+</span>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface">Ivry (IRIS CAF)</span>
+</td>
+<td class="py-space-md px-space-sm text-center whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular text-on-surface font-medium">2023</span>
+</td>
+<td class="py-space-md px-space-md text-right whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">8 740</span>
+</td>
+<td class="py-space-md px-space-sm whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface-variant">allocataires</span>
+</td>
+<td class="py-space-md px-space-md text-center whitespace-nowrap">
+<div class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-mono font-semibold">
+<span class="material-symbols-outlined text-xs">map</span>
+<span class="">CAF 94</span>
+</div>
+</td>
+<td class="py-space-md px-space-lg text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-space-xs">
+<button aria-label="Aperçu rapide" class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Aperçu express" type="button">
+<span class="material-symbols-outlined text-base">visibility</span>
+</button>
+<a class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container-high hover:bg-surface-variant text-on-surface font-body-sm text-body-sm font-medium transition-colors" href="#fiche-SOC-005">
+<span class="">Fiche</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</td>
+</tr>
+
+<tr class="hover:bg-surface-container-low transition-colors group bg-surface-container-lowest">
+<td class="py-space-md px-space-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-secondary transition-colors">Demandeurs d'emploi inscrits (cat. A, B, C)</span>
+<span class="font-label-mono text-label-mono bg-surface-container px-1 rounded text-on-surface-variant">EMP-001</span>
+<span class="font-label-mono text-label-mono bg-surface-container-high px-1 rounded text-secondary font-semibold">P1</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Demandeurs d'emploi inscrits à France Travail • Évolution annuelle +5,18 %</span>
+</div>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#E0E7FF] text-[#4338CA] font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-[#6366F1]"></span>
+Emploi &amp; Act. éco.
+</span>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface">Ivry-sur-Seine</span>
+</td>
+<td class="py-space-md px-space-sm text-center whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular text-on-surface font-medium">2024</span>
+</td>
+<td class="py-space-md px-space-md text-right whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">6 500</span>
+</td>
+<td class="py-space-md px-space-sm whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface-variant">inscrits</span>
+</td>
+<td class="py-space-md px-space-md text-center whitespace-nowrap">
+<div class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-emerald-50 text-emerald-700 font-label-mono text-label-mono font-semibold">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+<span class="">+5.18%</span>
+</div>
+</td>
+<td class="py-space-md px-space-lg text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-space-xs">
+<button aria-label="Aperçu rapide" class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Aperçu express" type="button">
+<span class="material-symbols-outlined text-base">visibility</span>
+</button>
+<a class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container-high hover:bg-surface-variant text-on-surface font-body-sm text-body-sm font-medium transition-colors" href="#fiche-EMP-001">
+<span class="">Fiche</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</td>
+</tr>
+
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-space-md px-space-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-secondary transition-colors">Accidents corporels de la circulation (BAAC)</span>
+<span class="font-label-mono text-label-mono bg-surface-container px-1 rounded text-on-surface-variant">SEC-001</span>
+<span class="font-label-mono text-label-mono bg-surface-container-high px-1 rounded text-secondary font-semibold">P1</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Base des accidents corporels géolocalisés • Ministère de l'Intérieur / ONISR</span>
+</div>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#CFFAFE] text-[#0E7490] font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-[#06B6D4]"></span>
+Sécurité &amp; Cadre
+</span>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface">Ivry-sur-Seine</span>
+</td>
+<td class="py-space-md px-space-sm text-center whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular text-on-surface font-medium">2023</span>
+</td>
+<td class="py-space-md px-space-md text-right whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">92</span>
+</td>
+<td class="py-space-md px-space-sm whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface-variant">accidents</span>
+</td>
+<td class="py-space-md px-space-md text-center whitespace-nowrap">
+<div class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-surface-container text-on-surface-variant font-label-mono text-label-mono font-semibold">
+<span class="material-symbols-outlined text-xs">location_on</span>
+<span class="">ONISR</span>
+</div>
+</td>
+<td class="py-space-md px-space-lg text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-space-xs">
+<button aria-label="Aperçu rapide" class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Aperçu express" type="button">
+<span class="material-symbols-outlined text-base">visibility</span>
+</button>
+<a class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container-high hover:bg-surface-variant text-on-surface font-body-sm text-body-sm font-medium transition-colors" href="#fiche-SEC-001">
+<span class="">Fiche</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</td>
+</tr>
+
+<tr class="hover:bg-surface-container-low transition-colors group bg-surface-container-lowest">
+<td class="py-space-md px-space-lg">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<span class="font-body-md text-body-md font-semibold text-on-surface group-hover:text-secondary transition-colors">Population légale municipale</span>
+<span class="font-label-mono text-label-mono bg-surface-container px-1 rounded text-on-surface-variant">DEM-001</span>
+<span class="font-label-mono text-label-mono bg-surface-container-high px-1 rounded text-secondary font-semibold">P1</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant line-clamp-1">Recensement Insee annuel officiel de la population communale</span>
+</div>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#E0F2FE] text-[#0369A1] font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-[#0284C7]"></span>
+Démographie
+</span>
+</td>
+<td class="py-space-md px-space-md whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface">Ivry-sur-Seine</span>
+</td>
+<td class="py-space-md px-space-sm text-center whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular text-on-surface font-medium">2024</span>
+</td>
+<td class="py-space-md px-space-md text-right whitespace-nowrap">
+<span class="font-data-tabular text-data-tabular font-bold text-on-surface">65 064</span>
+</td>
+<td class="py-space-md px-space-sm whitespace-nowrap">
+<span class="font-body-sm text-body-sm text-on-surface-variant">habitants</span>
+</td>
+<td class="py-space-md px-space-md text-center whitespace-nowrap">
+<div class="inline-flex items-center gap-1 px-space-sm py-0.5 rounded bg-emerald-50 text-emerald-700 font-label-mono text-label-mono font-semibold">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+<span class="">Insee RP</span>
+</div>
+</td>
+<td class="py-space-md px-space-lg text-right whitespace-nowrap">
+<div class="flex items-center justify-end gap-space-xs">
+<button aria-label="Aperçu rapide" class="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors" title="Aperçu express" type="button">
+<span class="material-symbols-outlined text-base">visibility</span>
+</button>
+<a class="inline-flex items-center gap-1 px-space-sm py-1 rounded bg-surface-container-high hover:bg-surface-variant text-on-surface font-body-sm text-body-sm font-medium transition-colors" href="#fiche-DEM-001">
+<span class="">Fiche</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</td>
+</tr></tbody>
+</table>
+</div>
+<!-- Functional Data Table Pagination & Info Bar -->
+<div class="bg-surface-container-low px-space-lg py-space-md flex flex-col md:flex-row items-center justify-between gap-space-md">
+<!-- Rows per page selector -->
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs font-body-sm text-body-sm text-on-surface-variant">
+<span class="">Lignes par page :</span>
+<select class="bg-surface-container-lowest text-on-surface rounded px-2 py-1 focus:outline-none font-data-tabular text-data-tabular">
+<option value="10">10</option>
+<option value="25">25</option>
+<option value="50">50</option>
+</select>
+</div>
+<span class="text-on-surface-variant hidden sm:inline">•</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">
+            Page <span class="font-data-tabular text-data-tabular font-semibold text-on-surface">1</span> sur <span class="font-data-tabular text-data-tabular">6</span>
+</span>
+</div>
+<!-- Navigation Buttons -->
+<div class="flex items-center gap-space-xs">
+<button class="p-1.5 rounded bg-surface-container-lowest text-on-surface-variant opacity-50 cursor-not-allowed" disabled="" title="Première page" type="button">
+<span class="material-symbols-outlined text-base">first_page</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container-lowest text-on-surface-variant opacity-50 cursor-not-allowed" disabled="" title="Page précédente" type="button">
+<span class="material-symbols-outlined text-base">chevron_left</span>
+</button>
+<div class="flex items-center gap-1">
+<button class="w-8 h-8 rounded bg-primary-container text-on-secondary font-label-mono text-label-mono font-bold" type="button">1</button>
+<button class="w-8 h-8 rounded bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-mono text-label-mono" type="button">2</button>
+<button class="w-8 h-8 rounded bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-mono text-label-mono" type="button">3</button>
+<span class="px-1 text-on-surface-variant">...</span>
+<button class="w-8 h-8 rounded bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-mono text-label-mono" type="button">6</button>
+</div>
+<button class="p-1.5 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container transition-colors" title="Page suivante" type="button">
+<span class="material-symbols-outlined text-base">chevron_right</span>
+</button>
+<button class="p-1.5 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container transition-colors" title="Dernière page" type="button">
+<span class="material-symbols-outlined text-base">last_page</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Alternative Grid View (Hidden by default, activated via Switch) -->
+<section class="w-full px-gutter-lg pb-space-xl bg-surface hidden" id="cardsViewSection">
+<div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg">
+<!-- Card DEMO-001 -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between gap-2">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#E0F2FE] text-[#0369A1] font-label-sm text-label-sm font-medium">
+              Démographie
+            </span>
+<span class="font-label-mono text-label-mono text-on-surface-variant">DEMO-001</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface mt-space-sm">
+            Population légale municipale
+          </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 line-clamp-2">
+            Recensement général des personnes ayant leur résidence habituelle sur le territoire métropolitain.
+          </p>
+</div>
+<div class="mt-space-lg pt-space-md border-t-0 bg-surface-container-low -mx-space-lg -mb-space-lg p-space-lg rounded-b-xl flex items-end justify-between">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Valeur (2024)</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-metric-md text-metric-md font-bold text-on-surface">1 428 500</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">hab.</span>
+</div>
+</div>
+<a class="px-space-md py-1.5 bg-primary-container text-on-secondary rounded text-body-sm font-medium flex items-center gap-1 hover:bg-primary transition-colors" href="#fiche-DEMO-001">
+            Fiche <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Card ENV-014 -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between gap-2">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] font-label-sm text-label-sm font-medium">
+              Énergie &amp; Climat
+            </span>
+<span class="font-label-mono text-label-mono text-on-surface-variant">ENV-014</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface mt-space-sm">
+            Part des surfaces en espaces verts
+          </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 line-clamp-2">
+            Superficie de parcs, squares et canopées accessibles à moins de 10 min de marche.
+          </p>
+</div>
+<div class="mt-space-lg pt-space-md border-t-0 bg-surface-container-low -mx-space-lg -mb-space-lg p-space-lg rounded-b-xl flex items-end justify-between">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Valeur (2024)</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-metric-md text-metric-md font-bold text-on-surface">27.4</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">%</span>
+</div>
+</div>
+<a class="px-space-md py-1.5 bg-primary-container text-on-secondary rounded text-body-sm font-medium flex items-center gap-1 hover:bg-primary transition-colors" href="#fiche-ENV-014">
+            Fiche <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</div>
+<!-- Card MOB-022 -->
+<div class="bg-surface-container-lowest p-space-lg rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between gap-2">
+<span class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-[#CFFAFE] text-[#0E7490] font-label-sm text-label-sm font-medium">
+              Mobilités
+            </span>
+<span class="font-label-mono text-label-mono text-on-surface-variant">MOB-022</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface mt-space-sm">
+            Part modale des mobilités décarbonées
+          </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 line-clamp-2">
+            Déplacements quotidiens effectués en transports en commun, vélo et marche active.
+          </p>
+</div>
+<div class="mt-space-lg pt-space-md border-t-0 bg-surface-container-low -mx-space-lg -mb-space-lg p-space-lg rounded-b-xl flex items-end justify-between">
+<div>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Valeur (2024)</span>
+<div class="flex items-baseline gap-1 mt-0.5">
+<span class="font-metric-md text-metric-md font-bold text-on-surface">34.6</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">%</span>
+</div>
+</div>
+<a class="px-space-md py-1.5 bg-primary-container text-on-secondary rounded text-body-sm font-medium flex items-center gap-1 hover:bg-primary transition-colors" href="#fiche-MOB-022">
+            Fiche <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Methodological & Technical Footnote Ribbon -->
+<section class="w-full px-gutter-lg pb-space-lg bg-surface">
+<div class="max-w-7xl mx-auto bg-surface-container-high rounded-xl p-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<span class="material-symbols-outlined text-2xl text-secondary">info</span>
+<div>
+<span class="font-body-md text-body-md font-semibold text-on-surface">Besoin d'une série temporelle spécifique ou d'un découpage sur-mesure ?</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Toutes les données sont issues des référentiels INSEE, IGN BD TOPO et de la Métropole de Lyon sous protocole d'interopérabilité API REST / WFS.</p>
+</div>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<a class="px-space-md py-space-xs rounded bg-surface-container-lowest hover:bg-surface-bright text-on-surface font-body-sm text-body-sm font-medium transition-colors" href="#api-docs">
+          Documentation API
+        </a>
+<a class="px-space-md py-space-xs rounded bg-secondary text-on-secondary hover:bg-on-secondary-container font-body-sm text-body-sm font-medium transition-colors" href="#donnees-brutes">
+          Télécharger l'archive complète (.zip)
+        </a>
+</div>
+</div>
+</section>
+<script>
+    (function initIndicatorExplorer() {
+      const searchInput = document.getElementById('indicatorSearch');
+      const tableRows = document.querySelectorAll('#tableBodyRows tr');
+      const displayedCount = document.getElementById('displayedCount');
+      const resetBtn = document.getElementById('resetFiltersBtn');
+      const themeFilter = document.getElementById('themeFilter');
+      const viewTableBtn = document.getElementById('viewTableBtn');
+      const viewCardsBtn = document.getElementById('viewCardsBtn');
+      const tableView = document.getElementById('tableViewSection');
+      const cardsView = document.getElementById('cardsViewSection');
+
+      // Table / Grid Switch
+      viewTableBtn.addEventListener('click', () => {
+        tableView.classList.remove('hidden');
+        cardsView.classList.add('hidden');
+        viewTableBtn.className = "px-space-md py-1 rounded bg-surface-container-lowest text-on-surface shadow-sm font-label-sm text-label-sm font-semibold flex items-center gap-1 transition-all";
+        viewCardsBtn.className = "px-space-md py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-semibold flex items-center gap-1 transition-all";
+      });
+
+      viewCardsBtn.addEventListener('click', () => {
+        tableView.classList.add('hidden');
+        cardsView.classList.remove('hidden');
+        viewCardsBtn.className = "px-space-md py-1 rounded bg-surface-container-lowest text-on-surface shadow-sm font-label-sm text-label-sm font-semibold flex items-center gap-1 transition-all";
+        viewTableBtn.className = "px-space-md py-1 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm font-semibold flex items-center gap-1 transition-all";
+      });
+
+      // Filter function
+      function filterData() {
+        const query = searchInput.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        tableRows.forEach(row => {
+          const text = row.textContent.toLowerCase();
+          const matchesSearch = query === '' || text.includes(query);
+
+          if (matchesSearch) {
+            row.style.display = '';
+            visibleCount++;
+          } else {
+            row.style.display = 'none';
+          }
+        });
+
+        if (displayedCount) {
+          displayedCount.textContent = visibleCount;
+        }
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', filterData);
+      }
+
+      // Reset action
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+          if (searchInput) searchInput.value = '';
+          if (themeFilter) themeFilter.value = 'all';
+          filterData();
+        });
+      }
+
+      // Keyboard shortcut CMD+K
+      window.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          if (searchInput) searchInput.focus();
+        }
+      });
+    })();
+  </script>
+</div></main><footer class="w-full bg-surface-container-lowest shadow-[0_-1px_6px_rgba(0,0,0,0.02)] py-margin-lg mt-margin-lg"><div class="w-full px-gutter-lg max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-space-lg text-on-surface-variant font-body-sm text-body-sm"><div class="flex flex-wrap items-center justify-center md:justify-start gap-space-md"><span class="">Observatoire des Données du Territoire</span><span class="hidden md:inline">•</span><a class="hover:text-on-surface transition-colors" href="#">À propos</a><a class="hover:text-on-surface transition-colors" href="#">Méthodologie</a><a class="hover:text-on-surface transition-colors" href="#">Données ouvertes (Open Data)</a><a class="hover:text-on-surface transition-colors" href="#">Mentions légales</a></div><div class="flex flex-wrap items-center justify-center md:justify-end gap-space-md"><span class="font-label-sm text-label-sm bg-surface-container-high px-space-sm py-0.5 rounded">Accessibilité : partiellement conforme (RGAA 4.1)</span><span class="font-label-mono text-label-mono text-on-surface-variant">Version 2.4</span></div></div></footer>
+
+</body></html>

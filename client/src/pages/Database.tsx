@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, fmtDate } from '../api';
 
-interface DsStat { id: string; label: string; provider: string; last_import: string | null; rows: number; geos: number; idf: number; errors: number; last_error: string | null }
+interface DsStat { id: string; label: string; provider: string; last_import: string | null; rows: number; geos: number | null; idf: number | null; errors: number; last_error: string | null }
 interface Stats {
   generated: string; ms: number;
   file: { path: string; bytes: number; wal: number; pageSize: number; pages: number; free: number };
@@ -25,16 +25,17 @@ export default function Database({ embedded = false }: { embedded?: boolean }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const load = (check = false) => {
+  const load = () => {
     setBusy(true);
-    api<Stats>(`/database${check ? '?check=1' : ''}`).then((r) => { setS(r); setError(''); }).catch((e) => setError(e.message)).finally(() => setBusy(false));
+    api<Stats>('/database', { timeoutMs: 20000 }).then((r) => { setS(r); setError(''); }).catch((e) => setError(e.name === 'TimeoutError' || e.name === 'AbortError' ? 'Le calcul a dépassé 20 secondes. Il a été interrompu pour préserver l’application ; réessayez dans un instant.' : e.message)).finally(() => setBusy(false));
   };
   useEffect(() => { load(); }, []);
 
   if (!s) return <section className={embedded ? '' : 'page'}>{!embedded && <div className="page-head"><h1>Base de données</h1></div>}{error ? <div className="error">{error}</div> : <div className="empty">Calcul en cours…</div>}</section>;
 
   const freePct = s.file.pages ? Math.round((100 * s.file.free) / s.file.pages) : 0;
-  const covered = s.datasets.filter((d) => s.totals.idfCommunes && d.idf >= s.totals.idfCommunes * 0.95).length;
+  const geoStatsAvailable = s.datasets.some((d) => d.idf !== null);
+  const covered = s.datasets.filter((d) => d.idf !== null && s.totals.idfCommunes && d.idf >= s.totals.idfCommunes * 0.95).length;
   const worst = s.alerts.some((a) => a.level === 'erreur') ? 'erreur' : s.alerts.some((a) => a.level === 'attention') ? 'attention' : 'ok';
   const maxRows = Math.max(1, ...s.datasets.map((d) => d.rows));
 
@@ -47,7 +48,6 @@ export default function Database({ embedded = false }: { embedded?: boolean }) {
       <div className={embedded ? 'settings-subhead' : 'page-head'}>
         {!embedded && <h1>Base de données</h1>}
         <div className="actions">
-          <button className="secondary" disabled={busy} onClick={() => load(true)} title="PRAGMA quick_check : parcourt toute la base, peut durer plusieurs minutes">Vérifier l'intégrité</button>
           <button disabled={busy} onClick={() => load()}>{busy ? 'Calcul…' : '⟳ Actualiser'}</button>
         </div>
       </div>
@@ -67,13 +67,14 @@ export default function Database({ embedded = false }: { embedded?: boolean }) {
         <Card label="Taille du fichier" value={bytes(s.file.bytes)} sub={`journal WAL ${bytes(s.file.wal)} · ${freePct} % libre`} />
         <Card label="Observations" value={nf(s.totals.rows)} sub={`${s.totals.datasets} jeux de données`} />
         <Card label="Territoires suivis" value={nf(s.totals.geos)} sub={`+ ${nf(s.totals.idfCommunes)} communes d'Île-de-France (carte)`} />
-        <Card label="Jeux complets pour l'Île-de-France" value={`${covered} / ${s.totals.datasets}`} sub="≥ 95 % des communes" />
+        <Card label="Jeux complets pour l'Île-de-France" value={`${geoStatsAvailable ? covered : '—'} / ${s.totals.datasets}`} sub={geoStatsAvailable ? '≥ 95 % des communes' : 'détail territorial non calculé'} />
         <Card label="Indicateurs" value={nf(s.totals.indicators)} sub={`${s.totals.indicatorsWithoutDataset} sans jeu rattaché`} />
         <Card label="Historique" value={nf(s.totals.history)} sub={`${s.totals.versions} version(s) de carte`} />
         <Card label="Serveur" value={dur(s.process.uptime)} sub={`mémoire ${bytes(s.process.rss)} · Node ${s.process.node}`} />
       </div>
 
       <h2>Jeux de données</h2>
+      <p className="muted small">Les compteurs affichés proviennent des statistiques d’import pour éviter un parcours complet des observations et préserver la disponibilité de l’application.</p>
       <div className="table-wrap">
         <table className="grid compact">
           <thead><tr><th>Jeu</th><th>Source</th><th className="num">Lignes</th><th className="num">Territoires</th><th className="num">Île-de-France</th><th>Dernier import</th><th>État</th></tr></thead>
@@ -85,7 +86,7 @@ export default function Database({ embedded = false }: { embedded?: boolean }) {
                   <td title={d.id}>{d.label}<div className="muted small">{d.id}</div></td>
                   <td className="small">{d.provider}</td>
                   <td className="num"><div>{nf(d.rows)}</div><div className="db-bar"><i style={{ width: `${(100 * d.rows) / maxRows}%` }} /></div></td>
-                  <td className="num">{nf(d.geos)}</td>
+                  <td className="num">{d.geos == null ? <span className="muted">—</span> : nf(d.geos)}</td>
                   <td className="num">{d.idf ? `${nf(d.idf)} (${idfPct} %)` : <span className="muted">—</span>}</td>
                   <td className="small">{fmtDate(d.last_import)}</td>
                   <td className="small">

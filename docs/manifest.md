@@ -178,6 +178,8 @@ Le **manifest fonctionnel** (`docs/manifest.md`) est servi par le serveur à l'U
 - **Réponses sourcées** : l'assistant n'utilise que les données de l'observatoire (indicateurs de la conception, jeux importés, KPI, classements) et cite les jeux/territoires/périodes.
 - **Génération asynchrone** : la génération côté IA locale (API Ville) est suivie en tâche de fond ; la réponse s'affiche progressivement sans bloquer l'interface.
 - **Traçabilité** : chaque demande (question, réponse, modèle, sources, durée a été journalisée) est consultable dans **Paramètres → IA**, avec sa note et son commentaire.
+- **Recherche de jeux associée** : la recherche comprend les synonymes et propose les jeux proches en signalant clairement les différences. Une question sur les pistes cyclables peut ainsi proposer les données de stationnement vélo OpenStreetMap et leur couche cartographique.
+- **Adaptation au fournisseur** : le contexte et les consignes sont optimisés séparément pour l'IA locale (NVIDIA DGX Spark, contexte plus riche en une passe) et Groq (résultats ciblés et échanges compacts).
 
 ### 6.7 Journal IA – Paramètres → IA
 
@@ -185,6 +187,8 @@ Le **manifest fonctionnel** (`docs/manifest.md`) est servi par le serveur à l'U
 
 **Éléments fonctionnels présents** :
 - **Prompts** : Prompt système, règles, territoires reconnus, outils disponibles.
+- **Profils de prompt** : stratégies et état de configuration présentés séparément pour l'IA locale NVIDIA DGX Spark et Groq.
+- **État de la base** : synthèse rapide des volumes, des jeux importés et de la couverture territoriale globale. Les compteurs d'observations proviennent des métadonnées d'import ; aucun parcours exhaustif des observations n'est lancé depuis cette page.
 - **Journal des demandes** : Liste des demandes (date, demandeur, fournisseur, modèle, durée, note). Chaque entrée est dépliable (question, réponse, sources, outils) et peut être **évaluée de 1 à 4 étoiles** avec commentaire.
 - **Filtres** : Toutes les demandes / sans évaluation / **notes faibles (≤ 2 étoiles)**.
 

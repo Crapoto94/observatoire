@@ -84,10 +84,17 @@ export default function App() {
         </Routes>
       </main>
       <footer className="site-footer">
+        <div className="footer-links">
+          <span className="footer-title">Observatoire des données du territoire</span>
+          <a href="https://www.ivry94.fr" target="_blank" rel="noreferrer">ivry94.fr ↗</a>
+          <a href="/manifest.md" target="_blank" rel="noreferrer" title="Manifest fonctionnel de l'application">Manifest fonctionnel ↗</a>
+          <NavLink to="/nouveautes" title="Historique des versions">Nouveautés</NavLink>
+          <NavLink to="/catalogue" title="Données ouvertes">Données ouvertes</NavLink>
+        </div>
         <div className="footer-meta muted small">
           <NavLink to="/nouveautes" title="Historique des versions">Version {version || '—'}</NavLink>
           {build ? ` · déployée le ${build}` : ''}
-          {' · '}<a href="https://www.ivry94.fr" target="_blank" rel="noreferrer">ivry94.fr ↗</a>
+          <span className="badge-pill" style={{ marginLeft: 8 }}>Ville d'Ivry-sur-Seine</span>
         </div>
       </footer>
     </div>

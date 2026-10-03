@@ -212,7 +212,14 @@ app.put('/api/ia/logs/:id/rating', auth.requireAuth, (req, res) => {
 app.get('/api/autres', (req, res) => { try { res.json(require('./autres').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/emploi', (req, res) => { try { res.json(require('./emploi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/kpi', (req, res) => { try { res.json(require('./kpi').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
-app.get('/api/database', auth.requireAdmin, (req, res) => { try { res.json(require('./dbstats').stats({ check: req.query.check === '1' })); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.get('/api/database', auth.requireAdmin, (req, res) => {
+  // Garde-fou HTTP et réponse synthétique : dbstats ne parcourt jamais data_rows.
+  res.setTimeout(15000, () => {
+    if (!res.headersSent) res.status(504).json({ error: 'Le calcul synthétique de la base a dépassé 15 secondes.' });
+  });
+  try { res.json(require('./dbstats').stats()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // ---------------- Indicateurs ----------------
 function withDatasets(rows) {
@@ -522,6 +529,11 @@ app.delete('/api/geos/:code', auth.requireAdmin, (req, res) => {
 });
 
 // ---------------- Client (build de production) ----------------
+// Manifest fonctionnel (docs/manifest.md) : servi publiquement, lien présent dans le footer de l'app.
+app.get('/manifest.md', (req, res) => {
+  res.type('text/markdown; charset=utf-8');
+  res.sendFile(path.join(__dirname, '..', 'docs', 'manifest.md'));
+});
 const dist = path.join(__dirname, '..', 'client', 'dist');
 if (fs.existsSync(dist)) {
   app.use(express.static(dist));

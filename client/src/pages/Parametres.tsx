@@ -130,6 +130,8 @@ export default function Parametres() {
       )}
 
       {tab === 'ia' && <IaSettings />}
+      {tab === 'imports' && admin && <Imports embedded />}
+      {tab === 'database' && admin && <Database embedded />}
 
       {tab === 'services' && services && (
         <div className="settings-card">
