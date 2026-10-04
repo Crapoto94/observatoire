@@ -58,10 +58,10 @@ const KPIS = [
   { id: 'dentistes', label: 'Chirurgiens-dentistes (pour 1 000 hab.)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: 'DENTISTE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
   { id: 'specialistes', label: 'Autres médecins spécialistes (pour 1 000 hab.)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: 'AUTRE_SPECIALISTE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
   // Assurance Maladie (data.ameli.fr), maille départementale : contexte du Val-de-Marne et de l'Île-de-France
-  { id: 'ald', label: 'Personnes en affection de longue durée (ALD)', theme: 'Santé', dataset: 'ameli_ald', where: { MESURE: 'ALD' }, dir: 'none', cmp: true, ind: /nb ald|evolution du nombre d ald/ },
-  { id: 'ald_1000', label: 'Personnes en ALD pour 1 000 habitants', theme: 'Santé', dataset: 'ameli_ald', where: { MESURE: 'ALD' }, perK: true, kpiPerK: true, cmp: true, dir: 'none', ind: /^$/ },
-  { id: 'ald_sans_mt', label: 'Part des patients en ALD sans médecin traitant', theme: 'Santé', dataset: 'ameli_ald_sans_mt', where: { MESURE: 'TAUX_ALD_SANS_MT' }, unit: '%', cmp: true, dir: 'down', ind: /^$/ },
-  { id: 'couverture_sas', label: 'Population couverte par le service d’accès aux soins (SAS)', theme: 'Santé', dataset: 'ameli_sas', where: { MESURE: 'TAUX_SAS' }, unit: '%', cmp: true, dir: 'up', ind: /^$/ },
+  { id: 'ald', label: 'Personnes en affection de longue durée (ALD) — Val-de-Marne', theme: 'Santé', dataset: 'ameli_ald', contexteDep: 'dep', where: { MESURE: 'ALD' }, dir: 'none', cmp: true, ind: /nb ald|evolution du nombre d ald/ },
+  { id: 'ald_1000', label: 'Personnes en ALD pour 1 000 habitants — Val-de-Marne', theme: 'Santé', dataset: 'ameli_ald', contexteDep: 'dep', where: { MESURE: 'ALD' }, perK: true, kpiPerK: true, cmp: true, dir: 'none', ind: /^$/ },
+  { id: 'ald_sans_mt', label: 'Part des patients en ALD sans médecin traitant — Val-de-Marne', theme: 'Santé', dataset: 'ameli_ald_sans_mt', contexteDep: 'dep', where: { MESURE: 'TAUX_ALD_SANS_MT' }, unit: '%', cmp: true, dir: 'down', ind: /^$/ },
+  { id: 'couverture_sas', label: 'Population couverte par le service d’accès aux soins (SAS) — Val-de-Marne', theme: 'Santé', dataset: 'ameli_sas', contexteDep: 'dep', where: { MESURE: 'TAUX_SAS' }, unit: '%', cmp: true, dir: 'up', ind: /^$/ },
   { id: 'logements', label: 'Logements', theme: 'Logement', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: '_T' }, dir: 'none', ind: /^parc de logements|^nombre de logements$/ },
   { id: 'vacance', label: 'Part de logements vacants (parc privé)', theme: 'Logement', dataset: 'lovac', where: {}, ratio: { dim: 'MESURE', num: ['PP_VACANT'], den: ['PP_TOTAL'] }, unit: '%', cmp: true, dir: 'down', ind: /vacan/ },
   { id: 'sru', label: 'Taux de logements sociaux (SRU)', theme: 'Logement', dataset: 'sru', where: { MESURE: 'TAUX_SRU' }, unit: '%', cmp: true, dir: 'up', ind: /sru|logements sociaux/ },
@@ -211,7 +211,9 @@ function compute() {
       if (spec.kpiPerK) s = s.map((p) => { const pop = carto.popAt(pops[geo], p.period); return pop ? { period: p.period, value: (p.value / pop) * 1000 } : null; }).filter(Boolean);
       res[key] = s;
     }
-    const s = res.ref || [];
+    // jeux sans donnée communale (ex. Assurance Maladie, maille départementale) : la valeur de contexte
+    // (département ou région) tient lieu de valeur principale, à condition de la déclarer (spec.contexteDep).
+    const s = res.ref?.length ? res.ref : (spec.contexteDep && res[spec.contexteDep]?.length ? res[spec.contexteDep] : []);
     const last = s[s.length - 1] || null, prev = s.length > 1 ? s[s.length - 2] : null;
     const at = (list, period) => (list || []).find((p) => p.period === period) || null;
     const cands = indicators.filter((i) => matchOne(spec, i));
@@ -224,7 +226,9 @@ function compute() {
       id: spec.id, label: spec.label, theme: spec.theme, unit: spec.unit || (spec.kpiPerK ? 'pour 1 000 hab.' : ''), dir: spec.dir, dataset: spec.dataset, datasetLabel: dsInfo[spec.dataset]?.label || spec.dataset,
       last_import: dsInfo[spec.dataset]?.last_import || null,
       value: last?.value ?? null, period: last?.period ?? null, prev, series: s.slice(-8),
-      ept: last && res.ept ? at(res.ept, last.period) : null, dep: last && res.dep ? at(res.dep, last.period) : null, reg: last && res.reg ? at(res.reg, last.period) : null,
+      ept: last && res.ept ? at(res.ept, last.period) : null,
+      dep: spec.contexteDep === 'dep' ? null : last && res.dep ? at(res.dep, last.period) : null,
+      reg: spec.contexteDep === 'reg' ? null : last && res.reg ? at(res.reg, last.period) : null,
       age: year == null || Number.isNaN(year) ? null : new Date().getFullYear() - year,
       indicators: cands.slice(0, 8).map((i) => ({ id: i.id, libelle: i.libelle, statut: i.statut || 'brouillon', priorite: i.priorite })),
       statut, states,
