@@ -10,6 +10,10 @@ export function NatureBadge({ i }: { i: Pick<Indicator, 'mode_calcul' | 'formule
   return <span className="nat nat-none" title="Nature non renseignée">Nature ?</span>;
 }
 
+export function PriveBadge({ title }: { title?: string }) {
+  return <span className="src src-prive" title={title || 'Données non publiques (accès habilité) : ne pas diffuser telles quelles'}>🔒 Non public</span>;
+}
+
 export function SourceBadge({ kind, title }: { kind: 'live' | 'import'; title?: string }) {
   return kind === 'live'
     ? <span className="src src-live" title={title || 'Lu en direct sur l’API de la source (aucun import)'}>⚡ Live</span>

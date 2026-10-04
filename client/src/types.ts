@@ -99,6 +99,7 @@ export interface Dataset {
   geo_counts: Record<string, number>;
   indicator_ids: number[];
   map_capable?: boolean; // le jeu peut fournir des données communales
+  prive?: boolean; // accès habilité : données non publiques
   map_communes?: number; // communes d'Île-de-France disposant de données
 }
 

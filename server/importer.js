@@ -16,6 +16,7 @@ const ips = require('./connectors/ips');
 const ircom = require('./connectors/ircom');
 const sante = require('./connectors/sante');
 const arcgis = require('./connectors/arcgis');
+const apientreprise = require('./connectors/apientreprise');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
 
@@ -39,6 +40,7 @@ const CONNECTORS = {
   ircom: ircom.fetchGeo,
   sante: sante.fetchGeo,
   arcgis: arcgis.fetchGeo,
+  apientreprise: apientreprise.fetchGeo, // accès habilité (non public), communes listées dans la configuration du jeu
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -180,6 +182,7 @@ const METHODS = {
   icu: { method: 'Export CSV + rattachement point dans polygone', kind: 'csv' },
   idfm: { method: 'API Opendatasoft (IDFM) + référentiel des zones d\'arrêts', kind: 'api' },
   arcgis: { method: 'API FeatureServer ArcGIS (MGP), agrégats par commune', kind: 'api' },
+  apientreprise: { method: 'API Entreprise (accès habilité, données non publiques), une fiche par association', kind: 'api' },
 };
 const methodOf = (d) => METHODS[d.provider] || { method: d.provider, kind: 'api' };
 
@@ -208,6 +211,8 @@ const withTimeout = (p, ms, label, shouldAbort = () => false) => new Promise((re
 });
 const CHUNK_TIMEOUT = 15 * 60000; // un lot d'import en masse
 const GEO_TIMEOUT = 3 * 60000; // une commune en mode unitaire
+// délai propre à un jeu (config.timeoutMs), ex. API Entreprise : une fiche par association, débit limité
+const geoTimeout = (d) => { try { return JSON.parse(d.config || '{}').timeoutMs || GEO_TIMEOUT; } catch { return GEO_TIMEOUT; } };
 const MAX_PASSES = 3; // passages sur les jeux reportés
 const RETRY_WAIT = 3 * 60000; // attente avant de reprendre les jeux reportés
 const sleep = (ms, stop = () => false) => new Promise((res) => { const t0 = Date.now(); const i = setInterval(() => { if (stop() || Date.now() - t0 >= ms) { clearInterval(i); res(); } }, 1000); });
@@ -264,7 +269,7 @@ async function importIdfDataset(d, geos, job, log, attempt) {
       await pool(geos, 4, async (g) => {
         if (failure) return;
         try {
-          total += await withTimeout(importOne(d, g, () => {}), GEO_TIMEOUT, `${d.id} / ${g.nom}`, aborted);
+          total += await withTimeout(importOne(d, g, () => {}), geoTimeout(d), `${d.id} / ${g.nom}`, aborted);
           consecutive = 0;
         } catch (e) {
           errors++;
@@ -368,7 +373,7 @@ function startImport({ datasetIds, geoCodes, scope } = {}) {
       const aborted = () => job.cancelled || job.skip === d.id;
       for (const g of geos) {
         if (aborted()) { failure = job.cancelled ? 'import arrêté' : 'jeu passé à la demande'; job.done += geos.length - job.current.done; break; }
-        try { rows += await withTimeout(importOne(d, g, lg), GEO_TIMEOUT, `${d.id} / ${g.nom}`, aborted); } catch (e) { errors++; job.errors++; if (e instanceof Bypass) failure = e.message; }
+        try { rows += await withTimeout(importOne(d, g, lg), geoTimeout(d), `${d.id} / ${g.nom}`, aborted); } catch (e) { errors++; job.errors++; if (e instanceof Bypass) failure = e.message; }
         job.done++;
         job.current.done++;
       }

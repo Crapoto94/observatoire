@@ -51,11 +51,11 @@ const F = [
   ['sante', /^densite medicale$/, 'calcule', `Médecins généralistes libéraux (sante_pro PROFESSION = GENERALISTE) ${PER_K} ; idem par spécialité.`],
 
   // ---------------- Cohésion sociale : vie associative ----------------
-  ['vie-associative', /^nb d associations par type$/, 'direct', 'Associations actives (API Recherche d’entreprises, jeu entreprises MESURE = ASSOCIATIONS, stock du jour). Le type (objet social) suppose le RNA (objet, thème).'],
-  ['vie-associative', /^beneficiaires et publics touches$/, 'direct', 'Nombre de bénéficiaires déclarés dans les dossiers de subvention et bilans d’activité (SI de la collectivité).'],
+  ['vie-associative', /^nb d associations par type$/, 'direct', 'Associations actives dont le siège est à Ivry, par objet social (API Entreprise, jeu associations_api MESURE = NB_FICHES par OBJET, non public) ; stock tous établissements : jeu entreprises MESURE = ASSOCIATIONS.', ['associations_api']],
+  ['vie-associative', /^beneficiaires et publics touches$/, 'direct', 'Licenciés des fédérations auxquelles les associations d’Ivry sont affiliées (API Entreprise, MESURE = LICENCIES, non public) ; bénéficiaires des actions : dossiers de subvention et bilans d’activité (SI de la collectivité).', ['associations_api']],
   ['vie-associative', /^rayonnement/, 'calcule', 'Adhérents non ivryens / adhérents × 100 (dossiers de subvention).'],
-  ['vie-associative', /^nb d adherents$/, 'direct', 'Nombre d’adhérents déclarés (dossiers de subvention, enquête annuelle auprès des associations).'],
-  ['vie-associative', /^nb benevoles impliques$/, 'direct', 'Nombre de bénévoles déclarés (dossiers de subvention, enquête annuelle).'],
+  ['vie-associative', /^nb d adherents$/, 'direct', 'Somme des adhérents déclarés (dernière année) par les associations ayant leur siège à Ivry (API Entreprise, jeu associations_api MESURE = ADHERENTS, non public) ; minimum : seules les associations ayant déclaré leurs ressources humaines sont comptées.', ['associations_api']],
+  ['vie-associative', /^nb benevoles impliques$/, 'direct', 'Somme des bénévoles déclarés (dernière année) par les associations ayant leur siège à Ivry (API Entreprise, jeu associations_api MESURE = BENEVOLES, non public).', ['associations_api']],
   ['vie-associative', /^impact local/, 'calcule', 'Adhérents ivryens / adhérents × 100 (dossiers de subvention).'],
   ['vie-associative', /^nb de salaries$/, 'direct', 'Effectifs salariés au 31/12 des établissements de l’activité « organisations associatives » (Flores A88, ACTIVITY = 94, FLORES_MEASURE = EMPL3112). Les associations employeuses d’autres secteurs (action sociale, sport) ne sont pas isolées.', ['flores']],
   ['vie-associative', /^evolution du nombre de salaries$/, 'calcule', 'EMPL3112(n) − EMPL3112(n − 1) pour l’activité 94 (Flores A88).', ['flores']],
@@ -244,7 +244,8 @@ const S = [
   ['sante', /^part de la population concernee$/, 'Part C2S : base INSEE des QPV (communes avec QPV, 2025). Part ALD : Cnam (data.ameli.fr, maille départementale) ou ORS Île-de-France sur demande.', 'https://www.insee.fr/fr/statistiques/8736902', 2],
   ['sante', /^nb ald|^evolution du nombre d ald$/, 'Cnam, cartographie des pathologies (data.ameli.fr) : effectifs par pathologie et ALD, maille départementale ; maille communale sur demande (ORS Île-de-France, CPAM 94).', 'https://data.ameli.fr/', 3],
   ['sante', /^rapport entre l offre et la demande en soins$|^identification des secteurs en deficit d offre$/, 'APL (accessibilité potentielle localisée) par commune, DREES, annuelle, pour les médecins généralistes, infirmiers, sages-femmes, kinésithérapeutes et dentistes ; zonage médecins de l’ARS Île-de-France.', 'https://drees.solidarites-sante.gouv.fr/sources-outils-et-enquetes/lindicateur-daccessibilite-potentielle-localisee-apl', 2],
-  ['vie-associative', /^beneficiaires et publics touches$|^rayonnement|^nb d adherents$|^nb benevoles impliques$|^impact local/, 'Donnée interne : dossiers de demande de subvention (Cerfa 12156) et bilans d’activité, à structurer dans un formulaire annuel commun aux associations subventionnées.', null, 3],
+  ['vie-associative', /^nb d adherents$|^nb benevoles impliques$|^beneficiaires et publics touches$/, 'API Entreprise (DJEPVA, Le Compte Asso), intégrée : adhérents, bénévoles, salariés et licenciés déclarés par les associations ayant leur siège à Ivry (jeu associations_api, DONNÉES NON PUBLIQUES, accès habilité). Valeurs minimales : seules les associations ayant déposé une demande via Le Compte Asso déclarent leurs ressources humaines. À compléter par les dossiers de subvention de la Ville.', 'https://entreprise.api.gouv.fr/catalogue/djepva/associations', 1],
+  ['vie-associative', /^rayonnement|^impact local/, 'Donnée interne : la répartition ivryens / non ivryens des adhérents n’existe dans aucune source nationale ; à demander dans les dossiers de subvention (Cerfa 12156) et bilans d’activité.', null, 3],
   ['vie-associative', /^nb de salaries$|^evolution du nombre de salaries$/, 'Flores (INSEE, Melodi DS_FLORES_A88) intégré : effectifs salariés de l’activité 94 « organisations associatives ». Complément : Urssaf open data (effectifs salariés par commune et APE).', 'https://api.insee.fr/melodi/catalog/DS_FLORES_A88', 1],
   ['demographie', /^besoins en matiere d acces aux droits/, 'Composantes disponibles (rp_nationalite, rp_logement, caf_prestations) ; lieux d’accès aux droits : couche départementale des équipements (CCAS, CAF, CPAM, permanences, en direct) et annuaire France Services.', 'https://geo.valdemarne.fr/explorer/fr/recherche?scope=dataset', 2],
   ['commerces', /^taux de vacances des commerces$|^evolution du nombre de locaux commerciaux vacants$|^facteurs de vacance$|^taux de vacance projete$|^taux de vacances des locaux d activite$|^evolution du nombre de locaux d activite vacants$/, 'Fichier LOCOMVAC (DGFiP) : locaux commerciaux et professionnels sans cotisation foncière des entreprises, transmis chaque année aux communes (portail PIGP) ; à fiabiliser par un relevé terrain (observatoire du commerce, CCI Paris Île-de-France 94).', 'https://www.collectivites-locales.gouv.fr/files/finances-locales/PIGP_Fiche_technique_locaux_vacants_CFE_2025.pdf', 2],
@@ -288,7 +289,7 @@ function apply() {
   const hist = (id, field, o, n) => run('INSERT INTO indicator_history (indicator_id, field, old_value, new_value) VALUES (?,?,?,?)', id, field, o ?? null, n ?? null);
   const rows = all('SELECT id, groupe, libelle, formule, mode_calcul, proposition, lien_donnees, faisabilite, couche_id FROM indicators');
   const known = new Set(all('SELECT id FROM datasets').map((d) => d.id));
-  const once = !get("SELECT 1 FROM app_settings WHERE key = 'formules_links_v1'");
+  const once = !get("SELECT 1 FROM app_settings WHERE key = 'formules_links_v2'");
   const stats = { formules: 0, modes: 0, liens: 0, sources: 0 };
   tx(() => {
     for (const r of rows) {
@@ -317,7 +318,7 @@ function apply() {
         if (fa && fa !== r.faisabilite) run('UPDATE indicators SET faisabilite = ? WHERE id = ?', fa, r.id);
       }
     }
-    if (once) run("INSERT INTO app_settings (key, value) VALUES ('formules_links_v1', ?)", new Date().toISOString());
+    if (once) run("INSERT INTO app_settings (key, value) VALUES ('formules_links_v2', ?)", new Date().toISOString());
   });
   return stats;
 }

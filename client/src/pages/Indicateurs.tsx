@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
-import { NatureBadge, SourceBadge } from '../badges';
+import { NatureBadge, PriveBadge, SourceBadge } from '../badges';
 import { CARTOS, Carto, Couche, Dataset, FAISABILITES, HistoryEntry, Indicator, NIVEAUX, NIVEAU_FILL, Niveau, ORIGINES, Origine, STATUTS, Statut } from '../types';
 
 type SortKey = 'theme' | 'niveau' | 'libelle' | 'priorite' | 'source';
@@ -37,7 +37,7 @@ export function StatutPill({ s }: { s: Statut | null }) {
   return <span className="chip" style={{ background: st.color, color: '#fff' }}>{st.label}</span>;
 }
 
-interface KpiVal { id: string; label: string; unit: string; value: number | null; period: string | null; prev: { period: string; value: number } | null; dep: { value: number } | null; dataset: string }
+interface KpiVal { prive?: boolean; id: string; label: string; unit: string; value: number | null; period: string | null; prev: { period: string; value: number } | null; dep: { value: number } | null; dataset: string }
 const fmtVal = (v: number) => v.toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2 }).replace(/\u202f/g, '\u00a0');
 
 // Valeur d'Ivry : KPI calculé correspondant à la fiche (lien vers le tableau de bord), sinon couche en direct, sinon raison de l'absence
@@ -47,7 +47,7 @@ function ValeurCell({ i, kpis }: { i: Indicator; kpis: Map<string, KpiVal> | nul
   if (k) {
     return (
       <Link className="val-link" to={`/tableau-de-bord?kpi=${k.id}`} title={`${k.label}${k.dep ? ` · Val-de-Marne : ${fmtVal(k.dep.value)}${k.unit ? ' ' + k.unit : ''}` : ''} · voir l’indicateur calculé`}>
-        <strong>{fmtVal(k.value!)}</strong>{k.unit && <span className="muted"> {k.unit}</span>}
+        <strong>{fmtVal(k.value!)}</strong>{k.unit && <span className="muted"> {k.unit}</span>}{k.prive && <> <PriveBadge /></>}
         <div className="muted small">{k.period}{(i.kpi_ids?.length ?? 0) > 1 ? ` · ${i.kpi_ids!.length} calculs` : ''} ↗</div>
         {/^[ée]volution/i.test(i.libelle) && k.prev && <Evolution k={k} />}
       </Link>
@@ -299,6 +299,7 @@ export default function Indicateurs() {
                 <td className="c-stack">
                   <NatureBadge i={i} />
                   {i.dataset_ids.length > 0 && <SourceBadge kind="import" title={`Données importées : ${i.dataset_ids.map(dsLabel).join(', ')}`} />}
+                  {i.dataset_ids.some((d) => datasets.find((x) => x.id === d)?.prive) && <PriveBadge title={`Données non publiques : ${i.dataset_ids.filter((d) => datasets.find((x) => x.id === d)?.prive).map(dsLabel).join(', ')}`} />}
                   {i.couche_id && <SourceBadge kind="live" title={`Lu en direct : ${coucheLabel(i.couche_id)} (géoportail du Val-de-Marne)`} />}
                   <OrigineChip o={i.origine} /><CartoChip c={i.cartographie} />
                 </td>

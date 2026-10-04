@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
-import { SourceBadge } from '../badges';
+import { PriveBadge, SourceBadge } from '../badges';
 import DocSource from './DocSource';
 
 // Liste des jeux de données (vue du menu Catalogue, accessible à tous) : catalogue des jeux importés et des couches lues en direct,
@@ -11,7 +11,7 @@ interface Source { key: string; label: string; icon: string; color: string; coun
 interface Field { code: string; label: string; measure?: boolean; type?: string; values: { code: string; label: string }[] }
 interface Ref { id: number; libelle: string; theme_label: string | null; niveau: string; statut: string | null; mode_calcul: string | null }
 interface Jeu {
-  id: string; label: string; description: string | null; mode: 'import' | 'live'; themes: string[];
+  id: string; label: string; description: string | null; mode: 'import' | 'live'; themes: string[]; prive?: boolean;
   source: Source; portail: string | null; doc_url: string | null; connecteur: string;
   perimetre: { couverture: string; stocke: string };
   granularite: { geo: string; maille: string | null; temps: string | null; periodes: string | null };
@@ -110,6 +110,7 @@ export default function JeuxDonnees({ embedded = false }: { embedded?: boolean }
                   <span className="muted small"> · {j.source.label}{j.portail ? ` · via ${j.portail}` : ''}</span>
                 </span>
                 <SourceBadge kind={j.mode} title={j.mode === 'live' ? 'Lu en direct à chaque affichage (aucun import)' : j.last_import ? `Importé le ${fmtDate(j.last_import)}` : 'Pas encore importé'} />
+                {j.prive && <PriveBadge />}
                 {j.mode === 'import' && j.etat === 'vide' && <span className="al-attention small">vide</span>}
                 <span className="jeu-meta small"><span title="Périmètre">🌍 {j.perimetre.couverture}</span><span title="Granularité géographique">▦ {j.granularite.geo}</span>{j.granularite.periodes && <span title="Périodes disponibles">🗓 {j.granularite.periodes}</span>}</span>
                 <span className="jeu-count small" title="Indicateurs de la conception qui font référence à ce jeu">{j.indicators.length} indic.</span>

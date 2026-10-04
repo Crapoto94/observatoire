@@ -9,7 +9,7 @@ import { Mode, MAX_CATEGORIES, Ratio, Sel, buildChart, buildSelection, cellValue
 import { configFromSelection } from '../dashConfig';
 import { useModal } from '../modal';
 import { Couche, DataRow, Dataset, DatasetData, Geo, Indicator, Job, LEVEL_LABEL } from '../types';
-import { SourceBadge } from '../badges';
+import { PriveBadge, SourceBadge } from '../badges';
 
 const REF = '94041';
 const COLORS = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#475569', '#ea580c'];
@@ -341,7 +341,7 @@ export default function Donnees() {
                       title={(d.map_communes ?? 0) >= 50 ? `Carte disponible : ${d.map_communes} communes d'Île-de-France` : 'Carte possible : données d\'Île-de-France à charger'}
                     >🗺 carte</span>
                   )}</div>
-                  <div className="muted small">{d.nb_rows ? <SourceBadge kind="import" title={`Importé le ${fmtDate(d.last_import)}`} /> : null} {d.nb_rows ? `${d.nb_rows} lignes · ${fmtDate(d.last_import)}` : 'non importé'} · {d.nb_indicateurs} indic.</div>
+                  <div className="muted small">{d.nb_rows ? <SourceBadge kind="import" title={`Importé le ${fmtDate(d.last_import)}`} /> : null}{d.prive && <PriveBadge />} {d.nb_rows ? `${d.nb_rows} lignes · ${fmtDate(d.last_import)}` : 'non importé'} · {d.nb_indicateurs} indic.</div>
                 </div>
               </li>
             ))}

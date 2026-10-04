@@ -25,6 +25,7 @@ const SOURCES = {
   georisques: { label: 'Géorisques (Ministère de la Transition écologique)', icon: '⚠️', color: '#b45309' },
   cd94: { label: 'Géoportail du Val-de-Marne (Conseil départemental)', icon: '🗺️', color: '#0f766e' },
   mgp: { label: 'Métropole du Grand Paris', icon: '🏙️', color: '#6d28d9' },
+  apientreprise: { label: 'API Entreprise (DINUM), accès habilité', icon: '🔐', color: '#991b1b' },
   autre: { label: 'Autre source', icon: '📁', color: '#6b7280' },
 };
 
@@ -36,6 +37,7 @@ const PRODUCER = {
   education_annuaire: 'education', education_effectifs: 'education', ips_ecoles: 'education',
   caf_rsa: 'caf', caf_prestations: 'caf', baac: 'interieur', ssmsi: 'interieur', entreprises: 'entreprises',
   ore_conso: 'ore', ore_parc_auto: 'ore', ore_irve: 'ore', velo_stationnement: 'osm', idfm_ferre: 'idfm',
+  associations_api: 'apientreprise',
   ft_defm: 'francetravail', finess: 'sante', sante_pro: 'sante', equipements_sportifs: 'sport', gaspar: 'georisques',
 };
 const producerOf = (d) => PRODUCER[d.id] || (d.provider === 'melodi' ? 'insee' : /grand-?paris|metropolegrandparis/i.test(d.doc_url || '') ? 'mgp' : 'autre');
@@ -65,6 +67,8 @@ function frequency(periods) {
   return 'pluriannuelle';
 }
 
+const PRIVES = new Set(require('./datasets').filter((d) => d.prive).map((d) => d.id));
+
 function importedDatasets() {
   const { KPIS } = require('./kpi');
   const levelOf = Object.fromEntries(all('SELECT code, level FROM geos').map((g) => [g.code, g.level || 'COM']));
@@ -83,7 +87,7 @@ function importedDatasets() {
     const src = producerOf(d);
     const idfOnly = /iledefrance/.test(host(d.doc_url) || '');
     return {
-      id: d.id, label: d.label, description: d.description, mode: 'import', themes: JSON.parse(d.themes || '[]'),
+      id: d.id, label: d.label, description: d.description, mode: 'import', themes: JSON.parse(d.themes || '[]'), prive: PRIVES.has(d.id),
       source: { key: src, ...SOURCES[src] }, portail: host(d.doc_url), doc_url: d.doc_url, connecteur: d.provider,
       perimetre: {
         couverture: idfOnly ? 'Île-de-France' : 'France',

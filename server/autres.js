@@ -18,8 +18,8 @@ function suggestion(k) {
   return {
     theme, theme_label, groupe: 'autres', groupe_label: `Autres indicateurs proposés · ${k.theme}`,
     niveau: 'contexte', libelle: k.label.replace(/\s*\(pour 1 000 hab\.\)/, ' pour 1 000 habitants'),
-    source: `${k.datasetLabel} (données ouvertes)`, periodicite: 'annuelle',
-    proposition: `Donnée déjà importée dans l'observatoire (jeu « ${k.datasetLabel} »), dernière valeur pour Ivry-sur-Seine : ${f1(k.value)}${k.unit ? ' ' + k.unit : ''} (${k.period})${ref ? `, repère : ${ref}` : ''}. À valider : définition, périmètre et sens de lecture avec les services concernés.`,
+    source: k.prive ? `${k.datasetLabel} (données NON PUBLIQUES, accès habilité)` : `${k.datasetLabel} (données ouvertes)`, periodicite: 'annuelle',
+    proposition: `Donnée déjà importée dans l'observatoire (jeu « ${k.datasetLabel} »), dernière valeur pour Ivry-sur-Seine : ${f1(k.value)}${k.unit ? ' ' + k.unit : ''} (${k.period})${ref ? `, repère : ${ref}` : ''}. À valider : définition, périmètre et sens de lecture avec les services concernés.${k.prive ? ' Donnée non publique (API Entreprise, accès habilité) : ne pas diffuser telle quelle.' : ''}`,
     origine: 'externe', cartographie: 'oui', statut: 'brouillon', unite: k.unit || null, dataset_ids: [k.dataset],
     ...(() => { const spec = KPIS.find((x) => x.id === k.id); if (!spec) return {}; const { mode, formule } = formulaOf(spec); return { mode_calcul: mode, formule }; })(),
   };

@@ -235,6 +235,7 @@ Le **manifest fonctionnel** (`docs/manifest.md`) est servi par le serveur à l'U
 | **Gestion des états** | L'application doit distinguer fonctionnellement les états : **chargement**, **données disponibles**, **aucun résultat** (état vide), **erreur**. Chaque état doit permettre une action fonctionnelle de reprise si pertinent. | Toutes vues avec données |
 | **Responsive (fonctionnel)** | L'application s'adapte fonctionnellement aux différentes largeurs d'écran. Sur plus petit écran, les éléments fonctionnels (notamment filtres, panneau latéral carte) doivent rester accessibles via une organisation fonctionnelle adaptée (accès aux filtres maintenu). | Global |
 | **Gestion d'erreurs & 404** | Page 404 avec chemin de retour fonctionnel vers une page valide. États d'erreur explicites avec possibilité de réessayer lorsque cela est pertinent fonctionnellement. | Transverse |
+| **Signalement des données non publiques** | Un jeu de données soumis à un **accès habilité** (clé délivrée à la collectivité) est signalé par un badge « Non public » dans le catalogue des jeux, la liste des jeux importés, la colonne valeur d'un indicateur et les cartes de KPI. Ce badge a pour fonction d'avertir que la valeur ne doit pas être diffusée telle quelle. | Catalogue, `/donnees`, `/indicateurs`, `/` |
 
 ## 9. Parcours utilisateurs (user flows)
 
@@ -279,6 +280,21 @@ Règles fonctionnelles associées :
 - Un **KPI dont la source ne couvre pas tout un territoire de comparaison** n'affiche **ni valeur départementale ni régionale** : seul le cumul sur les communes réellement couvertes est proposé. La trame verte (MGP) est concerned sur les deux territoires, les licences sportives uniquement sur la région.
 - Les **licences sportives** sont un millésime 2011 : la comparaison départementale (Val-de-Marne complet) reste affichée, la valeur régionale est masquée.
 - Une **source à couverture partielle** reste consultable dans l'onglet Catalogue de données et rattachée à ses indicateurs.
+
+### 11.2 Données à accès habilité (non publiques)
+
+Un jeu peut être alimenté par une source soumise à **accès habilité** (clé API délivrée à la collectivité). La source n'est alors pas ouverte et ses valeurs ne doivent pas être diffusées telles quelles.
+
+| Jeu | Source | Restitution | Couverture |
+|---|---|---|---|
+| Vie associative (adhérents, bénévoles, salariés, comptes) | API Entreprise (DINUM), fiches « association » de la DJEPVA — Le Compte Asso, RNA, Sirene | agrégats communaux par objet social : associations actives, ressources humaines déclarées, comptes (subventions perçues, dons, produits, charges), agréments, licenciés des fédérations | commune dont le siège de l'association est dans le périmètre (Ivry-sur-Seine) |
+
+Règles fonctionnelles associées :
+
+- **Agrégats uniquement** : aucune donnée nominative n'est stockée ni affichée.
+- **Valeurs minimales** : les ressources humaines et les comptes ne sont connus que pour les associations qui les ont déclarés ; l'interface et les fiches indicateurs doivent le signaler.
+- Le badge **« Non public »** accompagne le jeu dans le catalogue, la liste des jeux importés, la valeur d'Ivry d'un indicateur et les cartes de KPI.
+- Une **formule d'indicateur** qui s'appuie sur ce jeu renvoie vers la source habilitée et mentionne que la donnée n'est pas publique.
 
 ## 12. Instructions destinées à Google Stitch
 

@@ -3,6 +3,8 @@
 const { all } = require('./db');
 const { REF_GEO } = require('./seed');
 
+// jeux NON PUBLICS (accès habilité) : les KPI qui en sont issus sont signalés dans l'interface
+const PRIVES = new Set(require('./datasets').filter((d) => d.prive).map((d) => d.id));
 const IGNORED = new Set(['UNIT_MEASURE', 'OBS_STATUS']);
 const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['’]/g, ' ').toLowerCase();
 
@@ -55,7 +57,7 @@ const KPIS = [
   { id: 'generalistes', label: 'Médecins généralistes libéraux (pour 1 000 hab.)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: 'GENERALISTE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /densite medicale|rapport entre l offre et la demande en soins/ },
   { id: 'dentistes', label: 'Chirurgiens-dentistes (pour 1 000 hab.)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: 'DENTISTE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
   { id: 'specialistes', label: 'Autres médecins spécialistes (pour 1 000 hab.)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: 'AUTRE_SPECIALISTE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
-  { id: 'logements', label: 'Logements', theme: 'Logement', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: '_T' }, dir: 'none', ind: /nombre de logements|parc de logements/ },
+  { id: 'logements', label: 'Logements', theme: 'Logement', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: '_T' }, dir: 'none', ind: /^parc de logements|^nombre de logements$/ },
   { id: 'vacance', label: 'Part de logements vacants (parc privé)', theme: 'Logement', dataset: 'lovac', where: {}, ratio: { dim: 'MESURE', num: ['PP_VACANT'], den: ['PP_TOTAL'] }, unit: '%', cmp: true, dir: 'down', ind: /vacan/ },
   { id: 'sru', label: 'Taux de logements sociaux (SRU)', theme: 'Logement', dataset: 'sru', where: { MESURE: 'TAUX_SRU' }, unit: '%', cmp: true, dir: 'up', ind: /sru|logements sociaux/ },
   { id: 'rpls', perK: true, label: 'Logements locatifs sociaux (RPLS)', theme: 'Logement', dataset: 'rpls', where: { MESURE: 'LOGEMENTS_SOCIAUX', CRITERE: 'TOTAL', MODALITE: '_T' }, dir: 'up', ind: /logements sociaux|logement social/ },
@@ -63,7 +65,7 @@ const KPIS = [
   { id: 'commences', perK: true, label: 'Logements commencés', theme: 'Logement', dataset: 'sitadel', where: { MESURE: 'LGT_COMMENCES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' }, skipCurrent: true, dir: 'up', ind: /commences/ },
   { id: 'prix', label: 'Prix médian des appartements (€/m²)', theme: 'Logement', dataset: 'dvf', where: { MESURE: 'PRIX_M2_MEDIAN', TYPE_LOCAL: 'Appartement' }, unit: '€/m²', cmp: true, dir: 'none', ind: /prix|evolution des prix/ },
   { id: 'loyer', label: 'Loyer médian des appartements (€/m²)', theme: 'Logement', dataset: 'loyers', where: { MESURE: 'LOYER_M2', TYPE_BIEN: 'APPARTEMENT' }, unit: '€/m²', cmp: true, dir: 'none', ind: /loyer/ },
-  { id: 'conso', perK: true, label: "Consommation d'énergie résidentielle (MWh)", theme: 'Environnement', dataset: 'ore_conso', where: { MESURE: 'CONSO_MWH', FILIERE: '_T', SECTEUR: 'RESIDENTIEL' }, dir: 'down', ind: /energie|consommation/ },
+  { id: 'conso', perK: true, label: "Consommation d'énergie résidentielle (MWh)", theme: 'Environnement', dataset: 'ore_conso', where: { MESURE: 'CONSO_MWH', FILIERE: '_T', SECTEUR: 'RESIDENTIEL' }, dir: 'down', ind: /consommation energetique|consommations d energie|renovation energetique/ },
   { id: 'accidents', perK: true, label: 'Accidents corporels', theme: 'Mobilité', dataset: 'baac', where: { MESURE: 'ACCIDENTS', LUMINOSITE: '_T', AGGLOMERATION: '_T' }, dir: 'down', ind: /accident/ },
   { id: 'associations', perK: true, label: 'Associations (stock du jour)', theme: 'Vie associative', dataset: 'entreprises', where: { MESURE: 'ASSOCIATIONS' }, dir: 'none', ind: /association/ },
   // formes d'emploi, diplômes, effectifs salariés (jeux INSEE ajoutés pour nourrir la conception)
@@ -105,9 +107,9 @@ const KPIS = [
   { id: 'activite', label: 'Taux d’activité des 15-64 ans', theme: 'Emploi', dataset: 'rp_activite_chomage', where: { SEX: '_T', EDUC: '_T', AGE: 'Y15T64', RP_MEASURE: 'POP' }, ratio: { dim: 'EMPSTA_ENQ', num: ['1T2'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /taux d activite|projection du nombre d actifs/ },
   { id: 'cadres', label: 'Part des cadres et professions intellectuelles supérieures (15 ans ou plus)', theme: 'Emploi', dataset: 'rp_csp', where: { SEX: '_T', AGE: 'Y_GE15', RP_MEASURE: 'POP' }, ratio: { dim: 'PCS', num: ['3'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /categorie socio.professionnelle|repartition des csp|csp en regression|profils des actifs/ },
   { id: 'ouvriers_employes', label: 'Part des ouvriers et employés (15 ans ou plus)', theme: 'Emploi', dataset: 'rp_csp', where: { SEX: '_T', AGE: 'Y_GE15', RP_MEASURE: 'POP' }, ratio: { dim: 'PCS', num: ['5', '6'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
-  { id: 'commerces', perK: true, label: 'Établissements du commerce, des transports et de l’hébergement-restauration', theme: 'Emploi', dataset: 'side_stocks', where: { SIDE_MEASURE: 'UNIT_LOC', ACTIVITY: 'GI' }, dir: 'up', ind: /nb de commerces|^evolution en nb$|^ecart a l echelle supra/ },
+  { id: 'commerces', perK: true, label: 'Établissements du commerce, des transports et de l’hébergement-restauration', theme: 'Emploi', dataset: 'side_stocks', where: { SIDE_MEASURE: 'UNIT_LOC', ACTIVITY: 'GI' }, dir: 'up', ind: /nb de commerces|^ecart a l echelle supra/ },
   { id: 'etablissements', perK: true, label: 'Établissements (tous secteurs)', theme: 'Emploi', dataset: 'side_stocks', where: { SIDE_MEASURE: 'UNIT_LOC', ACTIVITY: '_T' }, dir: 'up', ind: /entreprises hors commerce|evolution en secteurs d activites/ },
-  { id: 'ess', perK: true, label: 'Établissements de l’économie sociale et solidaire (stock du jour)', theme: 'Emploi', dataset: 'entreprises', where: { MESURE: 'ESS' }, dir: 'up', ind: /structures de l ess|evolution du nb \/ nb entreprises|emplois generes par les structures ess/ },
+  { id: 'ess', perK: true, label: 'Établissements de l’économie sociale et solidaire (stock du jour)', theme: 'Emploi', dataset: 'entreprises', where: { MESURE: 'ESS' }, dir: 'up', ind: /structures de l ess|evolution du nb \/ nb entreprises/ },
   { id: 'praticiens', perK: true, label: 'Professionnels de santé libéraux (toutes professions)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: '_T' }, dir: 'up', ind: /nb de praticiens|evolution du nombre de praticiens|^offre de soin$|evolution de l offre de soins/ },
   { id: 'personnes_piece', label: 'Personnes par pièce dans les résidences principales (sur-occupation)', theme: 'Logement', dataset: 'rp_logement', where: { OCS: 'DW_MAIN' }, ratio: { dim: 'RP_MEASURE', num: ['DWELLINGS_POPSIZE'], den: ['DWELLINGS_ROOMS'] }, factor: 1, cmp: true, fromCommunes: true, dir: 'down', ind: /sur.occup/ },
   { id: 'acheves', perK: true, label: 'Logements achevés', theme: 'Logement', dataset: 'sitadel', where: { MESURE: 'LGT_ACHEVES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' }, skipCurrent: true, dir: 'up', ind: /programmes livres|commences\/acheves/ },
@@ -117,6 +119,16 @@ const KPIS = [
   { id: 'icu_fort', label: 'Part de la surface en aléa fort d’îlot de chaleur la nuit', theme: 'Environnement', dataset: 'icu', where: { MESURE: 'SURFACE_ALEA_NUIT_HA', LCZ: '_T' }, ratio: { dim: 'CLASSE', num: ['3'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /ilots de chaleur identifies|exposition aux ilots de chaleur/ },
   { id: 'points_noirs', label: 'Part des mailles de 500 m en point noir environnemental (cumul de nuisances)', theme: 'Environnement', dataset: 'nuisances', where: { MESURE: 'MAILLES_500M', NB_NUISANCES: '_T' }, ratio: { dim: 'POINT_NOIR', num: ['1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /exposition aux nuisances sonores|qualite de l air/ },
   { id: 'flux_artif', label: 'Surface nouvellement artificialisée (ha)', theme: 'Environnement', dataset: 'artificialisation', where: { MESURE: 'FLUX_HA' }, dir: 'down', ind: /taux annuel de sol|rapidite d evolution|consommation des espaces naturels/ },
+  // vie associative (API Entreprise : données NON PUBLIQUES, Ivry uniquement ; ressources humaines et comptes = déclarations, donc minima)
+  { id: 'asso_actives', perK: true, label: 'Associations actives ayant leur siège à Ivry', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'NB_ASSOCIATIONS', OBJET: '_T' }, dir: 'up', ind: /nb d associations par type/ },
+  { id: 'asso_adherents', label: 'Adhérents déclarés par les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'ADHERENTS', OBJET: '_T' }, dir: 'up', ind: /^nb d adherents$/ },
+  { id: 'asso_benevoles', label: 'Bénévoles déclarés par les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'BENEVOLES', OBJET: '_T' }, dir: 'up', ind: /benevoles/ },
+  { id: 'asso_salaries', label: 'Salariés déclarés par les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'SALARIES', OBJET: '_T' }, dir: 'up', ind: /^nb de salaries$|^evolution du nombre de salaries$/ },
+  { id: 'asso_licencies', label: 'Licenciés des fédérations (associations affiliées)', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'LICENCIES', OBJET: '_T' }, dir: 'up', ind: /publics touches/ },
+  { id: 'asso_employeuses', label: 'Part des associations employeuses', theme: 'Vie associative', dataset: 'associations_api', where: { OBJET: '_T' }, ratio: { dim: 'MESURE', num: ['NB_EMPLOYEUSES'], den: ['NB_FICHES'] }, unit: '%', dir: 'none', ind: /^$/ },
+  { id: 'asso_subventions', label: 'Subventions perçues par les associations (€, comptes déclarés)', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'SUBVENTIONS', OBJET: '_T' }, unit: '€', dir: 'none', ind: /^$/ },
+  { id: 'asso_volontaires', label: 'Volontaires (service civique…) dans les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'VOLONTAIRES', OBJET: '_T' }, dir: 'up', ind: /^$/ },
+  { id: 'menages_hlm', label: 'Part des ménages locataires du parc social', theme: 'Logement', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: 'DW_MAIN' }, ratio: { dim: 'TSH', num: ['221'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /menages en logement social/ },
   { id: 'familles_af', perK: true, label: 'Foyers percevant les allocations familiales (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_AF' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
 { id: 'licences_sport', perK: true, label: 'Licences sportives (pour 1 000 hab.)', theme: 'Sport', dataset: 'licences_sportives', where: { MESURE: 'LICENCES', FEDERATION: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, partial: ['reg'], dir: 'up', ind: /licences/ },
 { id: 'lieux_culturels', perK: true, label: 'Lieux et équipements culturels (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'equipements_culturels', where: { MESURE: 'NB_LIEUX', DOMAINE: '_T', TYPE: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /lieux et equipements culturels|equipements culturels/ },
@@ -157,7 +169,7 @@ function seriesOf(rows, spec) {
 
 function compute() {
   const geos = [[REF_GEO.code, 'ref'], ['GOSB', 'ept'], ['94', 'dep'], ['11', 'reg']];
-  const indicators = all('SELECT id, libelle, statut, priorite, theme_label FROM indicators');
+  const indicators = all('SELECT id, libelle, statut, priorite, theme, theme_label, niveau FROM indicators');
   const dsInfo = Object.fromEntries(all('SELECT id, label, last_import FROM datasets').map((d) => [d.id, d]));
   const withData = new Set(all('SELECT DISTINCT indicator_id FROM indicator_datasets').map((r) => r.indicator_id));
 
@@ -191,12 +203,13 @@ function compute() {
     const s = res.ref || [];
     const last = s[s.length - 1] || null, prev = s.length > 1 ? s[s.length - 2] : null;
     const at = (list, period) => (list || []).find((p) => p.period === period) || null;
-    const cands = indicators.filter((i) => spec.ind.test(norm(i.libelle)));
+    const cands = indicators.filter((i) => matchOne(spec, i));
     const states = { valide: 0, brouillon: 0, abandonne: 0 };
     cands.forEach((i) => { states[i.statut || 'brouillon']++; });
     const statut = states.valide ? 'valide' : states.brouillon ? 'brouillon' : cands.length ? 'abandonne' : 'sans_fiche';
     const year = last ? Number(String(last.period).slice(0, 4)) : null;
     return {
+      prive: PRIVES.has(spec.dataset), // jeu à accès habilité : valeur non publique
       id: spec.id, label: spec.label, theme: spec.theme, unit: spec.unit || '', dir: spec.dir, dataset: spec.dataset, datasetLabel: dsInfo[spec.dataset]?.label || spec.dataset,
       last_import: dsInfo[spec.dataset]?.last_import || null,
       value: last?.value ?? null, period: last?.period ?? null, prev, series: s.slice(-8),
@@ -233,11 +246,65 @@ function formulaOf(spec) {
   return { mode, formule: f };
 }
 
-// KPI du tableau de bord correspondant à un intitulé d'indicateur (rapprochement par intitulé)
-function kpiIdsFor(libelle) {
-  const t = norm(libelle);
-  return KPIS.filter((k) => k.ind.test(t)).map((k) => k.id);
+// ---------------- rapprochement fiche de conception <-> KPI calculé, et fiabilité de la valeur ----------------
+// 1. mots-clés du KPI (ind) ; 2. thème compatible ; 3. unité compatible (une « part » ou un « taux » attend un pourcentage
+// ou un taux, un « nombre » attend un effectif) ; 4. fiabilité : fiable, approchée (valeur voisine, base d'une projection
+// ou d'une évaluation, unité différente) ou partielle (données déclaratives incomplètes).
+const THEMES = {
+  demographie: ['Démographie'], emploi: ['Emploi', 'Cohésion sociale'], logement: ['Logement'], environnement: ['Environnement'], mobilite: ['Mobilité'],
+  cohesion: ['Cohésion sociale', 'Santé', 'Vie associative', 'Sécurité', 'Éducation', 'Sport', 'Finances locales', 'Logement'],
+};
+const ficheKind = (t) => (/^indice|^indicateur de vieillissement/.test(t) ? 'ratio' : /^(part|taux|pourcentage|proportion)\b|^evolution (du taux|de la part)/.test(t) ? 'pct'
+  : /^(nb|nombre)\b|^evolution du nombre|^signalements|^projets de construction/.test(t) ? 'count' : null);
+const kpiKind = (k) => (k.unit === '%' ? 'pct' : k.kpiPerK ? 'rate' : k.ratio && !k.unit ? 'ratio' : /€/.test(k.unit || '') ? 'money' : 'count');
+// valeurs voisines : le KPI renseigne la fiche sans mesurer exactement ce qu'elle demande
+const PROXY = [
+  [/^arrivants$/, /solde migratoire|facteurs d attractivite|attractivite residentielle/, 'arrivées seules : les départs ne sont pas publiés à la commune'],
+  [/^cadres$/, /repartition|regression|besoins|profils/, 'une seule catégorie (cadres) : la fiche demande toute la répartition'],
+  [/^ess$/, /evolution du nb \/ nb entreprises/, 'nombre d’établissements de l’ESS, pas leur part'],
+  [/^rsa$/, /taux de beneficiaires/, 'nombre de foyers allocataires, pas un taux'],
+  [/^emploi_lt$/, /densite d emplois/, 'nombre d’emplois, pas une densité'],
+  [/^allocataires_caf$/, /nombre de beneficiaires/, 'foyers allocataires pour 1 000 habitants, pas un effectif de bénéficiaires'],
+  [/^asso_licencies$/, /publics touches/, 'licenciés des fédérations seulement'],
+  [/^sru$|^rpls$/, /besoins en logements sociaux/, 'taux et parc actuels, pas les besoins'],
+  [/^flux_artif$/, /taux annuel/, 'surface artificialisée (ha), pas un taux'],
+  [/^vacance$/, /evolution du nombre de logements vacants/, 'part de logements vacants, pas leur nombre'],
+  [/^solde_naturel$/, /impact/, 'solde brut : l’impact rapporte ce solde à la variation de population'],
+  [/^plus65$/, /impact/, 'part actuelle : l’impact suppose une décomposition de la croissance'],
+  [/^taille_menages$/, /besoins en logement/, 'taille des ménages seulement : les besoins demandent un calcul de point mort'],
+  [/^trame_verte$/, /./, 'composantes de la trame verte (MGP), pas la surface d’espaces verts par habitant'],
+  [/^commerces$/, /ecart a l echelle/, 'nombre d’établissements : l’écart se lit par comparaison avec le Val-de-Marne'],
+  [/^rpls$/, /menages/, 'logements sociaux (RPLS), pas des ménages'],
+  [/^points_noirs$/, /qualite de l air/, 'cumul de nuisances (air, bruit, sols…), pas la qualité de l’air seule'],
+  [/^points_noirs$/, /nuisances sonores/, 'cumul de nuisances, pas le bruit seul'],
+  [/^artificialisation$/, /impermeabilite/, 'surface artificialisée : artificialisé ne veut pas dire imperméabilisé'],
+  [/^generalistes$/, /rapport entre l offre et la demande/, 'densité de généralistes, pas l’accessibilité potentielle localisée (APL)'],
+];
+
+function matchOne(k, fiche) {
+  const t = norm(fiche.libelle);
+  if (!k.ind.test(t)) return null;
+  if (fiche.theme && THEMES[fiche.theme] && !THEMES[fiche.theme].includes(k.theme)) return null; // thème incompatible
+  const fk = ficheKind(t), kk = kpiKind(k);
+  if ((fk === 'pct' || fk === 'ratio') && (kk === 'count' || kk === 'money')) return null; // une part ou un indice ne peut pas être un effectif
+  if (fk === 'count' && (kk === 'pct' || kk === 'money' || kk === 'ratio')) return null; // un nombre ne peut pas être un pourcentage
+  const why = [];
+  const proxy = PROXY.find(([idRe, ficheRe]) => idRe.test(k.id) && ficheRe.test(t));
+  if (proxy) why.push(proxy[2]);
+  if (fk === 'count' && kk === 'rate') why.push('taux pour 1 000 habitants, la fiche demande un nombre');
+  if (fk === 'pct' && kk === 'ratio') why.push('rapport ou indice, pas un pourcentage');
+  if (fiche.niveau === 'prospective') why.push('valeur actuelle : base de la projection, pas la projection elle-même');
+  else if (fiche.niveau === 'evaluation' && !/^(densite|taux|part|indice|indicateur|rapport|attractivite|respect|accidents|nombre de|nb d emplois)/.test(t)) why.push('valeur de contexte : l’évaluation demande une analyse');
+  if (PRIVES.has(k.dataset)) return { id: k.id, fiabilite: why.length ? 'approchee' : 'partielle', raison: [...why, 'données déclaratives non publiques, incomplètes (minimum)'].join(' ; ') };
+  return { id: k.id, fiabilite: why.length ? 'approchee' : 'fiable', raison: why.join(' ; ') || null };
 }
+
+// KPI d'une fiche, du plus fiable au moins fiable
+const RANK = { fiable: 0, partielle: 1, approchee: 2 };
+function kpiMatches(fiche) {
+  return KPIS.map((k) => matchOne(k, fiche)).filter(Boolean).sort((a, b) => RANK[a.fiabilite] - RANK[b.fiabilite]);
+}
+const kpiIdsFor = (libelle, fiche = {}) => kpiMatches({ ...fiche, libelle }).map((m) => m.id);
 
 // Le calcul complet parcourt de nombreuses séries (plus de 100 KPI × 4 territoires, agrégats recalculés à partir des
 // 1 266 communes) : il tourne dans un thread séparé pour ne pas figer le serveur, et le résultat est mis en cache 5 minutes.
@@ -265,4 +332,4 @@ if (!isMainThread && workerData && workerData.kpiCompute) {
   setImmediate(() => { try { parentPort.postMessage(compute()); } catch (e) { parentPort.postMessage({ __error: e.message }); } });
 }
 
-module.exports = { build, computeAsync, KPIS, kpiIdsFor, seriesOf, matches, totalOnly, formulaOf };
+module.exports = { build, computeAsync, KPIS, kpiIdsFor, kpiMatches, seriesOf, matches, totalOnly, formulaOf };

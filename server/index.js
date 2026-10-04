@@ -240,8 +240,8 @@ function withDatasets(rows) {
   const links = all('SELECT indicator_id, dataset_id FROM indicator_datasets');
   const by = new Map();
   for (const l of links) (by.get(l.indicator_id) || by.set(l.indicator_id, []).get(l.indicator_id)).push(l.dataset_id);
-  const { kpiIdsFor } = require('./kpi');
-  return rows.map((r) => ({ ...r, dataset_ids: by.get(r.id) || [], kpi_ids: kpiIdsFor(r.libelle) }));
+  const { kpiMatches } = require('./kpi');
+  return rows.map((r) => { const m = kpiMatches(r); return { ...r, dataset_ids: by.get(r.id) || [], kpi_ids: m.map((x) => x.id), kpi_matches: m }; });
 }
 
 app.get('/api/indicators', (req, res) => {
@@ -383,8 +383,10 @@ app.get('/api/datasets', (req, res) => {
     WHERE id IN (SELECT MAX(id) FROM import_runs WHERE scope = 'idf' GROUP BY dataset_id)
       AND status = 'ok' AND errors = 0 AND rows > 0`).map((r) => [r.dataset_id, r.n || 0]));
   const links = all('SELECT dataset_id, indicator_id FROM indicator_datasets');
+  const prives = new Set(require('./datasets').filter((x) => x.prive).map((x) => x.id));
   res.json(rows.map(({ config, ...d }) => ({
     ...d,
+    prive: prives.has(d.id), // accès habilité : données non publiques
     map_capable: communalConfig({ provider: d.provider, config }),
     map_communes: mapped[d.id] || 0,
     themes: JSON.parse(d.themes || '[]'),
