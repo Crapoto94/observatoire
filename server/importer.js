@@ -43,6 +43,7 @@ const CONNECTORS = {
   arcgis: arcgis.fetchGeo,
   filosofi: filosofi.fetchGeo, // API Melodi (millésimes récents) + fichiers INSEE (millésimes antérieurs)
   apientreprise: apientreprise.fetchGeo, // accès habilité (non public), communes listées dans la configuration du jeu
+  apisubventions: apientreprise.fetchSubventions, // idem : subventions (Data Subvention)
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -187,6 +188,7 @@ const METHODS = {
   arcgis: { method: 'API FeatureServer ArcGIS (MGP), agrégats par commune', kind: 'api' },
   filosofi: { method: 'API Melodi (INSEE) et fichiers INSEE des millésimes antérieurs', kind: 'api' },
   apientreprise: { method: 'API Entreprise (accès habilité, données non publiques), une fiche par association', kind: 'api' },
+  apisubventions: { method: 'API Entreprise, Data Subvention (accès habilité, données non publiques), une requête par association', kind: 'api' },
 };
 const methodOf = (d) => METHODS[d.provider] || { method: d.provider, kind: 'api' };
 
@@ -411,18 +413,17 @@ function autoImportIdf({ intervalMs = 30000 } = {}) {
       }
       groups.ensureGroups();
       if (!gosbTried && get("SELECT COUNT(*) AS n FROM data_rows WHERE geo = 'GOSB'").n === 0) { gosbTried = true; console.log('[import] chargement des 24 communes du GOSB'); startImport({ scope: 'gosb' }); return; }
-      // un jeu chargé avec succès pour l'Île-de-France depuis moins de 7 jours n'est pas rechargé automatiquement (import manuel toujours possible)
+      // un jeu chargé avec succès pour l'Île-de-France depuis moins de 7 jours n'est pas rechargé automatiquement (import manuel toujours possible).
+      // La remise à niveau est conditionnée à la méthode d'import : changer de méthode (par exemple ajouter des millésimes
+      // à Filosofi) force un nouvel import même si l'ancien journal disait « réussi ».
       const since = new Date(Date.now() - MIN_RELOAD_MS).toISOString();
-      const recent = new Set(all("SELECT DISTINCT dataset_id FROM import_runs WHERE scope = 'idf' AND status = 'ok' AND finished >= ?", since).map((r) => r.dataset_id));
-      // Une version de méthode distincte force une remise à niveau Melodi après
-      // correction d'un import incomplet, même si l'ancien journal disait « réussi ».
-      const recentMelodi = new Set(all("SELECT DISTINCT dataset_id FROM import_runs WHERE scope = 'idf' AND status = 'ok' AND method = ? AND finished >= ?", METHODS.melodi.method, since).map((r) => r.dataset_id));
+      const recent = new Set(all("SELECT DISTINCT dataset_id, method FROM import_runs WHERE scope = 'idf' AND status = 'ok' AND finished >= ?", since).map((r) => `${r.dataset_id}|${r.method}`));
       const nowMs = Date.now();
       const todo = all('SELECT id, provider FROM datasets')
         // Le journal évite un scan de plusieurs millions de lignes à chaque tick.
         // Les erreurs sont retentées après une pause au lieu d'être bloquées jusqu'au redémarrage.
         .filter((d) => nowMs - (tried.get(d.id) || 0) >= RETRY_AFTER_FAILURE_MS
-          && !(d.provider === 'melodi' ? recentMelodi : recent).has(d.id))
+          && !recent.has(`${d.id}|${methodOf(d).method}`))
         .map((d) => d.id);
       if (!todo.length) return;
       todo.forEach((id) => tried.set(id, nowMs));
