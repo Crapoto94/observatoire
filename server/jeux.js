@@ -39,7 +39,7 @@ const PRODUCER = {
   education_annuaire: 'education', education_effectifs: 'education', ips_ecoles: 'education',
   caf_rsa: 'caf', caf_prestations: 'caf', baac: 'interieur', ssmsi: 'interieur', entreprises: 'entreprises',
   ore_conso: 'ore', ore_parc_auto: 'ore', ore_irve: 'ore', velo_stationnement: 'osm', idfm_ferre: 'idfm',
-  associations_api: 'apientreprise',
+  associations_api: 'apientreprise', subventions_asso: 'apientreprise',
   ft_defm: 'francetravail', finess: 'sante', sante_pro: 'sante', equipements_sportifs: 'sport', gaspar: 'georisques',
 };
 const producerOf = (d) => PRODUCER[d.id] || (d.provider === 'melodi' ? 'insee' : /grand-?paris|metropolegrandparis/i.test(d.doc_url || '') ? 'mgp' : 'autre');

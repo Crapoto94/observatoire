@@ -341,7 +341,7 @@ export default function Donnees() {
                       title={(d.map_communes ?? 0) >= 50 ? `Carte disponible : ${d.map_communes} communes d'Île-de-France` : 'Carte possible : données d\'Île-de-France à charger'}
                     >🗺 carte</span>
                   )}</div>
-                  <div className="muted small">{d.nb_rows ? <SourceBadge kind="import" title={`Importé le ${fmtDate(d.last_import)}`} /> : null}{d.prive && <PriveBadge />} {d.nb_rows ? `${d.nb_rows} lignes · ${fmtDate(d.last_import)}` : 'non importé'} · {d.nb_indicateurs} indic.</div>
+                  <div className="muted small">{d.live?.mode === 'live' ? <SourceBadge kind="live" title="Relu à la source à l’affichage, repli sur la base si elle ne répond pas" /> : d.nb_rows ? <SourceBadge kind="import" title={`Importé le ${fmtDate(d.last_import)}`} /> : null}{d.prive && <PriveBadge />} {d.nb_rows ? `${d.nb_rows} lignes · ${fmtDate(d.last_import)}` : 'non importé'} · {d.nb_indicateurs} indic.</div>
                 </div>
               </li>
             ))}
@@ -373,6 +373,11 @@ export default function Donnees() {
                   <p className="muted">{current.description}</p>
                   <p className="small muted">
                     Dernière mise à jour : <strong>{fmtDate(current.last_import)}</strong> · {current.nb_rows} lignes stockées
+                    {data?.live && data.live.source !== 'base' && (
+                      <span className={`live-src live-src-${data.live.source}`} title={data.live.repli?.length ? `Repli sur la base pour : ${data.live.repli.join(', ')}` : 'Valeurs relues à la source à l’instant'}>
+                        {data.live.source === 'live' ? ' · ⚡ lu en direct' : data.live.source === 'mixte' ? ' · ⚡ lu en direct (repli sur la base pour une partie des territoires)' : ' · ⚠ source injoignable : repli sur la base'}
+                      </span>
+                    )}
                     {current.doc_url && <> · <a href={current.doc_url} target="_blank" rel="noreferrer">Documentation du jeu ↗</a></>}
                   </p>
                 </div>

@@ -109,6 +109,7 @@ export interface Dataset {
   indicator_ids: number[];
   map_capable?: boolean; // le jeu peut fournir des données communales
   prive?: boolean; // accès habilité : données non publiques
+  live?: LiveState | null; // mode live (relecture à la source, repli sur la base)
   map_communes?: number; // communes d'Île-de-France disposant de données
 }
 
@@ -134,7 +135,10 @@ export interface DataRow {
   status?: string | null;
 }
 
+export interface LiveState { mode: 'base' | 'live'; eligible: boolean; exclu: boolean; latence: { liveMs: number | null; dbMs: number; erreur: string | null; at: string } | null }
+
 export interface DatasetData {
+  live?: { source: 'base' | 'live' | 'repli' | 'mixte'; repli?: string[]; lu_le?: string; erreur?: string };
   id: string;
   label: string;
   description: string | null;

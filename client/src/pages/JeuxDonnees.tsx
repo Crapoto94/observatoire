@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
 import { isAdmin, useAuth } from '../auth';
+import type { LiveState } from '../types';
 import { PriveBadge, SourceBadge } from '../badges';
 import DocSource from './DocSource';
 
@@ -12,7 +13,7 @@ interface Source { key: string; label: string; icon: string; color: string; coun
 interface Field { code: string; label: string; measure?: boolean; type?: string; values: { code: string; label: string }[] }
 interface Ref { id: number; libelle: string; theme_label: string | null; niveau: string; statut: string | null; mode_calcul: string | null }
 interface Jeu {
-  id: string; label: string; description: string | null; mode: 'import' | 'live'; themes: string[]; prive?: boolean;
+  id: string; label: string; description: string | null; mode: 'import' | 'live'; themes: string[]; prive?: boolean; live?: LiveState | null;
   source: Source; portail: string | null; doc_url: string | null; connecteur: string;
   perimetre: { couverture: string; stocke: string };
   granularite: { geo: string; maille: string | null; temps: string | null; periodes: string | null };
@@ -40,12 +41,24 @@ export default function JeuxDonnees({ embedded = false }: { embedded?: boolean }
   const [mode, setMode] = useState(params.get('mode') || '');
   const [open, setOpen] = useState<string | null>(params.get('jeu'));
   const [live, setLive] = useState<Record<string, Field[] | string>>({});
+  const [seuil, setSeuil] = useState(300);
+  const [liveBusy, setLiveBusy] = useState<string | null>(null);
+  const changeMode = async (j: Jeu, mode: 'base' | 'live') => {
+    setLiveBusy(j.id);
+    try { const st = await api<LiveState>(`/datasets/${j.id}/mode`, { method: 'PUT', body: { mode } }); setItems((xs) => xs.map((x) => (x.id === j.id ? { ...x, live: st } : x))); }
+    catch (e) { setError((e as Error).message); } finally { setLiveBusy(null); }
+  };
+  const remesurer = async (j: Jeu) => {
+    setLiveBusy(j.id);
+    try { const lat = await api<LiveState['latence']>(`/datasets/${j.id}/latence`, { method: 'POST', body: {} }); setItems((xs) => xs.map((x) => (x.id === j.id && x.live ? { ...x, live: { ...x.live, latence: lat, eligible: !!lat && !lat.erreur && (lat.liveMs ?? 1e9) <= seuil } } : x))); }
+    catch (e) { setError((e as Error).message); } finally { setLiveBusy(null); }
+  };
   const [busy, setBusy] = useState<Record<string, string>>({});
   const { user } = useAuth();
   const admin = isAdmin(user);
 
   const load = useCallback(() => {
-    api<{ items: Jeu[]; sources: Source[] }>('/jeux', { timeoutMs: 30000 }).then((r) => { setItems(r.items); setSources(r.sources); }).catch((e) => setError(e.message));
+    api<{ items: Jeu[]; sources: Source[]; seuilLive?: number }>('/jeux', { timeoutMs: 30000 }).then((r) => { setItems(r.items); setSources(r.sources); if (r.seuilLive) setSeuil(r.seuilLive); }).catch((e) => setError(e.message));
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -130,7 +143,10 @@ export default function JeuxDonnees({ embedded = false }: { embedded?: boolean }
                   <strong>{j.label}</strong>
                   <span className="muted small"> · {j.source.label}{j.portail ? ` · via ${j.portail}` : ''}</span>
                 </span>
-                <SourceBadge kind={j.mode} title={j.mode === 'live' ? 'Lu en direct à chaque affichage (aucun import)' : j.last_import ? `Importé le ${fmtDate(j.last_import)}` : 'Pas encore importé'} />
+                {j.mode === 'live' || j.live?.mode === 'live'
+                  ? <SourceBadge kind="live" title={j.mode === 'live' ? 'Lu en direct à chaque affichage (aucun import)' : 'Relu à la source à l’affichage, repli sur la base si la source ne répond pas'} />
+                  : <SourceBadge kind="import" title={j.last_import ? `Importé le ${fmtDate(j.last_import)}` : 'Pas encore importé'} />}
+                {j.live?.eligible && j.live.mode !== 'live' && <span className="live-propose" title={`La source répond en ${j.live.latence?.liveMs} ms (seuil ${seuil} ms) : le mode live est possible`}>⚡ live proposé</span>}
                 {j.prive && <PriveBadge />}
                 {j.mode === 'import' && j.etat === 'vide' && <span className="al-attention small">vide</span>}
                 <span className="jeu-meta small"><span title="Périmètre">🌍 {j.perimetre.couverture}</span><span title="Granularité géographique">▦ {j.granularite.geo}</span>{j.granularite.periodes && <span title="Périodes disponibles">🗓 {j.granularite.periodes}</span>}</span>
@@ -149,6 +165,29 @@ export default function JeuxDonnees({ embedded = false }: { embedded?: boolean }
                       <dt>Granularité</dt><dd>{j.granularite.geo}{j.granularite.maille && <div className="muted small">{j.granularite.maille}</div>}</dd>
                       <dt>Temporalité</dt><dd>{j.granularite.temps || '—'}{j.granularite.periodes && <div className="muted small">{j.granularite.periodes}</div>}</dd>
                       {j.mode === 'import' && <><dt>Volume</dt><dd>{(j.nb_rows || 0).toLocaleString('fr-FR')} observations · {fmtDate(j.last_import ?? null)}</dd></>}
+                      {j.mode === 'import' && j.live && (
+                        <>
+                          <dt>Mode</dt>
+                          <dd>
+                            {j.live.exclu ? <span className="muted">Base uniquement (accès habilité, débit limité)</span> : (
+                              <>
+                                {admin
+                                  ? <select value={j.live.mode} disabled={liveBusy === j.id} onChange={(e) => changeMode(j, e.target.value as 'base' | 'live')} title="Base : données importées ; Live : relecture à la source à l’affichage, repli sur la base si elle ne répond pas">
+                                      <option value="base">Base (données importées)</option>
+                                      <option value="live">Live (source interrogée, repli sur la base)</option>
+                                    </select>
+                                  : <strong>{j.live.mode === 'live' ? 'Live (repli sur la base)' : 'Base'}</strong>}
+                                <div className="muted small">
+                                  {j.live.latence
+                                    ? <>source : {j.live.latence.erreur ? `erreur (${j.live.latence.erreur})` : `${j.live.latence.liveMs?.toLocaleString('fr-FR')} ms`} · base : {j.live.latence.dbMs} ms · mesuré le {fmtDate(j.live.latence.at)} · {j.live.eligible ? `live proposé (≤ ${seuil} ms)` : `live non proposé (> ${seuil} ms)`}</>
+                                    : 'temps de réponse de la source non encore mesuré'}
+                                  {admin && <> · <button className="link small" disabled={liveBusy === j.id} onClick={() => remesurer(j)}>{liveBusy === j.id ? 'mesure…' : 'mesurer'}</button></>}
+                                </div>
+                              </>
+                            )}
+                          </dd>
+                        </>
+                      )}
                       {j.themes.length > 0 && <><dt>Thèmes</dt><dd>{j.themes.join(', ')}</dd></>}
                     </dl>
                     <div className="jeu-actions">

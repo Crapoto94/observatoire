@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { CARTOS, FAISABILITES, Indicator, NIVEAUX, ORIGINES, STATUTS } from '../types';
+import { KpiVal, POIDS, synthese } from '../fiabilite';
 
 const STOP = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'l', 'd', 'en', 'et', 'a', 'au', 'aux', 'par', 'sur', 'un', 'une']);
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -26,6 +27,9 @@ export default function Pilotage() {
   const [items, setItems] = useState<Indicator[]>([]);
   const [error, setError] = useState('');
   useEffect(() => { api<Indicator[]>('/indicators').then(setItems).catch((e) => setError(e.message)); }, []);
+  // valeurs calculées (KPI) : nombre de fiches renseignées et fiabilité estimée
+  const [kpis, setKpis] = useState<Map<string, KpiVal> | null>(null);
+  useEffect(() => { api<{ kpis: KpiVal[] }>('/kpi', { timeoutMs: 60000 }).then((r) => setKpis(new Map(r.kpis.map((k) => [k.id, k])))).catch(() => setKpis(new Map())); }, []);
 
   const actifs = useMemo(() => items.filter((i) => i.statut !== 'abandonne'), [items]);
 
@@ -39,9 +43,12 @@ export default function Pilotage() {
       jeu: list.filter((i) => i.dataset_ids.length).length,
       porteur: list.filter((i) => i.porteur).length,
       valide: list.filter((i) => i.statut === 'valide').length,
+      fiab: synthese(list, kpis),
     });
     return [...by.entries()].map(([k, v]) => row(v.label, v.list, k)).concat(row('Ensemble', actifs));
-  }, [actifs]);
+  }, [actifs, kpis]);
+  const fiab = useMemo(() => synthese(actifs, kpis), [actifs, kpis]);
+  const pct = (v: number | null) => (v == null ? '—' : `${Math.round(v * 100)} %`);
 
   const matrice = useMemo(() => {
     const prios: (number | 'none')[] = [1, 2, 3, 4, 'none'];
@@ -98,11 +105,32 @@ export default function Pilotage() {
         <Link className="card" to="/indicateurs?flag=sans-source"><div className="big">{actifs.filter((i) => !i.source && !i.lien_donnees).length}</div>sans source ni lien</Link>
       </div>
 
+      <h3>Valeurs calculées pour Ivry et fiabilité <span className="muted small">(hors abandonnés)</span></h3>
+      {!kpis ? <div className="muted small">Calcul des valeurs en cours…</div> : (
+        <div className="cards">
+          <div className="card" title="Fiches ayant une valeur calculée pour Ivry (KPI rattaché)">
+            <div className="big">{fiab.calcules}</div>indicateurs calculés <span className="muted small">sur {fiab.total} ({pct(fiab.couverture)})</span>
+          </div>
+          <div className="card" title={`Moyenne pondérée des valeurs calculées : fiable × ${POIDS.fiable}, partielle × ${POIDS.partielle}, approchée × ${POIDS.approchee}. Mesure la confiance à accorder aux valeurs affichées, pas leur exhaustivité.`}>
+            <div className="big" style={{ color: fiab.score == null ? undefined : fiab.score >= 0.8 ? '#16a34a' : fiab.score >= 0.6 ? '#d97706' : '#dc2626' }}>{pct(fiab.score)}</div>fiabilité estimée
+            <div className="muted small">soit {pct(fiab.score == null ? null : fiab.score * fiab.couverture)} de l’ensemble des fiches</div>
+          </div>
+          <Link className="card" to="/indicateurs?fiabilite=fiable"><div className="big" style={{ color: '#16a34a' }}>{fiab.fiable}</div>valeurs fiables</Link>
+          <Link className="card" to="/indicateurs?fiabilite=approchee" title="Valeur voisine, base d’une projection ou d’une évaluation, unité différente, ou évolution non calculable"><div className="big" style={{ color: '#c2410c' }}>{fiab.approchee}</div>approchées</Link>
+          <Link className="card" to="/indicateurs?fiabilite=partielle" title="Données déclaratives incomplètes (minimum)"><div className="big" style={{ color: '#a16207' }}>{fiab.partielle}</div>partielles</Link>
+          <Link className="card" to="/indicateurs?fiabilite=aucune" title="Aucune valeur calculée : données manquantes ou calcul à définir"><div className="big" style={{ color: '#64748b' }}>{fiab.aucune}</div>sans valeur</Link>
+          {fiab.live > 0 && <Link className="card" to="/indicateurs?acces=live"><div className="big" style={{ color: '#92400e' }}>{fiab.live}</div>en direct (couches)</Link>}
+          <div className="card" title="Indicateurs calculables par plusieurs sources dont les valeurs divergent de plus de 2 % (orange) ou 20 % (rouge)">
+            <div className="big"><span style={{ color: '#c2410c' }}>{fiab.multiEcart}</span> / <span style={{ color: '#b91c1c' }}>{fiab.multiIncoherent}</span></div>sources en écart / incohérentes
+          </div>
+        </div>
+      )}
+
       <h3>Couverture par thème <span className="muted small">(hors abandonnés)</span></h3>
       <div className="table-wrap short">
         <table className="grid compact">
           <thead>
-            <tr><th>Thème</th><th className="num">Indicateurs</th><th>Avec source ou lien</th><th>Avec jeu importé</th><th>Avec définition</th><th>Avec porteur</th><th>Validés</th></tr>
+            <tr><th>Thème</th><th className="num">Indicateurs</th><th>Avec source ou lien</th><th>Avec jeu importé</th><th>Valeur calculée</th><th className="num" title="Moyenne pondérée des valeurs calculées (fiable 1, partielle 0,6, approchée 0,4)">Fiabilité estimée</th><th>Avec définition</th><th>Avec porteur</th><th>Validés</th></tr>
           </thead>
           <tbody>
             {couverture.map((c) => (
@@ -111,6 +139,8 @@ export default function Pilotage() {
                 <td className="num">{c.n}</td>
                 <td><Bar value={c.source} total={c.n} /></td>
                 <td><Bar value={c.jeu} total={c.n} color="#16a34a" /></td>
+                <td><Bar value={c.fiab.calcules} total={c.n} color="#0891b2" /></td>
+                <td className="num" title={`${c.fiab.fiable} fiables, ${c.fiab.partielle} partielles, ${c.fiab.approchee} approchées`} style={{ color: c.fiab.score == null ? undefined : c.fiab.score >= 0.8 ? '#16a34a' : c.fiab.score >= 0.6 ? '#d97706' : '#dc2626', fontWeight: 600 }}>{kpis ? pct(c.fiab.score) : '…'}</td>
                 <td><Bar value={c.definition} total={c.n} color="#7c3aed" /></td>
                 <td><Bar value={c.porteur} total={c.n} color="#d97706" /></td>
                 <td><Bar value={c.valide} total={c.n} color="#2e9d4f" /></td>

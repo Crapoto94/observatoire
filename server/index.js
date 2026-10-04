@@ -141,6 +141,11 @@ app.get('/api/cartographie/layer/:id', (req, res) => {
     d ? res.json(d) : res.status(404).json({ error: 'couche introuvable' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Mode live des jeux importés : état (mode, temps de réponse, proposition), choix par un administrateur, mesures
+app.get('/api/datasets-live', (req, res) => res.json(require('./live').etat()));
+app.put('/api/datasets/:id/mode', auth.requireAdmin, (req, res) => { try { jeuxCache = null; res.json(require('./live').setMode(req.params.id, req.body?.mode === 'live' ? 'live' : 'base')); } catch (e) { res.status(e.status || 500).json({ error: e.message }); } });
+app.post('/api/datasets/:id/latence', auth.requireAdmin, async (req, res) => { try { jeuxCache = null; res.json(await require('./live').mesurer(req.params.id)); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/datasets-live/mesurer', auth.requireAdmin, (req, res) => { jeuxCache = null; require('./live').mesurerTout({ force: true }).catch(() => {}); res.status(202).json({ ok: true }); });
 // Catalogue des jeux de données (menu accessible à tous) : sources, périmètre, granularité, champs, indicateurs liés
 let jeuxCache = null;
 app.get('/api/jeux', (req, res) => {
@@ -384,9 +389,11 @@ app.get('/api/datasets', (req, res) => {
       AND status = 'ok' AND errors = 0 AND rows > 0`).map((r) => [r.dataset_id, r.n || 0]));
   const links = all('SELECT dataset_id, indicator_id FROM indicator_datasets');
   const prives = new Set(require('./datasets').filter((x) => x.prive).map((x) => x.id));
+  const liveState = require('./live').etat();
   res.json(rows.map(({ config, ...d }) => ({
     ...d,
     prive: prives.has(d.id), // accès habilité : données non publiques
+    live: liveState.jeux[d.id] || null, // mode live (relecture à la source, repli sur la base)
     map_capable: communalConfig({ provider: d.provider, config }),
     map_communes: mapped[d.id] || 0,
     themes: JSON.parse(d.themes || '[]'),
@@ -396,15 +403,18 @@ app.get('/api/datasets', (req, res) => {
 });
 
 // Données brutes stockées pour un ou plusieurs territoires
-app.get('/api/datasets/:id/data', (req, res) => {
+app.get('/api/datasets/:id/data', async (req, res) => {
   const d = get('SELECT id, label, description, doc_url, labels, last_import, nb_rows FROM datasets WHERE id = ?', req.params.id);
   if (!d) return res.status(404).json({ error: 'introuvable' });
   const geos = String(req.query.geos || REF_GEO.code).split(',').filter(Boolean);
+  // mode live : relecture à la source (base mise à jour au passage), repli sur la base si la source ne répond pas à temps
+  let live = { source: 'base' };
+  try { live = await require('./live').rafraichir(d.id, geos); } catch (e) { live = { source: 'repli', erreur: e.message }; }
   const rows = all(
     `SELECT geo, period, dims, measure, value, status FROM data_rows WHERE dataset_id = ? AND geo IN (${geos.map(() => '?').join(',')})`,
     d.id, ...geos
   ).map((r) => ({ ...r, dims: JSON.parse(r.dims || '{}') }));
-  res.json({ ...d, labels: d.labels ? JSON.parse(d.labels) : {}, rows });
+  res.json({ ...d, labels: d.labels ? JSON.parse(d.labels) : {}, rows, live });
 });
 
 app.post('/api/datasets/:id/import', auth.requireAdmin, (req, res) => {
@@ -591,4 +601,6 @@ app.listen(PORT, '0.0.0.0', () => {
   setTimeout(() => { try { require('./groups').aggregateAll(); } catch (e) { console.warn('[groupes]', e.message); } }, 15000);
   // préchauffage du cache des KPI (tableau de bord, valeurs de la conception, Autres)
   setTimeout(() => { require('./kpi').computeAsync().catch((e) => console.warn('[kpi]', e.message)); }, 20000);
+  // temps de réponse des sources (proposition du mode live) : mesures de plus de 7 jours renouvelées en arrière-plan
+  setTimeout(() => { require('./live').mesurerTout().catch((e) => console.warn('[live]', e.message)); }, 90000);
 });

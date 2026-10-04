@@ -435,4 +435,15 @@ function autoImportIdf({ intervalMs = 30000 } = {}) {
   setTimeout(tick, 5000);
 }
 
-module.exports = { autoImportIdf, startImport, jobs, refreshStats, currentJob, syncPopulations, populationSeries };
+// Lecture en direct d'un jeu pour un territoire (mode live) : connecteur puis mise à jour de la base, sans journal d'import.
+// Lève une erreur si la source ne répond pas : l'appelant se replie alors sur la base.
+async function fetchLive(dataset, geo, { store = true } = {}) {
+  const connector = CONNECTORS[dataset.provider];
+  if (!connector) throw new Error(`connecteur « ${dataset.provider} » non disponible`);
+  const rows = await connector(JSON.parse(dataset.config || '{}'), geo);
+  if (rows === null) return null;
+  if (store) storeRows(dataset.id, [geo.code], () => rows);
+  return rows;
+}
+
+module.exports = { autoImportIdf, startImport, jobs, refreshStats, currentJob, syncPopulations, populationSeries, fetchLive };

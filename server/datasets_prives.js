@@ -22,6 +22,26 @@ module.exports = [
           DONS: 'Dons (€)', PRODUITS: 'Total des produits (€)', CHARGES: 'Total des charges (€)',
         }),
         OBJET: { label: 'Objet social', values: { _T: 'Tous objets' } },
+        CHAMP: { label: 'Champ d’action territorial', values: { _T: 'Tous', local: 'Local', 'départemental': 'Départemental', 'régional': 'Régional', national: 'National', international: 'International', 'non renseigné': 'Non renseigné' } },
+      },
+    },
+  },
+  {
+    id: 'subventions_asso', provider: 'apisubventions', prive: true,
+    label: 'Subventions publiques aux associations (API Entreprise, Data Subvention, non public)',
+    description: "API Entreprise (DINUM), Data Subvention, accès habilité réservé à la Ville. Pour les associations actives dont le siège est dans la commune (têtes de réseau nationales exclues) : demandes de subvention (montants demandés et accordés, statut) et versements, par année, financeur et politique publique. Financeurs couverts : l'État et ses opérateurs (Chorus, Osiris dont l'Agence nationale du sport, Dauphin pour la politique de la ville, Fonjep) et les collectivités qui publient leurs subventions au format SCDL (Région Île-de-France, Ville de Paris…). Les subventions des autres financeurs, dont souvent celles de la Ville, n'y figurent pas : montants minimaux. Le fournisseur renvoie une erreur persistante pour environ un quart des associations (non renseignées, nouvel essai chaque semaine). Ivry-sur-Seine par défaut ; autres communes via API_ENTREPRISE_COMMUNES.",
+    themes: ['cohesion'], doc_url: 'https://entreprise.api.gouv.fr/catalogue/data_subvention/subventions',
+    link: [],
+    config: {
+      communes: ['94041'], timeoutMs: 25 * 60000,
+      labels: {
+        ...mesure({
+          MONTANT_VERSE: 'Montants versés (€, année du versement)', MONTANT_ACCORDE: 'Montants accordés (€, année d’exercice)', MONTANT_DEMANDE: 'Montants demandés (€)',
+          NB_DEMANDES: 'Demandes de subvention', NB_DECIDEES: 'Demandes instruites (accordées ou refusées)', NB_ACCORDEES: 'Demandes accordées',
+          NB_ASSOCIATIONS_SOUTENUES: 'Associations ayant reçu un versement ou un accord',
+        }),
+        FINANCEUR: { label: 'Financeur', values: { _T: 'Tous financeurs couverts', ETAT: 'État et opérateurs', REGION: 'Région', DEPARTEMENT: 'Département', COMMUNE: 'Commune (siège de l’association)', EPT: 'EPT Grand-Orly Seine Bièvre', INTERCOMMUNALITE: 'Autre intercommunalité', AUTRE_COMMUNE: 'Autre commune', AUTRE: 'Autre financeur' } },
+        DOMAINE: { label: 'Politique publique', values: { _T: 'Toutes', POLITIQUE_VILLE: 'Politique de la ville', SPORT: 'Sport', JEUNESSE_VIE_ASSO: 'Jeunesse, vie associative, éducation populaire', CULTURE: 'Culture', EMPLOI: 'Emploi, insertion', SOLIDARITES: 'Solidarités', INTEGRATION: 'Intégration', EGALITE: 'Égalité femmes-hommes', EDUCATION: 'Éducation', ENVIRONNEMENT: 'Environnement', SANTE: 'Santé', AUTRE: 'Autres' } },
       },
     },
   },

@@ -16,11 +16,11 @@ const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,
 // sum : dimensions additionnées (toutes modalités) au lieu d'exiger leur total _T (jeux sans modalité totale, ex. Flores par activité)
 // partial : la source ne couvre pas tout le territoire (true = aucun cumul, ou liste de clés 'dep'/'reg' à ne pas cumuler)
 const KPIS = [
-  { id: 'population', label: 'Population', theme: 'Démographie', dataset: 'rp_serie_historique', where: { RP_MEASURE: 'POP', OCS: '_T' }, dir: 'none', ind: /population/ },
+  { id: 'population', concept: 'population', label: 'Population (recensement)', theme: 'Démographie', dataset: 'rp_serie_historique', where: { RP_MEASURE: 'POP', OCS: '_T' }, dir: 'none', ind: /population/ },
   { id: 'naissances', perK: true, label: 'Naissances domiciliées', theme: 'Démographie', dataset: 'etat_civil_nais', where: { EC_MEASURE: 'LVB' }, dir: 'none', ind: /naissance/ },
   { id: 'niveau_vie', label: 'Niveau de vie médian', theme: 'Cohésion sociale', dataset: 'filosofi', datasets: ['filosofi', 'filosofi_fichier'], where: { FILOSOFI_MEASURE: 'MED_SL' }, unit: '€', cmp: true, dir: 'up', ind: /niveau de vie|revenu median/ },
   { id: 'pauvrete', label: 'Taux de pauvreté', theme: 'Cohésion sociale', dataset: 'filosofi', datasets: ['filosofi', 'filosofi_fichier'], where: { FILOSOFI_MEASURE: 'PR_MD60' }, unit: '%', cmp: true, dir: 'down', ind: /pauvrete/ },
-  { id: 'rsa', perK: true, label: 'Foyers au RSA', theme: 'Cohésion sociale', dataset: 'caf_rsa', where: { MESURE: 'FOYERS_RSA', TYPE_RSA: '_T' }, dir: 'down', ind: /rsa|minima sociaux/ },
+  { id: 'rsa', concept: 'rsa', perK: true, label: 'Foyers au RSA (fichier RSA de la CAF)', theme: 'Cohésion sociale', dataset: 'caf_rsa', where: { MESURE: 'FOYERS_RSA', TYPE_RSA: '_T' }, dir: 'down', ind: /rsa|minima sociaux/ },
   { id: 'chomage', label: 'Taux de chômage (15-64 ans)', theme: 'Emploi', dataset: 'rp_activite_chomage', where: { SEX: '_T', EDUC: '_T', AGE: 'Y15T64', RP_MEASURE: 'POP' }, ratio: { dim: 'EMPSTA_ENQ', num: ['2'], den: ['1T2'] }, unit: '%', cmp: true, dir: 'down', ind: /chomage|demandeurs d emploi/ },
   { id: 'defm', label: "Demandeurs d'emploi inscrits (catégories A, B, C)", theme: 'Emploi', dataset: 'ft_defm', where: { MESURE: 'DEFM_ABC', SEXE: '_T', AGE: '_T' }, dir: 'down', ind: /demandeurs d emploi|france travail/ },
   { id: 'defm_1000', label: "Demandeurs d'emploi pour 1 000 habitants", theme: 'Emploi', dataset: 'ft_defm', where: { MESURE: 'DEFM_ABC', SEXE: '_T', AGE: '_T' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /demandeurs d emploi|france travail/ },
@@ -65,7 +65,7 @@ const KPIS = [
   { id: 'logements', label: 'Logements', theme: 'Logement', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: '_T' }, dir: 'none', ind: /^parc de logements|^nombre de logements$/ },
   { id: 'vacance', label: 'Part de logements vacants (parc privé)', theme: 'Logement', dataset: 'lovac', where: {}, ratio: { dim: 'MESURE', num: ['PP_VACANT'], den: ['PP_TOTAL'] }, unit: '%', cmp: true, dir: 'down', ind: /vacan/ },
   { id: 'sru', label: 'Taux de logements sociaux (SRU)', theme: 'Logement', dataset: 'sru', where: { MESURE: 'TAUX_SRU' }, unit: '%', cmp: true, dir: 'up', ind: /sru|logements sociaux/ },
-  { id: 'rpls', perK: true, label: 'Logements locatifs sociaux (RPLS)', theme: 'Logement', dataset: 'rpls', where: { MESURE: 'LOGEMENTS_SOCIAUX', CRITERE: 'TOTAL', MODALITE: '_T' }, dir: 'up', ind: /logements sociaux|logement social/ },
+  { id: 'rpls', concept: 'parc_social', perK: true, label: 'Logements locatifs sociaux (RPLS)', theme: 'Logement', dataset: 'rpls', where: { MESURE: 'LOGEMENTS_SOCIAUX', CRITERE: 'TOTAL', MODALITE: '_T' }, dir: 'up', ind: /logements sociaux|logement social/ },
   { id: 'autorises', perK: true, label: 'Logements autorisés', theme: 'Logement', dataset: 'sitadel', where: { MESURE: 'LGT_AUTORISES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' }, skipCurrent: true, dir: 'up', ind: /permis|autorises|projets de construction/ },
   { id: 'commences', perK: true, label: 'Logements commencés', theme: 'Logement', dataset: 'sitadel', where: { MESURE: 'LGT_COMMENCES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' }, skipCurrent: true, dir: 'up', ind: /commences/ },
   { id: 'prix', label: 'Prix médian des appartements (€/m²)', theme: 'Logement', dataset: 'dvf', where: { MESURE: 'PRIX_M2_MEDIAN', TYPE_LOCAL: 'Appartement' }, unit: '€/m²', cmp: true, dir: 'none', ind: /prix|evolution des prix/ },
@@ -137,6 +137,19 @@ const KPIS = [
   { id: 'asso_subventions', declaratif: true, label: 'Subventions perçues par les associations (€, comptes déclarés)', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'SUBVENTIONS', OBJET: '_T' }, unit: '€', dir: 'none', ind: /^$/ },
   { id: 'asso_volontaires', declaratif: true, label: 'Volontaires (service civique…) dans les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'VOLONTAIRES', OBJET: '_T' }, dir: 'up', ind: /^$/ },
   { id: 'menages_hlm', label: 'Part des ménages locataires du parc social', theme: 'Logement', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: 'DW_MAIN' }, ratio: { dim: 'TSH', num: ['221'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /menages en logement social/ },
+  // subventions publiques aux associations (API Entreprise, Data Subvention : NON PUBLIC ; séries annuelles, année en cours exclue)
+  { id: 'subv_etat', declaratif: true, partielRaison: 'financeurs couverts : État et collectivités publiant leurs subventions (SCDL) ; associations ayant leur siège dans la commune, têtes de réseau exclues', label: 'Subventions de l’État versées aux associations ayant leur siège dans la commune (€)', theme: 'Vie associative', dataset: 'subventions_asso', where: { MESURE: 'MONTANT_VERSE', FINANCEUR: 'ETAT', DOMAINE: '_T' }, unit: '€', skipCurrent: true, dir: 'none', ind: /^$/ },
+  { id: 'subv_etat_hab', declaratif: true, partielRaison: 'financeurs couverts : État et collectivités publiant leurs subventions (SCDL) ; associations ayant leur siège dans la commune, têtes de réseau exclues', label: 'Subventions de l’État versées aux associations, par habitant', theme: 'Vie associative', dataset: 'subventions_asso', where: { MESURE: 'MONTANT_VERSE', FINANCEUR: 'ETAT', DOMAINE: '_T' }, perHab: true, unit: '€/hab.', skipCurrent: true, dir: 'none', ind: /^$/ },
+  { id: 'subv_pv_part', declaratif: true, partielRaison: 'financeurs couverts : État et collectivités publiant leurs subventions (SCDL) ; associations ayant leur siège dans la commune, têtes de réseau exclues', label: 'Part de la politique de la ville dans les subventions de l’État aux associations', theme: 'Vie associative', dataset: 'subventions_asso', where: { MESURE: 'MONTANT_VERSE', FINANCEUR: 'ETAT' }, ratio: { dim: 'DOMAINE', num: ['POLITIQUE_VILLE'], den: ['_T'] }, unit: '%', skipCurrent: true, dir: 'none', ind: /^$/ },
+  { id: 'subv_accorde', declaratif: true, partielRaison: 'financeurs couverts : État et collectivités publiant leurs subventions (SCDL) ; associations ayant leur siège dans la commune, têtes de réseau exclues', label: 'Subventions accordées aux associations (État et collectivités publiant leurs données, €)', theme: 'Vie associative', dataset: 'subventions_asso', where: { MESURE: 'MONTANT_ACCORDE', FINANCEUR: '_T', DOMAINE: '_T' }, unit: '€', skipCurrent: true, dir: 'none', ind: /^$/ },
+  { id: 'subv_assos', declaratif: true, partielRaison: 'financeurs couverts : État et collectivités publiant leurs subventions (SCDL) ; associations ayant leur siège dans la commune, têtes de réseau exclues', label: 'Associations soutenues (versement ou accord dans l’année)', theme: 'Vie associative', dataset: 'subventions_asso', where: { MESURE: 'NB_ASSOCIATIONS_SOUTENUES', FINANCEUR: '_T', DOMAINE: '_T' }, skipCurrent: true, dir: 'up', ind: /^$/ },
+  { id: 'subv_taux_accord', declaratif: true, partielRaison: 'financeurs couverts : État et collectivités publiant leurs subventions (SCDL) ; associations ayant leur siège dans la commune, têtes de réseau exclues', label: 'Taux d’accord des demandes de subvention instruites', theme: 'Vie associative', dataset: 'subventions_asso', where: { FINANCEUR: '_T', DOMAINE: '_T' }, ratio: { dim: 'MESURE', num: ['NB_ACCORDEES'], den: ['NB_DECIDEES'] }, unit: '%', skipCurrent: true, dir: 'up', ind: /^$/ },
+  { id: 'asso_creees', label: 'Associations créées dans l’année et toujours actives (siège dans la commune)', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'NB_CREEES', OBJET: '_T' }, skipCurrent: true, dir: 'up', ind: /^$/ },
+  { id: 'asso_locales', declaratif: true, partielRaison: 'champ d’action renseigné par une minorité d’associations', label: 'Part des associations à champ d’action local (parmi celles qui le renseignent)', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'NB_FICHES', OBJET: '_T' }, ratio: { dim: 'CHAMP', num: ['local'], den: ['local', 'départemental', 'régional', 'national', 'international'] }, unit: '%', dir: 'none', ind: /^$/ },
+  // sources alternatives d'un même concept (pastille « multi » et cohérence entre sources dans la conception)
+  { id: 'population_pmun', concept: 'population', label: 'Population municipale (populations légales)', theme: 'Démographie', dataset: 'pop_hist', where: { POPREF_MEASURE: 'PMUN' }, dir: 'none', ind: /^population totale$|^evolution annuelle de la population$|^projection de population/ },
+  { id: 'rsa_prest', concept: 'rsa', perK: true, label: 'Foyers au RSA (fichier des prestations de la CAF)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_RSA' }, dir: 'down', ind: /rsa|minima sociaux/ },
+  { id: 'lls_sru', concept: 'parc_social', perK: true, label: 'Logements locatifs sociaux (inventaire SRU)', theme: 'Logement', dataset: 'sru', where: { MESURE: 'LLS' }, dir: 'up', ind: /logements sociaux|logement social/ },
   { id: 'familles_af', perK: true, label: 'Foyers percevant les allocations familiales (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_AF' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
 { id: 'licences_sport', perK: true, label: 'Licences sportives (pour 1 000 hab.)', theme: 'Sport', dataset: 'licences_sportives', where: { MESURE: 'LICENCES', FEDERATION: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, partial: ['reg'], dir: 'up', ind: /licences/ },
 { id: 'lieux_culturels', perK: true, label: 'Lieux et équipements culturels (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'equipements_culturels', where: { MESURE: 'NB_LIEUX', DOMAINE: '_T', TYPE: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /lieux et equipements culturels|equipements culturels/ },
@@ -208,7 +221,8 @@ function compute() {
         const imported = all("SELECT 1 FROM import_runs WHERE dataset_id = ? AND scope = 'idf' AND status IN ('ok', 'partiel') LIMIT 1", spec.dataset).length > 0; // jeu importé pour toute l'Île-de-France : l'absence de ligne signifie « aucun »
         if (imported || byGeo.size >= codes.length * 0.6) s = seriesOf([...byGeo.values()].flat(), spec);
       }
-      if (spec.kpiPerK) s = s.map((p) => { const pop = carto.popAt(pops[geo], p.period); return pop ? { period: p.period, value: (p.value / pop) * 1000 } : null; }).filter(Boolean);
+      // rapporté à la population : pour 1 000 habitants (kpiPerK) ou par habitant (perHab)
+      if (spec.kpiPerK || spec.perHab) { const f = spec.perHab ? 1 : 1000; s = s.map((p) => { const pop = carto.popAt(pops[geo], p.period); return pop ? { period: p.period, value: (p.value / pop) * f } : null; }).filter(Boolean); }
       res[key] = s;
     }
     // jeux sans donnée communale (ex. Assurance Maladie, maille départementale) : la valeur de contexte
@@ -223,6 +237,7 @@ function compute() {
     const year = last ? Number(String(last.period).slice(0, 4)) : null;
     return {
       prive: PRIVES.has(spec.dataset), // jeu à accès habilité : valeur non publique
+      concept: spec.concept || spec.id, // KPI de même concept : sources comparables entre elles
       id: spec.id, label: spec.label, theme: spec.theme, unit: spec.unit || (spec.kpiPerK ? 'pour 1 000 hab.' : ''), dir: spec.dir, dataset: spec.dataset, datasetLabel: dsInfo[spec.dataset]?.label || spec.dataset,
       last_import: dsInfo[spec.dataset]?.last_import || null,
       value: last?.value ?? null, period: last?.period ?? null, prev, series: s.slice(-8),
@@ -234,6 +249,26 @@ function compute() {
       statut, states,
     };
   });
+
+  // cohérence entre sources d'un même concept : comparaison à la dernière période commune (sinon dernières valeurs)
+  // écart relatif |a − b| / max(|a|, |b|) : ≤ 2 % cohérent, ≤ 20 % écart, au-delà incohérent
+  const byConcept = new Map();
+  for (const k of kpis) if (k.value != null) (byConcept.get(k.concept) || byConcept.set(k.concept, []).get(k.concept)).push(k);
+  for (const k of kpis) {
+    const peers = (byConcept.get(k.concept) || []).filter((p) => p.id !== k.id);
+    if (k.value == null || !peers.length) continue;
+    let worst = 0;
+    const sources = [k, ...peers].map((p) => ({ id: p.id, label: p.label, value: p.value, period: p.period, dataset: p.datasetLabel }));
+    const comparaisons = peers.map((p) => {
+      const common = (k.series || []).map((x) => x.period).filter((per) => (p.series || []).some((y) => y.period === per)).sort().pop();
+      const a = common ? k.series.find((x) => x.period === common).value : k.value;
+      const b = common ? p.series.find((x) => x.period === common).value : p.value;
+      const ecart = Math.max(Math.abs(a), Math.abs(b)) ? Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b)) : 0;
+      worst = Math.max(worst, ecart);
+      return { id: p.id, periode: common || null, a, b, ecart };
+    });
+    k.multi = { n: peers.length + 1, ecart: worst, niveau: worst <= 0.02 ? 'coherent' : worst <= 0.2 ? 'ecart' : 'incoherent', sources, comparaisons };
+  }
 
   const byStatut = { brouillon: 0, valide: 0, abandonne: 0 };
   indicators.forEach((i) => { byStatut[i.statut || 'brouillon']++; });
@@ -311,7 +346,7 @@ function matchOne(k, fiche) {
   if (fiche.niveau === 'prospective') why.push('valeur actuelle : base de la projection, pas la projection elle-même');
   else if (fiche.niveau === 'evaluation' && !/^(densite|taux|part|indice|indicateur|rapport|attractivite|respect|accidents|nombre de|nb d emplois)/.test(t)) why.push('valeur de contexte : l’évaluation demande une analyse');
   // effectifs et comptes des associations : déclarations partielles (seules certaines associations les renseignent)
-  if (k.declaratif) return { id: k.id, fiabilite: why.length ? 'approchee' : 'partielle', raison: [...why, 'données déclaratives, connues pour une partie des associations seulement'].join(' ; ') };
+  if (k.declaratif) return { id: k.id, fiabilite: why.length ? 'approchee' : 'partielle', raison: [...why, k.partielRaison || 'données déclaratives, connues pour une partie des associations seulement'].join(' ; ') };
   return { id: k.id, fiabilite: why.length ? 'approchee' : 'fiable', raison: why.join(' ; ') || null };
 }
 

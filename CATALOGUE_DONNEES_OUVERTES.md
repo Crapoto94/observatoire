@@ -84,11 +84,12 @@ Le jeu d'équipements sportifs retenu reste [recensement-des-equipements-sportif
 | Accidents corporels (BAAC) | [data.gouv.fr](https://www.data.gouv.fr/datasets/53698f4ca3a729239d2036df/), API tabulaire | commune | 90 accidents en 2024 (120 en 2019) |
 | Associations et ESS | [API Recherche d'entreprises](https://recherche-entreprises.api.gouv.fr/docs/) | commune | 1 790 associations, 1 768 structures ESS |
 
-### Source à accès habilité, non publique (1 jeu)
+### Sources à accès habilité, non publiques (2 jeux)
 
 | Jeu | Source et accès | Niveaux | Ce qui est stocké |
 |---|---|---|---|
-| Vie associative : adhérents, bénévoles, salariés, comptes | [API Entreprise (DINUM), catalogue DJEPVA](https://entreprise.api.gouv.fr/catalogue/djepva/associations) — Le Compte Asso, RNA, Sirene ; **clé API délivrée à la Ville, source fermée** | communes dont le siège de l'association est dans le périmètre (Ivry-sur-Seine) | agrégats communaux par objet social : associations actives, ressource humaines déclarées (adhérents, bénévoles, salariés, volontaires), comptes (subventions perçues, dons, produits, charges), agréments, licenciés des fédérations |
+| Vie associative : adhérents, bénévoles, salariés, comptes | [API Entreprise (DINUM), catalogue DJEPVA](https://entreprise.api.gouv.fr/catalogue/djepva/associations) — Le Compte Asso, RNA, Sirene ; **clé API délivrée à la Ville, source fermée** | communes dont le siège de l'association est dans le périmètre (Ivry-sur-Seine) | agrégats communaux par objet social et champ d'action : associations actives, ressources humaines déclarées du siège (adhérents, bénévoles, salariés, volontaires), comptes (subventions perçues, dons, produits, charges), agréments, affiliations, créations par année ; têtes de réseau nationales exclues des totaux |
+| Subventions publiques aux associations | [API Entreprise (DINUM), Data Subvention](https://entreprise.api.gouv.fr/catalogue/data_subvention/subventions) — État (Chorus, Osiris dont ANS, Dauphin politique de la ville, Fonjep) et collectivités publiant au format SCDL ; **clé API délivrée à la Ville, source fermée** | associations dont le siège est dans la commune (Ivry-sur-Seine), têtes de réseau exclues | séries annuelles depuis 2015 par financeur (État, Région, Département, commune, EPT…) et politique publique : montants demandés, accordés, versés ; demandes instruites et accordées ; associations soutenues |
 
 Ces valeurs sont signalées par un badge « Non public » dans l'application (catalogue, liste des jeux, valeur d'Ivry d'un indicateur, cartes de KPI) : elles ne doivent pas être diffusées telles quelles. Deux limites : les ressources humaines et les comptes ne sont connus que pour les associations ayant déclaré via Le Compte Asso (ce sont des minima), et aucun engin ne renvoie de données nominatives — seuls des agrégats par objet social sont conservés.
 

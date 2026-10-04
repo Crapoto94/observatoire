@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
-import { NatureBadge, PriveBadge, SourceBadge } from '../badges';
+import { MultiBadge, NatureBadge, PriveBadge, SourceBadge } from '../badges';
+import { KpiVal, evolutionOf, fiabOf, fmtVal, isEvolution } from '../fiabilite';
 import { CARTOS, Carto, Couche, Dataset, FIABILITES, FAISABILITES, HistoryEntry, Indicator, NIVEAUX, NIVEAU_FILL, Niveau, ORIGINES, Origine, STATUTS, Statut } from '../types';
 
 type SortKey = 'theme' | 'niveau' | 'libelle' | 'priorite' | 'source';
@@ -37,30 +38,9 @@ export function StatutPill({ s }: { s: Statut | null }) {
   return <span className="chip" style={{ background: st.color, color: '#fff' }}>{st.label}</span>;
 }
 
-interface KpiVal { prive?: boolean; id: string; label: string; unit: string; value: number | null; period: string | null; prev: { period: string; value: number } | null; dep: { value: number } | null; dataset: string }
-const fmtVal = (v: number) => v.toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2 }).replace(/\u202f/g, '\u00a0');
 
-// fiabilité effective d'une fiche (une évolution sans période précédente n'a pas de valeur exploitable)
-function fiabOf(i: Indicator, kpis: Map<string, KpiVal> | null): string {
-  const m = i.kpi_matches?.find((x) => kpis?.get(x.id)?.value != null) ?? i.kpi_matches?.[0];
-  if (!m) return i.couche_id ? 'live' : 'aucune';
-  const k = kpis?.get(m.id);
-  if (k && isEvolution(i.libelle) && !evolutionOf(k)) return 'approchee';
-  return m.fiabilite;
-}
 
 // Valeur d'Ivry : KPI calculé correspondant à la fiche (lien vers le tableau de bord), sinon couche en direct, sinon raison de l'absence
-// fiches « évolution… » : la valeur affichée est la variation par rapport à la période précédente (en points pour un
-// pourcentage, en % sinon) ; le niveau n'apparaît qu'en complément. Avec une seule période, l'évolution n'est pas calculable.
-const isEvolution = (libelle: string) => /^[ée]volution/i.test(libelle.trim());
-function evolutionOf(k: KpiVal) {
-  if (!k.prev || k.value == null) return null;
-  const d = k.value - k.prev.value;
-  if (k.unit === '%') return { d, txt: `${d >= 0 ? '+' : '−'}${fmtVal(Math.abs(d))}`, unit: 'pt' };
-  if (!k.prev.value) return null;
-  const pct = (d / Math.abs(k.prev.value)) * 100;
-  return { d, txt: `${pct >= 0 ? '+' : '−'}${fmtVal(Math.abs(pct))}`, unit: '%' };
-}
 
 // Valeur d'Ivry : KPI calculé correspondant à la fiche (lien vers le tableau de bord), sinon couche en direct, sinon raison de l'absence
 function ValeurCell({ i, kpis }: { i: Indicator; kpis: Map<string, KpiVal> | null }) {
@@ -69,7 +49,7 @@ function ValeurCell({ i, kpis }: { i: Indicator; kpis: Map<string, KpiVal> | nul
   const k = m ? kpis?.get(m.id) : undefined;
   if (k && m) {
     const level = `${fmtVal(k.value!)}${k.unit ? ' ' + k.unit : ''}`;
-    const badge = m.fiabilite !== 'fiable' && <div><span className={`fiab-badge fiab-${m.fiabilite}`} title={m.raison || ''}>{m.fiabilite === 'approchee' ? '≈ approchée' : '◐ partielle'}</span></div>;
+    const badge = <>{m.fiabilite !== 'fiable' && <div><span className={`fiab-badge fiab-${m.fiabilite}`} title={m.raison || ''}>{m.fiabilite === 'approchee' ? '≈ approchée' : '◐ partielle'}</span></div>}{k.multi && <div><MultiBadge m={k.multi} /></div>}</>;
     const title = `${k.label}${k.dep ? ` · Val-de-Marne : ${fmtVal(k.dep.value)}${k.unit ? ' ' + k.unit : ''}` : ''} · voir l’indicateur calculé`;
     if (isEvolution(i.libelle)) {
       const e = evolutionOf(k);
