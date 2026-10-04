@@ -18,8 +18,8 @@ const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,
 const KPIS = [
   { id: 'population', label: 'Population', theme: 'Démographie', dataset: 'rp_serie_historique', where: { RP_MEASURE: 'POP', OCS: '_T' }, dir: 'none', ind: /population/ },
   { id: 'naissances', perK: true, label: 'Naissances domiciliées', theme: 'Démographie', dataset: 'etat_civil_nais', where: { EC_MEASURE: 'LVB' }, dir: 'none', ind: /naissance/ },
-  { id: 'niveau_vie', label: 'Niveau de vie médian', theme: 'Cohésion sociale', dataset: 'filosofi', where: { FILOSOFI_MEASURE: 'MED_SL' }, unit: '€', cmp: true, dir: 'up', ind: /niveau de vie|revenu median/ },
-  { id: 'pauvrete', label: 'Taux de pauvreté', theme: 'Cohésion sociale', dataset: 'filosofi', where: { FILOSOFI_MEASURE: 'PR_MD60' }, unit: '%', cmp: true, dir: 'down', ind: /pauvrete/ },
+  { id: 'niveau_vie', label: 'Niveau de vie médian', theme: 'Cohésion sociale', dataset: 'filosofi', datasets: ['filosofi', 'filosofi_fichier'], where: { FILOSOFI_MEASURE: 'MED_SL' }, unit: '€', cmp: true, dir: 'up', ind: /niveau de vie|revenu median/ },
+  { id: 'pauvrete', label: 'Taux de pauvreté', theme: 'Cohésion sociale', dataset: 'filosofi', datasets: ['filosofi', 'filosofi_fichier'], where: { FILOSOFI_MEASURE: 'PR_MD60' }, unit: '%', cmp: true, dir: 'down', ind: /pauvrete/ },
   { id: 'rsa', perK: true, label: 'Foyers au RSA', theme: 'Cohésion sociale', dataset: 'caf_rsa', where: { MESURE: 'FOYERS_RSA', TYPE_RSA: '_T' }, dir: 'down', ind: /rsa|minima sociaux/ },
   { id: 'chomage', label: 'Taux de chômage (15-64 ans)', theme: 'Emploi', dataset: 'rp_activite_chomage', where: { SEX: '_T', EDUC: '_T', AGE: 'Y15T64', RP_MEASURE: 'POP' }, ratio: { dim: 'EMPSTA_ENQ', num: ['2'], den: ['1T2'] }, unit: '%', cmp: true, dir: 'down', ind: /chomage|demandeurs d emploi/ },
   { id: 'defm', label: "Demandeurs d'emploi inscrits (catégories A, B, C)", theme: 'Emploi', dataset: 'ft_defm', where: { MESURE: 'DEFM_ABC', SEXE: '_T', AGE: '_T' }, dir: 'down', ind: /demandeurs d emploi|france travail/ },
@@ -182,6 +182,9 @@ function compute() {
     if (!cache.has(k)) cache.set(k, all('SELECT period, dims, value FROM data_rows WHERE dataset_id = ? AND geo = ?', ds, geo).map((r) => ({ ...r, dims: JSON.parse(r.dims || '{}') })));
     return cache.get(k);
   };
+  // Un KPI peut s'appuyer sur plusieurs jeux (ex. Filosofi : API Melodi + fichiers INSEE) pour reconstituer une série.
+  const datasetsOf = (spec) => spec.datasets || [spec.dataset];
+  const rowsOfAll = (spec, geo) => datasetsOf(spec).flatMap((ds) => rowsOf(ds, geo));
 
   const carto = require('./cartographie'); // chargé ici pour éviter la dépendance circulaire au démarrage
   const pops = require('./importer').populationSeries();
@@ -190,7 +193,7 @@ function compute() {
     const res = {};
     for (const [geo, key] of geos) {
       if (key !== 'ref' && !spec.cmp) continue;
-      let s = seriesOf(rowsOf(spec.dataset, geo), spec);
+      let s = seriesOf(rowsOfAll(spec, geo), spec);
       // jeux communaux : le Val-de-Marne et l'Île-de-France sont recalculés à partir des communes (effectifs ou ratios de sommes)
       const partial = spec.partial === true || (Array.isArray(spec.partial) && spec.partial.includes(key));
       if (!s.length && !partial && spec.fromCommunes && (key === 'dep' || key === 'reg')) {

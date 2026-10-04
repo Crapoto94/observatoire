@@ -164,7 +164,15 @@ export const VIEWS: Record<string, View> = {
   },
   filosofi: {
     keyfigures: true,
-    note: 'Les valeurs non diffusées (statut O : valeur manquante, secret statistique) sont affichées « n.d. ». Millésimes importés : 2020, 2021 et 2023 (l’API Melodi de l’INSEE ne diffuse que 2021 et 2023, le millésime 2020 est téléchargé depuis insee.fr). Le millésime 2023 ne diffuse, pour Ivry, que le niveau de vie médian et le taux de pauvreté.',
+    note: 'Millésimes 2021 et 2023, diffusés par l’API Melodi de l’INSEE. Les valeurs non diffusées (statut O : valeur manquante, secret statistique) sont affichées « n.d. ». Le millésime 2023 ne diffuse, pour Ivry, que le niveau de vie médian et le taux de pauvreté.',
+    presets: [
+      { label: 'Niveau de vie médian', x: '@GEO', pins: { FILOSOFI_MEASURE: 'MED_SL' } },
+      { label: 'Taux de pauvreté (seuil à 60 %)', x: '@GEO', pins: { FILOSOFI_MEASURE: 'PR_MD60' } },
+    ],
+  },
+  filosofi_fichier: {
+    keyfigures: true,
+    note: 'Millésime 2020, téléchargé depuis insee.fr (base « structure et distribution des revenus ») : il complète la série de l’API Melodi (2021, 2023) pour les évolutions. Mêmes mesures que le jeu Filosofi de l’API.',
     presets: [
       { label: 'Niveau de vie médian', x: '@GEO', pins: { FILOSOFI_MEASURE: 'MED_SL' } },
       { label: 'Taux de pauvreté (seuil à 60 %)', x: '@GEO', pins: { FILOSOFI_MEASURE: 'PR_MD60' } },

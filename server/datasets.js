@@ -68,19 +68,31 @@ const MELODI_DATASETS = [
     'Recensement : population de 15 ans ou plus non scolarisée selon le diplôme le plus élevé (sans diplôme, CAP-BEP, bac, supérieur), 2012, 2017, 2023.',
     ['emploi', 'cohesion'], [{ theme: 'cohesion', re: /developpement social/ }, { theme: 'emploi', re: /profils des actifs/ }]),
   {
+    // Millésimes récents diffusés par l'API Melodi de l'INSEE.
     id: 'filosofi', provider: 'filosofi',
+    config: { jeux: ['DS_FILOSOFI_CC', 'DS_FILOSOFI_CC_2021'] },
+    label: 'Filosofi : niveau de vie et pauvreté (API Melodi)',
+    description: 'Revenus localisés sociaux et fiscaux : niveau de vie médian, déciles, indice de Gini, taux de pauvreté, structure du revenu disponible. Millésimes 2023 et 2021, diffusés par l\'API Melodi de l\'INSEE (jeux DS_FILOSOFI_CC et DS_FILOSOFI_CC_2021).',
+    themes: ['emploi', 'cohesion'],
+    doc_url: `${MELODI}/catalog/DS_FILOSOFI_CC`,
+    link: [
+      { theme: 'emploi', re: /revenu median|bas revenus|ecart de revenu/ },
+      { theme: 'cohesion', re: /taux de pauvrete|evolution du taux de pauvrete/ },
+    ],
+  },
+  {
+    // Millésimes antérieurs à 2021 : plus diffusés par l'API, seulement en fichiers INSEE.
+    id: 'filosofi_fichier', provider: 'filosofi',
     config: {
-      // 2023 (DS_FILOSOFI_CC) et 2021 (DS_FILOSOFI_CC_2021) : API Melodi.
-      jeux: ['DS_FILOSOFI_CC', 'DS_FILOSOFI_CC_2021'],
-      // Millésimes antérieurs : plus diffusés par l'API, téléchargés au format large puis ramenés au format Melodi.
       fichiers: [
         { year: 2020, url: 'https://www.insee.fr/fr/statistiques/fichier/6692220/indic-struct-distrib-revenu-2020-COMMUNES_csv.zip' },
       ],
+      labelsDs: 'DS_FILOSOFI_CC', // libellés des mesures empruntés au jeu Melodi
     },
-    label: 'Filosofi : niveau de vie et pauvreté',
-    description: 'Revenus localisés sociaux et fiscaux : niveau de vie médian, déciles, indice de Gini, taux de pauvreté, structure du revenu disponible. Millésimes 2023 et 2021 (API Melodi de l\'INSEE) et 2020 (base « structure et distribution des revenus », téléchargée depuis insee.fr) : une même série par commune.',
+    label: 'Filosofi : niveau de vie et pauvreté (fichiers INSEE)',
+    description: 'Millésimes antérieurs à 2021, plus diffusés par l\'API : base « structure et distribution des revenus » téléchargée sur insee.fr (millésime 2020), ramenée au format Melodi (mêmes mesures que le jeu Filosofi de l\'API).',
     themes: ['emploi', 'cohesion'],
-    doc_url: `${MELODI}/catalog/DS_FILOSOFI_CC`,
+    doc_url: 'https://www.insee.fr/fr/statistiques/6692220',
     link: [
       { theme: 'emploi', re: /revenu median|bas revenus|ecart de revenu/ },
       { theme: 'cohesion', re: /taux de pauvrete|evolution du taux de pauvrete/ },

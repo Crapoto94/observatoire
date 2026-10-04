@@ -300,14 +300,22 @@ Règles fonctionnelles associées :
 - Le badge **« Non public »** accompagne le jeu dans le catalogue, la liste des jeux importés, la valeur d'Ivry d'un indicateur et les cartes de KPI.
 - Une **formule d'indicateur** qui s'appuie sur ce jeu renvoie vers la source habilitée et mentionne que la donnée n'est pas publique.
 
-### 11.3 Millésimes historiques d'un même jeu
+### 11.3 Millésimes historiques et jeux à sources multiples
 
-Un jeu peut réunir **plusieurs millésimes** issus de sources différentes dès lors qu'ils produisent les **mêmes mesures**. C'est le cas de **Filosofi** (niveau de vie et pauvreté) : l'API Melodi de l'INSEE ne diffuse que 2021 et 2023 ; le millésime **2020** est téléchargé depuis insee.fr puis ramené au même format. L'ensemble se présente comme **une seule série par commune** (mêmes mesures, périodes empilées), ce qui permet de calculer des évolutions.
+Un même indicateur peut s'appuyer sur **plusieurs millésimes** issus de sources différentes dès lors qu'ils produisent les **mêmes mesures**. C'est le cas de **Filosofi** (niveau de vie et pauvreté), séparé en deux jeux pour que chacun ait son propre bouton de réimport :
+
+| Jeu | Source | Millésimes |
+|---|---|---|
+| `filosofi` | API Melodi (INSEE) | 2021, 2023 |
+| `filosofi_fichier` | Fichiers INSEE téléchargés (base « structure et distribution des revenus ») | 2020 |
+
+Le calcul des KPI (niveau de vie médian, taux de pauvreté) **lit les deux jeux** pour reconstituer une série unique 2020 → 2023 et calculer les évolutions.
 
 Règles associées :
 
 - Une valeur non diffusée (secret statistique) n'est pas importée : les périodes réellement disponibles peuvent varier selon les mesures et les communes.
-- Un jeu multi-millésimes reste interchangeable avec un jeu mono-millésime : les KPI (niveau de vie médian, taux de pauvreté) sélectionnent la mesure, pas le millésime.
+- Un KPI peut référencer **plusieurs jeux** (`datasets`) en plus de son jeu principal (`dataset`), qui sert aux rattachements et à l'étiquette affichée.
+- La vue « Liste des jeux de données » du **Catalogue** offre une **recherche** (jeu, champ, modalité, indicateur) et, pour les administrateurs, un bouton **« Réimporter »** sur chaque jeu importé (relance pour toutes les communes d'Île-de-France).
 
 ## 12. Instructions destinées à Google Stitch
 

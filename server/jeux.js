@@ -30,7 +30,7 @@ const SOURCES = {
 };
 
 const PRODUCER = {
-  dvf: 'dgfip', finances: 'dgfip', ircom: 'dgfip',
+  dvf: 'dgfip', finances: 'dgfip', ircom: 'dgfip', filosofi: 'insee', filosofi_fichier: 'insee',
   sru: 'logement', loyers: 'logement', sitadel: 'logement', rpls: 'logement',
   artificialisation: 'cerema', lovac: 'cerema', dpe: 'ademe',
   mos: 'ipr', multiexposition: 'ipr', nuisances: 'ipr', icu: 'ipr',
@@ -99,7 +99,7 @@ function importedDatasets() {
       },
       fields, nb_rows: d.nb_rows || 0, last_import: d.last_import, etat: d.nb_rows ? 'ok' : 'vide',
       indicators: links.filter((l) => l.dataset_id === d.id).map(({ dataset_id, ...i }) => i),
-      kpis: KPIS.filter((k) => k.dataset === d.id).map((k) => ({ id: k.id, label: k.label })),
+      kpis: KPIS.filter((k) => k.dataset === d.id || (k.datasets || []).includes(d.id)).map((k) => ({ id: k.id, label: k.label })),
       link: `/donnees?ds=${d.id}`,
     };
   });

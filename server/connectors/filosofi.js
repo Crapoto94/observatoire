@@ -85,13 +85,19 @@ async function loadFichier(fichier, parCommune) {
   }
 }
 
-let cache = null; // { at, parCommune }
+const jeuxOf = (config) => config.jeux || (config.ds ? [config.ds] : []);
+const aFichiers = (config) => (config.fichiers || []).length > 0;
+
+// Cache par liste de fichiers (le jeu API et le jeu « fichiers » sont distincts dans un même processus).
+const caches = new Map(); // clé -> { at, parCommune }
 
 async function load(config) {
-  if (cache && Date.now() - cache.at < 60 * 60000) return cache.parCommune;
+  const cle = (config.fichiers || []).map((f) => f.url).join('|');
+  const hit = caches.get(cle);
+  if (hit && Date.now() - hit.at < 60 * 60000) return hit.parCommune;
   const parCommune = new Map();
   for (const fichier of config.fichiers || []) await loadFichier(fichier, parCommune);
-  cache = { at: Date.now(), parCommune };
+  caches.set(cle, { at: Date.now(), parCommune });
   return parCommune;
 }
 
@@ -100,21 +106,21 @@ const melodiRows = async (jeu, geo) => melodi.fetchGeo({ ds: jeu }, geoId(geo));
 async function fetchGeo(config, geo) {
   if ((geo.level || 'COM') !== 'COM') return null;
   const rows = [];
-  for (const jeu of config.jeux || [config.ds]) rows.push(...(await melodiRows(jeu, geo)));
-  rows.push(...((await load(config)).get(geo.code) || []));
+  for (const jeu of jeuxOf(config)) rows.push(...(await melodiRows(jeu, geo)));
+  if (aFichiers(config)) rows.push(...((await load(config)).get(geo.code) || []));
   return rows;
 }
 
 async function fetchMany(config, geos, log) {
   const melodiMap = new Map();
-  for (const jeu of config.jeux || [config.ds]) {
+  for (const jeu of jeuxOf(config)) {
     const m = await bulk.melodiMany({ ds: jeu }, geos, geoId);
     for (const [code, rows] of m) (melodiMap.get(code) || melodiMap.set(code, []).get(code)).push(...rows);
   }
-  const parCommune = await load(config);
-  if (log) {
+  const parCommune = aFichiers(config) ? await load(config) : new Map();
+  if (log && aFichiers(config)) {
     const annees = [...new Set([...parCommune.values()].flat().map((r) => r.period))].sort();
-    log(`millésimes antérieurs importés par fichier : ${annees.join(', ') || 'aucun'}`);
+    log(`millésimes importés par fichier : ${annees.join(', ') || 'aucun'}`);
   }
   return new Map(geos.map((g) => [g.code, [...(melodiMap.get(g.code) || []), ...(parCommune.get(g.code) || [])]]));
 }

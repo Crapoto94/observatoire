@@ -152,7 +152,7 @@ async function ensureLabels(d, log) {
   try {
     const cfg = JSON.parse(d.config || '{}');
     if ((d.provider === 'melodi' || d.provider === 'filosofi') && !d.labels) {
-      run('UPDATE datasets SET labels = ? WHERE id = ?', JSON.stringify(await melodi.fetchLabels(cfg.ds || (cfg.jeux || [])[0])), d.id);
+      run('UPDATE datasets SET labels = ? WHERE id = ?', JSON.stringify(await melodi.fetchLabels(cfg.ds || (cfg.jeux || [])[0] || cfg.labelsDs)), d.id);
     } else if (d.provider !== 'melodi' && cfg.labels) {
       run('UPDATE datasets SET labels = ? WHERE id = ?', JSON.stringify(cfg.labels), d.id);
     }

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
+import { isAdmin, useAuth } from '../auth';
 import { PriveBadge, SourceBadge } from '../badges';
 import DocSource from './DocSource';
 
@@ -39,10 +40,30 @@ export default function JeuxDonnees({ embedded = false }: { embedded?: boolean }
   const [mode, setMode] = useState(params.get('mode') || '');
   const [open, setOpen] = useState<string | null>(params.get('jeu'));
   const [live, setLive] = useState<Record<string, Field[] | string>>({});
+  const [busy, setBusy] = useState<Record<string, string>>({});
+  const { user } = useAuth();
+  const admin = isAdmin(user);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api<{ items: Jeu[]; sources: Source[] }>('/jeux', { timeoutMs: 30000 }).then((r) => { setItems(r.items); setSources(r.sources); }).catch((e) => setError(e.message));
   }, []);
+  useEffect(() => { load(); }, [load]);
+
+  // Réimport d'un jeu pour toutes les communes d'Île-de-France (réservé aux administrateurs), puis suivi du job.
+  const reimport = async (j: Jeu) => {
+    if (!window.confirm(`Réimporter « ${j.label} » pour toutes les communes d'Île-de-France ?\nL'opération peut durer plusieurs minutes.`)) return;
+    try {
+      const job = await api<{ id: number }>(`/datasets/${j.id}/import`, { body: {} });
+      setBusy((m) => ({ ...m, [j.id]: 'en cours' }));
+      const t = window.setInterval(async () => {
+        try {
+          const s = await api<{ status: string }>(`/jobs/${job.id}`);
+          setBusy((m) => ({ ...m, [j.id]: s.status }));
+          if (s.status !== 'en cours') { window.clearInterval(t); load(); }
+        } catch { window.clearInterval(t); }
+      }, 2000);
+    } catch (e) { setBusy((m) => ({ ...m, [j.id]: (e as Error).message })); }
+  };
   useEffect(() => {
     const p = new URLSearchParams(params); // conserve les autres paramètres (vue du catalogue)
     for (const [k, v] of [['source', src], ['mode', mode], ['jeu', open]] as const) { if (v) p.set(k, v); else p.delete(k); }
@@ -130,7 +151,15 @@ export default function JeuxDonnees({ embedded = false }: { embedded?: boolean }
                       {j.mode === 'import' && <><dt>Volume</dt><dd>{(j.nb_rows || 0).toLocaleString('fr-FR')} observations · {fmtDate(j.last_import ?? null)}</dd></>}
                       {j.themes.length > 0 && <><dt>Thèmes</dt><dd>{j.themes.join(', ')}</dd></>}
                     </dl>
-                    <div className="jeu-actions"><Link className="btn secondary" to={j.link}>{j.mode === 'live' ? 'Voir sur la carte' : 'Explorer les données'} →</Link></div>
+                    <div className="jeu-actions">
+                      <Link className="btn secondary" to={j.link}>{j.mode === 'live' ? 'Voir sur la carte' : 'Explorer les données'} →</Link>
+                      {j.mode === 'import' && admin && (
+                        <button className="btn secondary" disabled={busy[j.id] === 'en cours'} onClick={() => reimport(j)} title="Relancer l'import de ce jeu pour toutes les communes d'Île-de-France">
+                          {busy[j.id] === 'en cours' ? 'Import en cours…' : '↻ Réimporter'}
+                        </button>
+                      )}
+                      {busy[j.id] && busy[j.id] !== 'en cours' && <span className="muted small">import {busy[j.id]}</span>}
+                    </div>
                   </div>
 
                   <h3 id={`doc-${j.id}`}>Documentation de la source</h3>
