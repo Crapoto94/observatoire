@@ -193,7 +193,7 @@ Le **manifest fonctionnel** (`docs/manifest.md`) est servi par le serveur à l'U
 
 - **Sélecteur de fournisseur / modèle** : Choix de la source d'IA — **Groq** (API externe) ou **IA locale (API Ville / APM)**. Les modèles hébergés par la Ville sont proposés dans une **liste déroulante** (modèles locaux et RGPD++ notamment). Pour Groq, le modèle est unique et configuré côté serveur.
 - **Sélecteur de « niveau de pensée »** : Choix du niveau de détail de la réponse — **Sommaire**, **Normal**, **Approfondi**. Le niveau ajuste directement la consigne envoyée au modèle (réponse plus ou moins développée), sans reformatage a posteriori.
-- **Fil de conversation** : Affichage des questions de l'utilisateur et des réponses de l'assistant.
+- **Fil de conversation personnel** : Affichage des questions de l'utilisateur et des réponses de l'assistant. Le fil est propre à chaque compte : il est conservé dans le navigateur sous l'identifiant de l'utilisateur connecté et n'est jamais repris par un autre compte sur le même poste ; sans connexion, il ne dure que le temps de l'onglet.
 - **Réponse progressive** : La réponse de l'assistant s'affiche **au fur et à mesure de sa génération** (texte partiel, compteur de jetons reçus, curseur de génération) plutôt qu'en un seul bloc.
 - **Sources associées** : Sous chaque réponse, liens fonctionnels vers les jeux de données et KPI consultés pour produire la réponse.
 - **Détail des données consultées** : Liste des « outils » (extraits de données) utilisés par l'assistant, consultable/dépliable.
@@ -205,6 +205,7 @@ Le **manifest fonctionnel** (`docs/manifest.md`) est servi par le serveur à l'U
 - **Chaque demande est indépendante** : l'assistant ne conserve pas le fil ; il repart des seules données de l'observatoire pour chaque question.
 - **Réponses sourcées** : l'assistant n'utilise que les données de l'observatoire (indicateurs de la conception, jeux importés, KPI, classements) et cite les jeux/territoires/périodes.
 - **Génération asynchrone** : la génération côté IA locale (API Ville) est suivie en tâche de fond ; la réponse s'affiche progressivement sans bloquer l'interface.
+- **Confidentialité des interrogations** : une réponse en cours de génération n'est lisible que par l'auteur de la question ; un utilisateur ne consulte et ne note que ses propres demandes ; seul l'administrateur accède au journal complet (suivi de la qualité).
 - **Traçabilité** : chaque demande (question, réponse, modèle, sources, durée a été journalisée) est consultable dans **Paramètres → IA**, avec sa note et son commentaire.
 - **Recherche de jeux associée** : la recherche comprend les synonymes et propose les jeux proches en signalant clairement les différences. Une question sur les pistes cyclables peut ainsi proposer les données de stationnement vélo OpenStreetMap et leur couche cartographique.
 - **Adaptation au fournisseur** : le contexte et les consignes sont optimisés séparément pour l'IA locale (NVIDIA DGX Spark, contexte plus riche en une passe) et Groq (résultats ciblés et échanges compacts).

@@ -344,9 +344,9 @@ function pruneJobs() {
 
 /** Démarre une conversation en arrière-plan : renvoie immédiatement un jobId. Le front suit
  *  l'avancement via getChatJob(jobId) (partialText, tokensReceived, status, answer, …). */
-function startChat(history, options) {
+function startChat(history, options, userId = null) {
   const jobId = `ia_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const job = { id: jobId, status: 'starting', progress: 0, partialText: '', tokensReceived: 0, createdAt: Date.now() };
+  const job = { id: jobId, userId, status: 'starting', progress: 0, partialText: '', tokensReceived: 0, createdAt: Date.now() }; // userId : seul l'auteur suit sa réponse
   jobs.set(jobId, job);
   pruneJobs();
   chat(history, { ...(options || {}), job })
@@ -390,10 +390,11 @@ function listLogs({ limit = 50, offset = 0, user, rating, low } = {}) {
 
 const safeParse = (s, d) => { try { return JSON.parse(s || ''); } catch { return d; } };
 
-function rateLog(id, rating, comment) {
+function rateLog(id, rating, comment, owner = null) {
   const r = Number(rating);
   if (!Number.isInteger(r) || r < 1 || r > 4) return { error: 'La note doit être comprise entre 1 et 4 étoiles', status: 400 };
-  const row = require('./db').get('SELECT id FROM ia_logs WHERE id = ?', id);
+  const row = require('./db').get('SELECT id, username FROM ia_logs WHERE id = ?', id);
+  if (row && owner && row.username !== owner) return { error: 'Seul l’auteur de la demande peut la noter', status: 403 }; // owner : null pour l'administrateur
   if (!row) return { error: 'Demande introuvable', status: 404 };
   require('./db').run('UPDATE ia_logs SET rating = ?, rating_comment = ?, rated_at = CURRENT_TIMESTAMP WHERE id = ?', r, preview(comment, 1000) || null, id);
   return { ok: true };

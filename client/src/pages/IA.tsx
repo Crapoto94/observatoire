@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { marked } from 'marked';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
+import { useAuth } from '../auth';
 
 interface Consulted { outil: string; arguments: Record<string, unknown> }
 interface Source { type: 'dataset' | 'kpi' | 'map'; id: string; label: string; url: string }
@@ -47,10 +48,29 @@ const TOOL_LABEL: Record<string, string> = {
 
 const POLL_MS = 1500;
 
+// Fil de conversation personnel : rangé sous une clé propre à l'utilisateur connecté (jamais partagé entre comptes
+// sur un même poste) ; sans connexion, il ne dure que le temps de l'onglet. L'ancienne clé commune est supprimée.
+const chatKey = (userId: number | null) => (userId == null ? null : `ia-chat:${userId}`);
+function loadChat(userId: number | null): Msg[] {
+  try {
+    localStorage.removeItem('ia-chat');
+    const k = chatKey(userId);
+    return JSON.parse((k ? localStorage.getItem(k) : sessionStorage.getItem('ia-chat-anonyme')) || '[]');
+  } catch { return []; }
+}
+function saveChat(userId: number | null, msgs: Msg[]) {
+  try {
+    const k = chatKey(userId), v = JSON.stringify(msgs.slice(-30));
+    if (k) localStorage.setItem(k, v); else sessionStorage.setItem('ia-chat-anonyme', v);
+  } catch { /* stockage indisponible */ }
+}
+
 // Assistant IA : questions en langage naturel, réponses fondées uniquement sur les données de l'observatoire.
 // Le fournisseur et le modèle se choisissent ici ; la configuration (clé, URL) est dans le .env du serveur.
 // La réponse s'affiche progressivement (job + polling) puis l'utilisateur la note de 1 à 4 étoiles.
 export default function IA() {
+  const { user, ready: authReady } = useAuth();
+  const userId = user?.id ?? null;
   const [status, setStatus] = useState<Status | null>(null);
   const [provider, setProvider] = useState<Provider | null>(() => {
     try { const p = localStorage.getItem('ia-provider'); return p === 'groq' || p === 'local' ? p : null; } catch { return null; }
@@ -60,9 +80,8 @@ export default function IA() {
   const [level, setLevel] = useState<Level>(() => {
     try { const l = localStorage.getItem('ia-level'); return l === 'sommaire' || l === 'detaille' ? l : 'normal'; } catch { return 'normal'; }
   });
-  const [msgs, setMsgs] = useState<Msg[]>(() => {
-    try { return JSON.parse(localStorage.getItem('ia-chat') || '[]'); } catch { return []; }
-  });
+  const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [owner, setOwner] = useState<number | null | undefined>(undefined); // utilisateur dont le fil est affiché
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const end = useRef<HTMLDivElement>(null);
@@ -70,10 +89,17 @@ export default function IA() {
   useEffect(() => {
     api<Status>('/ia/status').then((s) => { setStatus(s); setProvider((p) => p ?? s.selected); }).catch(() => undefined);
   }, []);
+  // changement d'utilisateur (connexion, déconnexion) : on recharge son propre fil, jamais celui du précédent
   useEffect(() => {
-    try { localStorage.setItem('ia-chat', JSON.stringify(msgs.slice(-30))); } catch { /* stockage indisponible */ }
+    if (!authReady) return;
+    setMsgs(loadChat(userId));
+    setOwner(userId);
+  }, [authReady, userId]);
+  useEffect(() => {
+    if (owner === undefined || owner !== userId) return;
+    saveChat(owner, msgs);
     end.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [msgs]);
+  }, [msgs, owner, userId]);
 
   // Modèles de la source active : l'« IA locale » (API Ville) en propose plusieurs, Groq un seul.
   useEffect(() => {

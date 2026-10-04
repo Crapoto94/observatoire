@@ -208,13 +208,15 @@ app.post('/api/ia/chat/start', (req, res) => {
   if (!messages.length || messages[messages.length - 1].role !== 'user') return res.status(400).json({ error: 'question manquante' });
   req._iaQuestion = String(messages[messages.length - 1].content || '');
   req._iaT0 = Date.now();
-  const jobId = ia.startChat(messages, { provider: req.body?.provider, model: req.body?.model, level: req.body?.level });
+  const jobId = ia.startChat(messages, { provider: req.body?.provider, model: req.body?.model, level: req.body?.level }, req.user?.id ?? null);
   res.json({ jobId });
 });
 // État d'un job de génération. À l'achèvement, la réponse est journalisée (une seule fois) et le
 // logId est renvoyé pour permettre la notation 1-4 étoiles depuis le fil de conversation.
 app.get('/api/ia/job/:id', (req, res) => {
   const job = ia.getChatJob(req.params.id);
+  // une réponse en cours n'est lisible que par l'auteur de la question
+  if (job && job.userId !== (req.user?.id ?? null)) return res.status(404).json({ status: 'error', error: 'Job introuvable ou expiré' });
   if (!job) return res.status(404).json({ status: 'error', error: 'Job introuvable ou expiré' });
   if (job.status === 'completed' && job.result && job.logId === undefined) {
     job.logId = ia.logChat({
@@ -225,16 +227,18 @@ app.get('/api/ia/job/:id', (req, res) => {
   } else if (job.status === 'error' && job.logId === undefined) {
     job.logId = ia.logChat({ userId: req.user?.id ?? null, username: req.user?.username ?? 'anonyme', provider: req.query.provider || null, question: req.query.question ? String(req.query.question).slice(0, 4000) : '', durationMs: Date.now() - (job.createdAt || Date.now()), status: 'erreur', error: job.error });
   }
-  const { result, ...rest } = job;
+  const { result, userId: _owner, ...rest } = job;
   res.json({ ...rest, ...(result ? { answer: result.answer, consulted: result.consulted, sources: result.sources, provider: result.provider, model: result.model } : {}) });
 });
 // Journal des demandes IA : lecture (données et modèles) et évaluation de la qualité (1-4 étoiles)
 app.get('/api/ia/logs', auth.requireAuth, (req, res) => {
   const q = req.query;
-  res.json(ia.listLogs({ limit: q.limit, offset: q.offset, user: q.user, rating: q.rating, low: q.low === '1' }));
+  // interrogations personnelles : chacun ne voit que les siennes ; l'administrateur garde le journal complet (qualité)
+  const user = req.user?.role === 'admin' ? q.user : req.user.username;
+  res.json(ia.listLogs({ limit: q.limit, offset: q.offset, user, rating: q.rating, low: q.low === '1' }));
 });
 app.put('/api/ia/logs/:id/rating', auth.requireAuth, (req, res) => {
-  const r = ia.rateLog(Number(req.params.id), req.body?.rating, req.body?.comment);
+  const r = ia.rateLog(Number(req.params.id), req.body?.rating, req.body?.comment, req.user?.role === 'admin' ? null : req.user.username);
   r.error ? res.status(r.status || 400).json({ error: r.error }) : res.json(r);
 });
 app.get('/api/autres', (req, res) => { try { res.json(require('./autres').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
