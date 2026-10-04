@@ -1,4 +1,4 @@
-import { Multi, MultiBadge, PriveBadge } from '../badges';
+import { Multi, MultiBadge, PriveBadge, MailleBadge, type Maille } from '../badges';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
@@ -10,7 +10,7 @@ export interface Kpi {
   prive?: boolean; // jeu à accès habilité : valeur non publique
   multi?: Multi; // autres sources du même concept et cohérence
   id: string; label: string; theme: string; unit: string; dir: 'up' | 'down' | 'none'; dataset: string; datasetLabel: string; last_import: string | null;
-  value: number | null; period: string | null; prev: Pt | null; series: Pt[]; ept: Pt | null; dep: Pt | null; reg: Pt | null; age: number | null;
+  value: number | null; period: string | null; prev: Pt | null; series: Pt[]; ept: Pt | null; dep: Pt | null; reg: Pt | null; age: number | null; maille?: Maille | null;
   indicators: { id: number; libelle: string; statut: string; priorite: number | null }[];
   statut: 'valide' | 'brouillon' | 'abandonne' | 'sans_fiche';
   states: { valide: number; brouillon: number; abandonne: number };
@@ -75,7 +75,7 @@ export function Card({ k, focus, onAdd, trend, style }: { k: Kpi; focus: boolean
       ) : (
         <>
           <div className="kpi-main" style={{ justifyContent: align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start' }}>
-            <div className="kpi-val" style={{ fontSize: st.valueSize, fontWeight: st.bold === false ? 400 : 700 }}>{fmt(k.value)}<span className="kpi-unit">{unit}</span></div>
+            <div className="kpi-val" style={{ fontSize: st.valueSize, fontWeight: st.bold === false ? 400 : 700 }}>{fmt(k.value)}<span className="kpi-unit">{unit}</span>{k.maille && <MailleBadge m={k.maille} />}</div>
             {tr === 'spark' && st.showTrend !== false && (
               <div className="kpi-spark">
                 {hasSpark && (

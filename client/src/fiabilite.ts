@@ -1,4 +1,4 @@
-import type { Multi } from './badges';
+import type { Maille, Multi } from './badges';
 import type { Indicator } from './types';
 
 // Valeur calculée d'une fiche de conception (KPI rattaché) et fiabilité : règles communes à la conception et au pilotage.
@@ -6,6 +6,7 @@ import type { Indicator } from './types';
 export interface KpiVal {
   prive?: boolean; multi?: Multi; id: string; label: string; unit: string; value: number | null; period: string | null;
   prev: { period: string; value: number } | null; dep: { value: number } | null; dataset: string;
+  maille?: Maille | null; // maille de la valeur (94, IDF) quand elle n'est pas communale
 }
 
 export const fmtVal = (v: number) => v.toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2 }).replace(/ /g, ' ');
@@ -22,11 +23,12 @@ export function evolutionOf(k: KpiVal) {
 }
 
 export type FiabEff = 'fiable' | 'partielle' | 'approchee' | 'aucune' | 'live';
+export interface LiveVal { value: number | null; dep?: number | null; unit: string | null; label: string; fiabilite: 'fiable' | 'approchee' | 'partielle'; raison: string | null; at: string; couche: string; stat: string; erreur?: string }
 
 /** Fiabilité effective d'une fiche : celle du premier KPI rattaché qui a une valeur ; une évolution sans période précédente est approchée. */
-export function fiabOf(i: Indicator, kpis: Map<string, KpiVal> | null): FiabEff {
+export function fiabOf(i: Indicator, kpis: Map<string, KpiVal> | null, live?: Record<string, LiveVal> | null): FiabEff {
   const m = i.kpi_matches?.find((x) => kpis?.get(x.id)?.value != null);
-  if (!m) return i.couche_id ? 'live' : 'aucune';
+  if (!m) { const lv = live?.[i.id]; return lv && lv.value != null ? lv.fiabilite : i.couche_id ? 'live' : 'aucune'; }
   const k = kpis?.get(m.id);
   if (k && isEvolution(i.libelle) && !evolutionOf(k)) return 'approchee';
   return m.fiabilite;
@@ -34,10 +36,10 @@ export function fiabOf(i: Indicator, kpis: Map<string, KpiVal> | null): FiabEff 
 
 // Taux de fiabilité estimé : moyenne pondérée des valeurs calculées (fiable 1, partielle 0,6, approchée 0,4)
 export const POIDS: Record<'fiable' | 'partielle' | 'approchee', number> = { fiable: 1, partielle: 0.6, approchee: 0.4 };
-export function synthese(list: Indicator[], kpis: Map<string, KpiVal> | null) {
+export function synthese(list: Indicator[], kpis: Map<string, KpiVal> | null, live?: Record<string, LiveVal> | null) {
   const n = { fiable: 0, partielle: 0, approchee: 0, aucune: 0, live: 0, multiEcart: 0, multiIncoherent: 0 };
   for (const i of list) {
-    const f = fiabOf(i, kpis);
+    const f = fiabOf(i, kpis, live);
     n[f]++;
     const m = i.kpi_matches?.find((x) => kpis?.get(x.id)?.value != null);
     const multi = m ? kpis?.get(m.id)?.multi : undefined;

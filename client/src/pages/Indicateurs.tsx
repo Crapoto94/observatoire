@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
-import { InterneBadge, MultiBadge, NatureBadge, PriveBadge, SourceBadge, besoinInterne } from '../badges';
-import { KpiVal, evolutionOf, fiabOf, fmtVal, isEvolution } from '../fiabilite';
+import { InterneBadge, MailleBadge, MultiBadge, NatureBadge, PriveBadge, SourceBadge, besoinInterne } from '../badges';
+import { KpiVal, LiveVal, evolutionOf, fiabOf, fmtVal, isEvolution } from '../fiabilite';
 import { CARTOS, Carto, Couche, Dataset, FIABILITES, FAISABILITES, HistoryEntry, Indicator, NIVEAUX, NIVEAU_FILL, Niveau, ORIGINES, Origine, STATUTS, Statut } from '../types';
 
 type SortKey = 'theme' | 'niveau' | 'libelle' | 'priorite' | 'source';
@@ -43,7 +43,7 @@ export function StatutPill({ s }: { s: Statut | null }) {
 // Valeur d'Ivry : KPI calculé correspondant à la fiche (lien vers le tableau de bord), sinon couche en direct, sinon raison de l'absence
 
 // Valeur d'Ivry : KPI calculé correspondant à la fiche (lien vers le tableau de bord), sinon couche en direct, sinon raison de l'absence
-function ValeurCell({ i, kpis }: { i: Indicator; kpis: Map<string, KpiVal> | null }) {
+function ValeurCell({ i, kpis, live }: { i: Indicator; kpis: Map<string, KpiVal> | null; live: Record<string, LiveVal> | null }) {
   if (kpis === null && i.kpi_ids?.length) return <span className="muted small">…</span>;
   const m = i.kpi_matches?.find((x) => kpis?.get(x.id)?.value != null);
   const k = m ? kpis?.get(m.id) : undefined;
@@ -58,13 +58,13 @@ function ValeurCell({ i, kpis }: { i: Indicator; kpis: Map<string, KpiVal> | nul
           <Link className="val-link fiab-approchee" to={`/tableau-de-bord?kpi=${k.id}`} title={`${title} : une seule période disponible, l’évolution n’est pas calculable`}>
             <span className="muted">—</span>
             <div><span className="fiab-badge fiab-approchee" title="Une seule période disponible dans les données importées">évolution non calculable</span></div>
-            <div className="muted small">niveau {level} ({k.period}){k.prive && <> <PriveBadge /></>}</div>
+            <div className="muted small">niveau {level} ({k.period}){k.maille && <> <MailleBadge m={k.maille} /></>}{k.prive && <> <PriveBadge /></>}</div>
           </Link>
         );
       }
       return (
         <Link className={`val-link fiab-${m.fiabilite}`} to={`/tableau-de-bord?kpi=${k.id}`} title={`${title} · précédent : ${fmtVal(k.prev!.value)}${k.unit ? ' ' + k.unit : ''} (${k.prev!.period})`}>
-          <strong className={e.d > 0 ? 'evo-up' : e.d < 0 ? 'evo-down' : ''}>{e.d > 0 ? '▲' : e.d < 0 ? '▼' : '►'} {e.txt}</strong><span className="muted"> {e.unit}</span>{k.prive && <> <PriveBadge /></>}
+          <strong className={e.d > 0 ? 'evo-up' : e.d < 0 ? 'evo-down' : ''}>{e.d > 0 ? '▲' : e.d < 0 ? '▼' : '►'} {e.txt}</strong><span className="muted"> {e.unit}</span>{k.maille && <> <MailleBadge m={k.maille} /></>}{k.prive && <> <PriveBadge /></>}
           <div className="muted small">{k.prev!.period} → {k.period} ↗</div>
           {(() => { // plusieurs années d'écart : rythme annuel moyen
             const y0 = Number(k.prev!.period), y1 = Number(k.period), n = y1 - y0;
@@ -81,13 +81,24 @@ function ValeurCell({ i, kpis }: { i: Indicator; kpis: Map<string, KpiVal> | nul
     }
     return (
       <Link className={`val-link fiab-${m.fiabilite}`} to={`/tableau-de-bord?kpi=${k.id}`} title={title}>
-        <strong>{fmtVal(k.value!)}</strong>{k.unit && <span className="muted"> {k.unit}</span>}{k.prive && <> <PriveBadge /></>}
+        <strong>{fmtVal(k.value!)}</strong>{k.unit && <span className="muted"> {k.unit}</span>}{k.maille && <> <MailleBadge m={k.maille} /></>}{k.prive && <> <PriveBadge /></>}
         <div className="muted small">{k.period}{(i.kpi_ids?.length ?? 0) > 1 ? ` · ${i.kpi_ids!.length} calculs` : ''} ↗</div>
         {badge}
       </Link>
     );
   }
-  if (i.couche_id) return <Link className="val-link small" to={`/couches?couche=${i.couche_id}`} title="Valeur calculée en direct sur la carte des couches du Val-de-Marne">⚡ en direct ↗</Link>;
+  const lv = live?.[i.id];
+  if (i.couche_id && lv && lv.value != null) {
+    // valeur calculée en direct à partir de la couche (géoportail du Val-de-Marne), mise en cache et recalculée chaque jour
+    return (
+      <Link className={`val-link fiab-${lv.fiabilite}`} to={`/couches?couche=${i.couche_id}`} title={`${lv.label}${lv.dep != null ? ` · Val-de-Marne : ${fmtVal(lv.dep)}` : ''} · calculé en direct le ${new Date(lv.at).toLocaleString('fr-FR')}`}>
+        <strong>{fmtVal(lv.value)}</strong>{lv.unit && <span className="muted"> {lv.unit}</span>}
+        <div className="muted small">⚡ en direct ↗</div>
+        {lv.fiabilite !== 'fiable' && <div><span className={`fiab-badge fiab-${lv.fiabilite}`} title={lv.raison || ''}>{lv.fiabilite === 'approchee' ? '≈ approchée' : '◐ partielle'}</span></div>}
+      </Link>
+    );
+  }
+  if (i.couche_id) return <Link className="val-link small" to={`/couches?couche=${i.couche_id}`} title="Valeur calculée en direct sur la carte des couches du Val-de-Marne">{live ? '⚡ en direct ↗' : '…'}</Link>;
   const why = i.dataset_ids.length
     ? (i.niveau === 'prospective' || i.niveau === 'evaluation' ? 'Projection ou analyse : pas de valeur automatique (formule documentée dans la fiche)' : 'Données rattachées, calcul automatique pas encore défini')
     : 'Aucune donnée rattachée';
@@ -116,6 +127,7 @@ export default function Indicateurs() {
   const [interne, setInterne] = useState(params.get('interne') ?? '');
   const [couches, setCouches] = useState<Couche[]>([]);
   const [kpis, setKpis] = useState<Map<string, KpiVal> | null>(null);
+  const [live, setLive] = useState<Record<string, LiveVal> | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [editing, setEditing] = useState<Partial<Indicator> | null>(null);
 
@@ -124,6 +136,7 @@ export default function Indicateurs() {
     api<Indicator[]>('/indicators').then(setItems).catch((e) => setError(e.message));
     setDatasetsReady(false);
     api<{ kpis: KpiVal[] }>('/kpi', { timeoutMs: 60000 }).then((r) => setKpis(new Map(r.kpis.map((k) => [k.id, k])))).catch(() => setKpis(new Map()));
+    api<Record<string, LiveVal>>('/couches/valeurs', { timeoutMs: 60000 }).then(setLive).catch(() => setLive({}));
     api<{ couches: Couche[] }>('/couches').then((r) => setCouches(r.couches)).catch(() => setCouches([]));
     api<Dataset[]>('/datasets').then(setDatasets).catch((e) => setError((current) => current || e.message)).finally(() => setDatasetsReady(true));
   };
@@ -165,7 +178,7 @@ export default function Indicateurs() {
       if (nature === 'calcule' && (!fed || i.mode_calcul !== 'calcule')) return false;
       if (nature === 'sans-donnee' && fed) return false;
       if (nature === 'sans-formule' && i.formule) return false;
-      if (fiab && fiabOf(i, kpis) !== fiab) return false;
+      if (fiab && fiabOf(i, kpis, live) !== fiab) return false;
       const bi = besoinInterne(i);
       if (interne === 'oui' && !bi) return false;
       if (interne === 'interne' && bi !== 'interne') return false;
@@ -192,7 +205,7 @@ export default function Indicateurs() {
       r = [...r].sort((a, b) => (val(a) > val(b) ? dir : val(a) < val(b) ? -dir : 0));
     }
     return r;
-  }, [items, q, theme, groupe, niveau, prio, flag, statut, faisa, origine, carto, nature, acces, fiab, interne, kpis, sort]);
+  }, [items, q, theme, groupe, niveau, prio, flag, statut, faisa, origine, carto, nature, acces, fiab, interne, kpis, live, sort]);
 
   const toggleSort = (key: SortKey) =>
     setSort((s) => (s?.key === key ? (s.dir === 1 ? { key, dir: -1 } : null) : { key, dir: 1 }));
@@ -318,7 +331,7 @@ export default function Indicateurs() {
           </thead>
           <tbody>
             {rows.map((i) => (
-              <tr key={i.id} className={[i.notes ? 'flagged' : '', `row-fiab-${fiabOf(i, kpis)}`].join(' ')}>
+              <tr key={i.id} className={[i.notes ? 'flagged' : '', `row-fiab-${fiabOf(i, kpis, live)}`].join(' ')}>
                 <td className="c-theme">
                   <div>{i.theme_label}</div>
                   <div className="muted small">{i.groupe_label !== i.theme_label ? i.groupe_label : ''}</div>
@@ -333,7 +346,7 @@ export default function Indicateurs() {
                   {i.formule && i.mode_calcul === 'calcule' && <div className="formule-line clamp2" title={i.formule}>ƒx {i.formule}</div>}
                   {i.notes && <div className="note small">⚠ {i.notes}</div>}
                 </td>
-                <td className="c-val"><ValeurCell i={i} kpis={kpis} /></td>
+                <td className="c-val"><ValeurCell i={i} kpis={kpis} live={live} /></td>
                 <td className="c-stack">
                   <PrioPill p={i.priorite} />
                   <StatutPill s={i.statut} />
