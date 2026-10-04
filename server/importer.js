@@ -24,6 +24,7 @@ const drees = require('./connectors/drees');
 const iprmorta = require('./connectors/iprmorta');
 const sinoe = require('./connectors/sinoe');
 const airparif = require('./connectors/airparif');
+const urssaf = require('./connectors/urssaf');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
 
@@ -55,6 +56,7 @@ const CONNECTORS = {
   iprmorta: iprmorta.fetchGeo, // mortalité 2019-2023 (Institut Paris Region / ORS)
   sinoe: sinoe.fetchGeo, // déchets ménagers (ADEME SINOE), maille EPT
   airparif: airparif.fetchGeo, // émissions de GES (Airparif), maille EPT, département, région
+  urssaf: urssaf.fetchGeo, // effectifs salariés du privé par secteur (API Opendatasoft de l'URSSAF)
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -217,6 +219,7 @@ const METHODS = {
   iprmorta: { method: 'MapServer ArcGIS de l’Institut Paris Region (canton-ville, EPT, département)', kind: 'api' },
   sinoe: { method: 'API Data Fair de l’ADEME (SINOE®), collectivité compétente', kind: 'api' },
   airparif: { method: 'FeatureServer ArcGIS d’Airparif (EPT, département, région)', kind: 'api' },
+  urssaf: { method: 'API Opendatasoft de l’URSSAF, agrégats par secteur', kind: 'api' },
 };
 const methodOf = (d) => METHODS[d.provider] || { method: d.provider, kind: 'api' };
 

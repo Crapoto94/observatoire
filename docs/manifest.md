@@ -357,3 +357,5 @@ Google Stitch doit **refaire intégralement le style visuel** de cette applicati
 - Nouveaux jeux : déchets ménagers (ADEME SINOE®, maille EPT), émissions de GES par secteur (Airparif, EPT / 94 / IDF), séries 2012-2017-2023 du recensement (tranches d'âge, familles, navettes, scolarisation).
 - KPI dérivés (ratios entre jeux, écart au Val-de-Marne) et projections par tendance linéaire (population, demandeurs d'emploi, RSA, part modale active, déchets, GES), badge de maille « EPT » quand la valeur est celle de l'EPT compétent.
 - Rattachement des fiches selon la ligne de la grille (deux fiches de même libellé distinguées), approximations documentées par une raison affichée (fiabilité « approchée »).
+- Données publiques d'agences de l'État : quotient familial des allocataires CAF (commune et quartiers prioritaires), effectifs salariés du privé par secteur depuis 2006 (URSSAF).
+- Dossiers de demande de données externes et internes (`docs/demandes-donnees/`) : méthode, suivi et textes prêts à envoyer.

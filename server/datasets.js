@@ -135,4 +135,4 @@ const MELODI_DATASETS = [
     ['mobilite'], [{ theme: 'mobilite', re: /part modale|deplacements par type|domicile travail/ }]),
 ];
 
-module.exports = [...MELODI_DATASETS, ...require('./datasets_open'), ...require('./datasets_energy'), ...require('./datasets_idf'), ...require('./datasets_emploi'), ...require('./datasets_autres'), ...require('./datasets_sante'), ...require('./datasets_prives'), ...require('./datasets_c2s'), ...require('./datasets_apl'), ...require('./datasets_ipr'), ...require('./datasets_env')];
+module.exports = [...MELODI_DATASETS, ...require('./datasets_open'), ...require('./datasets_energy'), ...require('./datasets_idf'), ...require('./datasets_emploi'), ...require('./datasets_autres'), ...require('./datasets_sante'), ...require('./datasets_prives'), ...require('./datasets_c2s'), ...require('./datasets_apl'), ...require('./datasets_ipr'), ...require('./datasets_env'), ...require('./datasets_etat')];

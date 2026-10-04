@@ -93,6 +93,10 @@ Le jeu d'équipements sportifs retenu reste [recensement-des-equipements-sportif
 | Émissions de GES par secteur | [Airparif, inventaire des émissions](https://data-airparif-asso.opendata.arcgis.com/) (FeatureServer ArcGIS) | EPT, Val-de-Marne, Île-de-France ; 2005, 2010, 2015, 2019, 2022 | t éq. CO2/hab. (scopes 1 et 2), transport routier, projection 2030 |
 | Population par grande tranche d'âge, familles, navettes, scolarisation | INSEE, dossiers complets Melodi (`DS_RP_POPULATION_PRINC`, `DS_RP_FAMILLE_COMP`, `DS_RP_NAVETTES_PRINC`, `DS_RP_EDUCATION_PRINC`) | communes, 2012, 2017, 2023 | évolutions par tranche d'âge, familles monoparentales, 6-17 ans non scolarisés, part modale active et sa projection, emplois occupés par des habitants |
 
+| Allocataires CAF selon le quotient familial | [CAF, data.caf.fr](https://data.caf.fr/explore/dataset/ndur_s_qf_400_com_f/) (API Opendatasoft) | communes, 2020-2024 | part des foyers allocataires au quotient familial inférieur à 800 € |
+| Allocataires CAF des quartiers prioritaires | [CAF, data.caf.fr](https://data.caf.fr/explore/dataset/ndur_s_qf_400_qpv_f/) | QPV 2024 rattachés à leur commune, décembre 2024 | même part dans les QPV : approche des revenus des QPV |
+| Effectifs salariés du privé par secteur | [URSSAF, open.urssaf.fr](https://open.urssaf.fr/explore/dataset/etablissements-et-effectifs-salaries-au-niveau-commune-x-ape-last/) | communes, département, région ; 2006 à la dernière année | effectifs par secteur (NA17), part des emplois dans les secteurs en croissance sur 5 ans |
+
 KPI dérivés (sans nouveau jeu) : âge moyen, écart de niveau de vie au Val-de-Marne, taux de création d'établissements, prix d'un appartement en années de niveau de vie, foncier disponible ou mutable et surfaces désimperméabilisables (MOS), taux annuel d'artificialisation, projections par tendance (population, demandeurs d'emploi, RSA).
 
 ### Sources à accès habilité, non publiques (2 jeux)
