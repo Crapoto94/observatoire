@@ -42,12 +42,17 @@ export function InterneBadge({ kind }: { kind: 'interne' | 'mixte' }) {
 
 export interface Maille { code: string; label: string; nom: string; level: 'DEP' | 'REG' | 'EPT' }
 
-// Maille de la valeur affichée : la valeur d'un indicateur peut être départementale (94) ou régionale (IDF)
-// au lieu d'être celle de la commune de référence — le badge évite toute confusion.
+// Maille de la valeur affichée : la valeur d'un indicateur peut être intercommunale (EPT), départementale (94) ou
+// régionale (IDF) au lieu d'être celle de la commune de référence — le badge évite toute confusion.
+const MAILLE_LIBELLE: Record<Maille['level'], string> = {
+  EPT: 'intercommunale (Grand-Orly Seine Bièvre)',
+  DEP: 'départementale (Val-de-Marne)',
+  REG: 'régionale (Île-de-France)',
+};
 export function MailleBadge({ m }: { m: Maille }) {
-  const estRegion = m.level === 'REG';
-  const kind = estRegion ? 'reg' : 'dep';
-  return <span className={`src src-maille src-maille-${kind}`} title={`Valeur à l'échelle ${estRegion ? 'régionale (Île-de-France)' : 'départementale (Val-de-Marne)'} : ${m.nom}`}>{m.label}</span>;
+  const kind = m.level.toLowerCase();
+  const label = m.level === 'EPT' ? 'GOSB' : m.label;
+  return <span className={`src src-maille src-maille-${kind}`} title={`Valeur à l'échelle ${MAILLE_LIBELLE[m.level]} : ${m.nom}`}>{label}</span>;
 }
 
 export function PriveBadge({ title }: { title?: string }) {

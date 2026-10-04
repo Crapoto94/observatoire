@@ -927,6 +927,7 @@ button.fiche-btn:hover { background: rgba(37, 99, 235, .08); }
 /* maille de la valeur affichée : élevé au-dessus de la commune (département 94, région IDF) */
 .src-maille { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
 .src-maille-reg { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; }
+.src-maille-ept { background: #ccfbf1; color: #115e59; border: 1px solid #5eead4; }
 .kpi-card .src-maille { margin-left: 6px; vertical-align: middle; font-size: 10px; }
 
 /* fiabilité de la valeur calculée pour Ivry (conception des indicateurs) */

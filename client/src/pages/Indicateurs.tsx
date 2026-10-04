@@ -351,6 +351,9 @@ export default function Indicateurs() {
           <span><b><span className="acc acc-carto">🗺</span></b> cartographiable (🗺 possible)</span>
           <span><b className="prio prio-1">P1</b> priorité (1 = haute)</span>
           <span><b className="chip">Brouillon</b> statut de la fiche</span>
+          <span><b><span className="src src-maille-ept">GOSB</span></b> valeur à l'échelle de l'intercommunalité</span>
+          <span><b><span className="src src-maille">94</span></b> Val-de-Marne</span>
+          <span><b><span className="src src-maille-reg">IDF</span></b> Île-de-France</span>
         </div>
         <div className="muted small">Le détail complet d’un indicateur (jeux, origine, cartographie) apparaît au survol de sa cellule « Nature ».</div>
       </details>
