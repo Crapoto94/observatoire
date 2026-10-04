@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { CARTOS, FAISABILITES, Indicator, NIVEAUX, ORIGINES, STATUTS } from '../types';
-import { KpiVal, POIDS, synthese } from '../fiabilite';
+import { KpiVal, LiveVal, POIDS, synthese } from '../fiabilite';
 import { besoinInterne } from '../badges';
 
 const STOP = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'l', 'd', 'en', 'et', 'a', 'au', 'aux', 'par', 'sur', 'un', 'une']);
@@ -30,6 +30,8 @@ export default function Pilotage() {
   useEffect(() => { api<Indicator[]>('/indicators').then(setItems).catch((e) => setError(e.message)); }, []);
   // valeurs calculées (KPI) : nombre de fiches renseignées et fiabilité estimée
   const [kpis, setKpis] = useState<Map<string, KpiVal> | null>(null);
+  const [live, setLive] = useState<Record<string, LiveVal> | null>(null);
+  useEffect(() => { api<Record<string, LiveVal>>('/couches/valeurs', { timeoutMs: 60000 }).then(setLive).catch(() => setLive({})); }, []);
   useEffect(() => { api<{ kpis: KpiVal[] }>('/kpi', { timeoutMs: 60000 }).then((r) => setKpis(new Map(r.kpis.map((k) => [k.id, k])))).catch(() => setKpis(new Map())); }, []);
 
   const actifs = useMemo(() => items.filter((i) => i.statut !== 'abandonne'), [items]);
@@ -44,11 +46,11 @@ export default function Pilotage() {
       jeu: list.filter((i) => i.dataset_ids.length).length,
       porteur: list.filter((i) => i.porteur).length,
       valide: list.filter((i) => i.statut === 'valide').length,
-      fiab: synthese(list, kpis),
+      fiab: synthese(list, kpis, live),
     });
     return [...by.entries()].map(([k, v]) => row(v.label, v.list, k)).concat(row('Ensemble', actifs));
-  }, [actifs, kpis]);
-  const fiab = useMemo(() => synthese(actifs, kpis), [actifs, kpis]);
+  }, [actifs, kpis, live]);
+  const fiab = useMemo(() => synthese(actifs, kpis, live), [actifs, kpis, live]);
   const pct = (v: number | null) => (v == null ? '—' : `${Math.round(v * 100)} %`);
 
   const matrice = useMemo(() => {

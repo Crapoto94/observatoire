@@ -27,7 +27,7 @@ function ensureGroups() {
 }
 
 // valeurs « intensives » : à moyenner (pondération par la population) plutôt qu'à additionner
-const INTENSIVE_DATASETS = new Set(['filosofi', 'finances']); // finances : montants par habitant, pondérés par la population
+const INTENSIVE_DATASETS = new Set(['filosofi', 'finances', 'ipr_idh2', 'ipr_mortalite']); // ipr_* : indices et espérances de vie, moyennés // finances : montants par habitant, pondérés par la population
 const ADDITIVE_MEASURES = new Set(['POP_BUDGET']);
 const INTENSIVE = /(^|[_\s])(MED|MEDIAN|MEDIANE|PRIX|LOYER|TAUX|PR|GI|IR|S80S20|PART|PCT|POURCENT|RATIO|MOYEN|MOYENNE|DENSITE)($|[_\s])/i;
 

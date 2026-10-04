@@ -157,6 +157,23 @@ const KPIS = [
   { id: 'c2s_part', label: 'Part des bénéficiaires de la C2S (ex-CMU-C et ACS) dans la population couverte par le régime général', theme: 'Santé', dataset: 'c2s_cnam', where: {}, ratio: { dim: 'MESURE', num: ['C2S_NP', 'C2S_P'], den: ['BENEF_RG'] }, unit: '%', cmp: true, fromCommunes: true, partial: ['dep', 'reg'], dir: 'down', ind: /^$/, indCarte: /cmu/ },
   { id: 'c2s_benef', label: 'Bénéficiaires de la Complémentaire santé solidaire (C2S, ex-CMU-C et ACS)', theme: 'Santé', dataset: 'c2s_cnam', where: { MESURE: 'C2S_TOTAL' }, dir: 'down', ind: /^nb beneficiaires cmu et ame$|^evolution du nombre de beneficiaires cmu et ame$/ },
   { id: 'c2s_np_part', label: 'Part des bénéficiaires de la C2S non participative (ex-CMU-C) dans la population couverte', theme: 'Santé', dataset: 'c2s_cnam', where: {}, ratio: { dim: 'MESURE', num: ['C2S_NP'], den: ['BENEF_RG'] }, unit: '%', cmp: true, fromCommunes: true, partial: ['dep', 'reg'], dir: 'down', ind: /^$/ },
+  // accessibilité potentielle localisée (DREES) : moyennes de territoire pondérées par la population standardisée
+  { id: 'apl_mg', label: 'Accessibilité aux médecins généralistes (APL, consultations par an et par habitant)', theme: 'Santé', dataset: 'apl_drees', where: { PROFESSION: 'MEDECIN_GENERALISTE' }, ratio: { dim: 'MESURE', num: ['APL_POND'], den: ['POP_STD'] }, factor: 1, cmp: true, fromCommunes: true, unit: 'consult./hab.', dir: 'up', ind: /rapport entre l offre et la demande en soins|secteurs en deficit d offre/ },
+  { id: 'apl_inf', label: 'Accessibilité aux infirmiers (APL, ETP pour 100 000 hab.)', theme: 'Santé', dataset: 'apl_drees', where: { PROFESSION: 'INFIRMIER' }, ratio: { dim: 'MESURE', num: ['APL_POND'], den: ['POP_STD'] }, factor: 1, cmp: true, fromCommunes: true, unit: 'ETP/100 000 hab.', dir: 'up', ind: /^$/ },
+  { id: 'apl_kine', label: 'Accessibilité aux masseurs-kinésithérapeutes (APL, ETP pour 100 000 hab.)', theme: 'Santé', dataset: 'apl_drees', where: { PROFESSION: 'KINESITHERAPEUTE' }, ratio: { dim: 'MESURE', num: ['APL_POND'], den: ['POP_STD'] }, factor: 1, cmp: true, fromCommunes: true, unit: 'ETP/100 000 hab.', dir: 'up', ind: /^$/ },
+  { id: 'apl_dent', label: 'Accessibilité aux chirurgiens-dentistes (APL, ETP pour 100 000 hab.)', theme: 'Santé', dataset: 'apl_drees', where: { PROFESSION: 'CHIRURGIEN_DENTISTE' }, ratio: { dim: 'MESURE', num: ['APL_POND'], den: ['POP_STD'] }, factor: 1, cmp: true, fromCommunes: true, unit: 'ETP/100 000 hab.', dir: 'up', ind: /^$/ },
+  { id: 'apl_sf', label: 'Accessibilité aux sages-femmes (APL, ETP pour 100 000 femmes)', theme: 'Santé', dataset: 'apl_drees', where: { PROFESSION: 'SAGE_FEMME' }, ratio: { dim: 'MESURE', num: ['APL_POND'], den: ['POP_STD'] }, factor: 1, cmp: true, fromCommunes: true, unit: 'ETP/100 000', dir: 'up', ind: /^$/ },
+  // Institut Paris Region : IDH-2 (1999, 2006, 2013) et mortalité 2019-2023 (ORS)
+  { id: 'idh2', label: 'Indice de développement humain (IDH-2)', theme: 'Cohésion sociale', dataset: 'ipr_idh2', where: { MESURE: 'IDH2' }, unit: 'indice (0 à 1)', cmp: true, dir: 'up', ind: /developpement social local/ },
+  { id: 'idh2_sante', label: 'IDH-2 : indice de santé', theme: 'Santé', dataset: 'ipr_idh2', where: { MESURE: 'IDH2_SANTE' }, unit: 'indice (0 à 1)', cmp: true, dir: 'up', ind: /^indice determinant de sante$|^evolution de l indice$/ },
+  { id: 'espvie_h', label: 'Espérance de vie à la naissance des hommes (2019-2023)', theme: 'Santé', dataset: 'ipr_mortalite', where: { MESURE: 'ESPVIE0_H' }, unit: 'ans', cmp: true, dir: 'up', ind: /^$/ },
+  { id: 'espvie_f', label: 'Espérance de vie à la naissance des femmes (2019-2023)', theme: 'Santé', dataset: 'ipr_mortalite', where: { MESURE: 'ESPVIE0_F' }, unit: 'ans', cmp: true, dir: 'up', ind: /^$/ },
+  { id: 'mort_prema', label: 'Mortalité prématurée (avant 65 ans, pour 100 000 hab., 2019-2023)', theme: 'Santé', dataset: 'ipr_mortalite', where: { MESURE: 'MORT_PREMA' }, unit: 'pour 100 000 hab.', cmp: true, dir: 'down', ind: /^$/ },
+  // minima sociaux : personnes couvertes par le RSA rapportées à la population
+  { id: 'rsa_couverture', label: 'Part de la population couverte par le RSA (allocataires et ayants droit)', theme: 'Cohésion sociale', dataset: 'caf_rsa', where: { MESURE: 'PERSONNES_RSA', TYPE_RSA: '_T' }, perPct: true, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /taux de beneficiaires des minima sociaux/ },
+  // projection : 65 ans ou plus dans 10 ans par vieillissement des générations (taux de survie à 10 ans approchés des tables
+  // de mortalité nationales), sans les migrations — base d'une projection locale, à comparer au scénario OMPHALE de l'INSEE
+  { id: 'proj_65plus', projection: true, label: 'Personnes de 65 ans ou plus dans 10 ans (vieillissement des générations, hors migrations)', theme: 'Démographie', dataset: 'rp_pop_agesex', where: { SEX: '_T', RP_MEASURE: 'POP' }, weights: { dim: 'AGE', w: { Y55: 0.93, Y56: 0.93, Y57: 0.93, Y58: 0.93, Y59: 0.93, Y60: 0.93, Y61: 0.93, Y62: 0.93, Y63: 0.93, Y64: 0.93, Y65: 0.85, Y66: 0.85, Y67: 0.85, Y68: 0.85, Y69: 0.85, Y70: 0.85, Y71: 0.85, Y72: 0.85, Y73: 0.85, Y74: 0.85, Y75: 0.6, Y76: 0.6, Y77: 0.6, Y78: 0.6, Y79: 0.6, Y80: 0.6, Y81: 0.6, Y82: 0.6, Y83: 0.6, Y84: 0.6, Y85: 0.22, Y86: 0.22, Y87: 0.22, Y88: 0.22, Y89: 0.22, Y90: 0.22, Y91: 0.22, Y92: 0.22, Y93: 0.22, Y94: 0.22, Y95: 0.03, Y96: 0.03, Y97: 0.03, Y98: 0.03, Y99: 0.03, Y_GE100: 0.01 } }, dir: 'none', ind: /personnes agees projetes/ },
   { id: 'familles_af', perK: true, label: 'Foyers percevant les allocations familiales (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_AF' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
 { id: 'licences_sport', perK: true, label: 'Licences sportives (pour 1 000 hab.)', theme: 'Sport', dataset: 'licences_sportives', where: { MESURE: 'LICENCES', FEDERATION: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, partial: ['reg'], dir: 'up', ind: /licences/ },
 { id: 'lieux_culturels', perK: true, label: 'Lieux et équipements culturels (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'equipements_culturels', where: { MESURE: 'NB_LIEUX', DOMAINE: '_T', TYPE: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /lieux et equipements culturels|equipements culturels/ },
@@ -168,7 +185,7 @@ const matches = (r, where) => Object.entries(where).every(([d, v]) => r.dims[d] 
 const totalOnly = (r, used) => Object.entries(r.dims).every(([d, v]) => used.has(d) || IGNORED.has(d) || v === '_T' || v === '_Z' || v == null);
 
 function seriesOf(rows, spec) {
-  const used = new Set([...Object.keys(spec.where), ...(spec.ratio ? [spec.ratio.dim] : []), ...(spec.sum || [])]);
+  const used = new Set([...Object.keys(spec.where), ...(spec.ratio ? [spec.ratio.dim] : []), ...(spec.sum || []), ...(spec.weights ? [spec.weights.dim] : [])]);
   const by = new Map();
   const slot = (p) => by.get(p) || by.set(p, { num: 0, den: 0, n: 0 }).get(p);
   for (const r of rows) {
@@ -178,7 +195,7 @@ function seriesOf(rows, spec) {
       const c = r.dims[spec.ratio.dim];
       if (spec.ratio.num.includes(c)) m.num += r.value;
       if (spec.ratio.den.includes(c)) m.den += r.value;
-    } else { m.num += r.value; m.n++; }
+    } else { const w = spec.weights ? (spec.weights.w[r.dims[spec.weights.dim]] ?? 0) : 1; m.num += r.value * w; m.n++; } // weights : somme pondérée par modalité (projections)
   }
   const out = [];
   for (const [period, m] of by) {
@@ -233,7 +250,7 @@ function compute() {
         if (imported || byGeo.size >= codes.length * 0.6) s = seriesOf([...byGeo.values()].flat(), spec);
       }
       // rapporté à la population : pour 1 000 habitants (kpiPerK) ou par habitant (perHab)
-      if (spec.kpiPerK || spec.perHab) { const f = spec.perHab ? 1 : 1000; s = s.map((p) => { const pop = carto.popAt(pops[geo], p.period); return pop ? { period: p.period, value: (p.value / pop) * f } : null; }).filter(Boolean); }
+      if (spec.kpiPerK || spec.perHab || spec.perPct) { const f = spec.perHab ? 1 : spec.perPct ? 100 : 1000; s = s.map((p) => { const pop = carto.popAt(pops[geo], p.period); return pop ? { period: p.period, value: (p.value / pop) * f } : null; }).filter(Boolean); }
       res[key] = s;
     }
     // jeux sans donnée communale (ex. Assurance Maladie, maille départementale) : la valeur de contexte
@@ -320,7 +337,7 @@ const THEMES = {
 };
 const ficheKind = (t) => (/^indice|^indicateur de vieillissement/.test(t) ? 'ratio' : /^(part|taux|pourcentage|proportion)\b|^evolution (du taux|de la part)/.test(t) ? 'pct'
   : /^(nb|nombre)\b|^evolution du nombre|^signalements|^projets de construction/.test(t) ? 'count' : null);
-const kpiKind = (k) => (k.unit === '%' ? 'pct' : k.kpiPerK ? 'rate' : k.ratio && !k.unit ? 'ratio' : /€/.test(k.unit || '') ? 'money' : 'count');
+const kpiKind = (k) => (k.unit === '%' ? 'pct' : /indice/.test(k.unit || '') ? 'ratio' : k.kpiPerK ? 'rate' : k.ratio && !k.unit ? 'ratio' : /€/.test(k.unit || '') ? 'money' : 'count');
 // valeurs voisines : le KPI renseigne la fiche sans mesurer exactement ce qu'elle demande
 const PROXY = [
   [/^arrivants$/, /solde migratoire|facteurs d attractivite|attractivite residentielle/, 'arrivées seules : les départs ne sont pas publiés à la commune'],
@@ -342,6 +359,11 @@ const PROXY = [
   [/^points_noirs$/, /qualite de l air/, 'cumul de nuisances (air, bruit, sols…), pas la qualité de l’air seule'],
   [/^points_noirs$/, /nuisances sonores/, 'cumul de nuisances, pas le bruit seul'],
   [/^artificialisation$/, /impermeabilite/, 'surface artificialisée : artificialisé ne veut pas dire imperméabilisé'],
+  [/^apl_mg$/, /secteurs en deficit/, 'APL de la commune : l’identification des secteurs demande la maille infra-communale ou le zonage ARS'],
+  [/^idh2_sante$/, /indice determinant/, 'composante santé de l’IDH-2 (espérance de vie), pas un indice composite des déterminants de santé'],
+  [/^idh2/, /./, 'dernière édition de l’IDH-2 : 2013'],
+  [/^rsa_couverture$/, /minima sociaux/, 'RSA seul : AAH, ASS et minimum vieillesse non compris'],
+  [/^proj_65plus$/, /./, 'projection simplifiée : survie moyenne nationale, sans les migrations'],
   [/^generalistes$/, /rapport entre l offre et la demande/, 'densité de généralistes, pas l’accessibilité potentielle localisée (APL)'],
 ];
 
@@ -359,7 +381,7 @@ function matchOne(k, fiche) {
   if (proxy) why.push(proxy[2]);
   if (fk === 'count' && kk === 'rate') why.push('taux pour 1 000 habitants, la fiche demande un nombre');
   if (fk === 'pct' && kk === 'ratio') why.push('rapport ou indice, pas un pourcentage');
-  if (fiche.niveau === 'prospective') why.push('valeur actuelle : base de la projection, pas la projection elle-même');
+  if (fiche.niveau === 'prospective' && !k.projection) why.push('valeur actuelle : base de la projection, pas la projection elle-même');
   else if (fiche.niveau === 'evaluation' && !/^(densite|taux|part|indice|indicateur|rapport|attractivite|respect|accidents|nombre de|nb d emplois)/.test(t)) why.push('valeur de contexte : l’évaluation demande une analyse');
   // effectifs et comptes des associations : déclarations partielles (seules certaines associations les renseignent)
   if (k.declaratif) return { id: k.id, fiabilite: why.length ? 'approchee' : 'partielle', raison: [...why, k.partielRaison || 'données déclaratives, connues pour une partie des associations seulement'].join(' ; ') };

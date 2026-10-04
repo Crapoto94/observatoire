@@ -28,8 +28,8 @@ const COUCHES = [
   C({ id: 'cd94_arbres', theme: 'Environnement', label: 'Arbres d’alignement', layer: 'trame_verte.v_arbo_arbre', kind: 'point', color: '#15803d', label_field: 'nom_commun_essence', info: ['annee_plantation', 'conduite_arbre'], slug: 'arbo-arbres-d-alignement-val-de-marne', stats: [{ id: 'plantes_10ans', label: 'Plantés depuis 10 ans', field: 'annee_plantation', agg: 'count_if', test: (v) => v >= new Date().getFullYear() - 10 }, { id: 'plantes_annee', label: 'Plantés l’an dernier', field: 'annee_plantation', agg: 'count_if', test: (v) => v === new Date().getFullYear() - 1 }] }),
   C({ id: 'cd94_espaces_verts', theme: 'Environnement', label: 'Espaces verts communaux', layer: 'trame_verte.v_espace_vert_communal', kind: 'polygon', color: '#4ade80', label_field: 'nom_evc', info: ['lib_type_evc', 'surface_ha_evc', 'lib_gestionnaire_tv'], slug: 'espaces-verts-communaux-val-de-marne', stats: [{ id: 'surface', label: 'Surface (ha)', field: 'surface_ha_evc', agg: 'sum', unit: 'ha' }] }),
   C({ id: 'cd94_espaces_verts_tous', theme: 'Environnement', label: 'Espaces verts (tous gestionnaires, ENS)', layer: 'espaces-verts-globaux', kind: 'polygon', color: '#86efac', label_field: 'nom_espace_vert', info: ['type_espace_vert', 'surface_m2'], slug: 'espaces-verts---val-de-marne', stats: [{ id: 'surface', label: 'Surface (ha)', field: 'surface_m2', agg: 'sum', factor: 1e-4, unit: 'ha' }] }),
-  C({ id: 'cd94_icu', theme: 'Environnement', label: 'Îlots de chaleur urbains (îlots morphologiques)', layer: 'v_ilot_chaleur', kind: 'polygon', color: '#f97316', label_field: 'lib_lcz_1', info: ['permeable', 'bati', 'hauteur_mo'], slug: 'ilots-chaleur-urbains-icu-val-de-marne', choropleth: 'bati', choroLabel: 'Part bâtie (%)', stats: [{ id: 'permeable', label: 'Part perméable moyenne (%)', field: 'permeable', agg: 'mean' }] }),
-  C({ id: 'cd94_reseau_chaleur', theme: 'Environnement', label: 'Réseaux de chaleur', layer: 'environnement.v_reseau_de_chaleur', kind: 'line', color: '#b91c1c', label_field: 'nom_reseau', info: ['maitre_ouvrage', 'pourcent_enr', 'co2'], slug: 'reseau-de-chaleur---val-de-marne--copie', stats: [{ id: 'enr', label: 'Taux d’EnR&R moyen (%)', field: 'pourcent_enr', agg: 'mean' }] }),
+  C({ id: 'cd94_icu', theme: 'Environnement', label: 'Îlots de chaleur urbains (îlots morphologiques)', layer: 'v_ilot_chaleur', kind: 'polygon', color: '#f97316', label_field: 'lib_lcz_1', info: ['permeable', 'bati', 'hauteur_mo'], slug: 'ilots-chaleur-urbains-icu-val-de-marne', choropleth: 'bati', choroLabel: 'Part bâtie (%)', stats: [{ id: 'permeable', label: 'Part perméable moyenne (%)', field: 'permeable', agg: 'mean', unit: '%' }] }),
+  C({ id: 'cd94_reseau_chaleur', theme: 'Environnement', label: 'Réseaux de chaleur', layer: 'environnement.v_reseau_de_chaleur', kind: 'line', color: '#b91c1c', label_field: 'nom_reseau', info: ['maitre_ouvrage', 'pourcent_enr', 'co2'], slug: 'reseau-de-chaleur---val-de-marne--copie', stats: [{ id: 'enr', label: 'Taux d’EnR&R moyen (%)', field: 'pourcent_enr', agg: 'mean', unit: '%' }] }),
   C({ id: 'cd94_icpe', theme: 'Environnement', label: 'Installations classées (ICPE)', layer: 'environnement.v_icpe', kind: 'point', color: '#7c2d12', label_field: 'nom_icpe', info: ['procedure_icpe', 'lib_type_icpe', 'adresse_icpe'], slug: 'installations-classees-pour-environnement-icpe-val-de-marne' }),
   C({ id: 'cd94_basias', theme: 'Environnement', label: 'Anciens sites industriels (BASIAS)', layer: 'environnement.v_basias', kind: 'point', color: '#78716c', label_field: 'raison_sociale', info: ['nom_usuel', 'lib_etat_occupation', 'adresse'], slug: 'ancien-sites-pollues-basias-val-de-marne' }),
   C({ id: 'cd94_basol', theme: 'Environnement', label: 'Sites et sols pollués (BASOL)', layer: 'environnement.v_basol', kind: 'point', color: '#57534e', label_field: 'nom_usuel', info: ['lib_situation_technique', 'adresse'], slug: 'sites-et-sols-pollues-basol-val-de-marne' }),
@@ -226,4 +226,78 @@ async function communeList() {
   return (await communes()).map(({ code, nom, population, superficie }) => ({ code, nom, population, superficie }));
 }
 
-module.exports = { list, layer, outline, communeList, indicators, COUCHES };
+// ---------------- valeurs des fiches de conception rattachées à une couche (affichées dans la conception) ----------------
+// Statistique pertinente de la couche pour chaque fiche, fiabilité et raison ; valeur calculée en direct pour la commune de
+// référence, conservée en base (affichage immédiat, même après un redémarrage) et recalculée en arrière-plan une fois par jour.
+const FICHE_STATS = [
+  ['cd94_arbres', /arbres plantes/, 'plantes_annee', 'approchee', 'arbres d’alignement départementaux plantés l’an dernier ; plantations communales non comprises'],
+  ['cd94_espaces_verts', /espaces verts par habitant/, 'surface', 'approchee', 'espaces verts communaux seulement (m² par habitant)', 'm2hab'],
+  ['cd94_espaces_verts', /accessibilite aux espaces verts/, 'count', 'approchee', 'nombre d’espaces verts communaux, pas la distance d’accès'],
+  ['cd94_reseau_chaleur', /energies renouvelables/, 'enr', 'approchee', 'taux d’énergies renouvelables et de récupération des réseaux de chaleur, pas de toute la consommation'],
+  ['cd94_projets_immo', /projets de construction/, 'en_cours', 'approchee', 'projets immobiliers en cours recensés par le Département'],
+  ['cd94_projets_immo', /livraisons prevues/, 'en_cours', 'approchee', 'projets en cours, sans date de livraison systématique'],
+  ['cd94_zac', /densite nette/, 'logements', 'approchee', 'logements programmés dans les ZAC, pas la densité nette'],
+  ['cd94_ecoles', /acces aux equipements/, 'count', 'approchee', 'nombre d’écoles, pas le temps d’accès'],
+  ['cd94_centres_sante', /offre de soin/, 'count', 'approchee', 'centres de santé seulement'],
+  ['cd94_gares', /accessibilite en transports/, 'count', 'approchee', 'nombre de gares et stations, pas le temps d’accès aux pôles'],
+  ['cd94_rpls', /logements sociaux/, 'logements', 'approchee', 'logements des bâtiments RPLS (nombre, pas une part)'],
+  ['cd94_icu', /ilots de chaleur/, 'permeable', 'approchee', 'part perméable moyenne des îlots morphologiques'],
+  ['cd94_stationnement_velo', /stationnements velo/, 'places', 'fiable', null],
+];
+const normTxt = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['’-]/g, ' ').toLowerCase();
+function statFor(coucheId, libelle) {
+  const t = normTxt(libelle);
+  const f = FICHE_STATS.find(([c, re]) => c === coucheId && re.test(t));
+  return f ? { stat: f[2], fiabilite: f[3], raison: f[4], transform: f[5] || null } : { stat: 'count', fiabilite: 'approchee', raison: 'nombre d’objets de la couche', transform: null };
+}
+
+const VAL_TTL = 24 * 3600 * 1000;
+const { get: dbGet, run: dbRun, all: dbAll } = require('./db');
+const loadVals = () => { try { return JSON.parse(dbGet("SELECT value FROM app_settings WHERE key = 'couches_valeurs'")?.value || '{}'); } catch { return {}; } };
+const saveVals = (v) => dbRun("INSERT INTO app_settings (key, value) VALUES ('couches_valeurs', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP", JSON.stringify(v));
+
+async function computeOne(c, spec, code) {
+  const ind = await indicators(c, code);
+  let v = ind.commune[spec.stat];
+  let dep = ind.dept[spec.stat] ?? null;
+  const st = publicCouche(c).stats.find((s) => s.id === spec.stat) || {};
+  let unit = st.unit || null;
+  if (spec.transform === 'm2hab' && v != null) { v = (v * 10000) / ind.population; dep = dep != null ? (dep * 10000) / ind.population94 : null; unit = 'm²/hab.'; }
+  return { value: v ?? null, dep, unit, label: `${st.label || spec.stat} (${c.label})`, formule: st.formule || null };
+}
+
+let refreshing = null;
+/** Valeurs des fiches rattachées à une couche : { [indicatorId]: { value, unit, label, fiabilite, raison, at, couche, stat } }. */
+async function valeursFiches({ code = '94041', wait = true } = {}) {
+  const fiches = dbAll('SELECT id, libelle, couche_id FROM indicators WHERE couche_id IS NOT NULL');
+  const vals = loadVals();
+  const keyOf = (f, spec) => `${f.couche_id}|${spec.stat}|${spec.transform || ''}|${code}`;
+  const todo = new Map();
+  for (const f of fiches) {
+    const spec = statFor(f.couche_id, f.libelle);
+    const k = keyOf(f, spec);
+    if (!vals[k] || Date.now() - Date.parse(vals[k].at) > VAL_TTL) todo.set(k, { f, spec });
+  }
+  const run = async () => {
+    for (const [k, { f, spec }] of todo) {
+      const c = COUCHES.find((x) => x.id === f.couche_id);
+      if (!c) continue;
+      try { vals[k] = { ...(await computeOne(c, spec, code)), at: new Date().toISOString() }; } catch (e) { if (!vals[k]) vals[k] = { value: null, erreur: e.message, at: new Date().toISOString() }; }
+    }
+    saveVals(vals);
+  };
+  const missing = [...todo.keys()].some((k) => !vals[k]);
+  if (todo.size) {
+    if (missing && wait) await run(); // première fois : calcul immédiat
+    else if (!refreshing) refreshing = run().catch(() => {}).finally(() => { refreshing = null; }); // valeur en cache servie, recalcul en arrière-plan
+  }
+  const out = {};
+  for (const f of fiches) {
+    const spec = statFor(f.couche_id, f.libelle);
+    const v = vals[keyOf(f, spec)];
+    if (v) out[f.id] = { ...v, fiabilite: spec.fiabilite, raison: spec.raison, couche: f.couche_id, stat: spec.stat };
+  }
+  return out;
+}
+
+module.exports = { list, layer, outline, communeList, indicators, COUCHES, valeursFiches };

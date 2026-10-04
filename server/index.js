@@ -159,6 +159,7 @@ app.get('/api/jeux/:id/champs', async (req, res) => { try { res.json(await requi
 // Couches géographiques du Val-de-Marne lues en direct (WFS du géoportail départemental, aucun import)
 const couchesErr = (res, e) => res.status(e.status || 502).json({ error: e.message });
 app.get('/api/couches', (req, res) => res.json(require('./couches').list()));
+app.get('/api/couches/valeurs', async (req, res) => { try { res.json(await require('./couches').valeursFiches()); } catch (e) { couchesErr(res, e); } });
 app.get('/api/couches/communes', async (req, res) => { try { res.json(await require('./couches').communeList()); } catch (e) { couchesErr(res, e); } });
 app.get('/api/couches/contour/:code', async (req, res) => { try { res.json(await require('./couches').outline(req.params.code)); } catch (e) { couchesErr(res, e); } });
 app.get('/api/couches/:id', async (req, res) => { try { res.json(await require('./couches').layer(req.params.id, String(req.query.commune || REF_GEO.code))); } catch (e) { couchesErr(res, e); } });
@@ -603,4 +604,6 @@ app.listen(PORT, '0.0.0.0', () => {
   setTimeout(() => { require('./kpi').computeAsync().catch((e) => console.warn('[kpi]', e.message)); }, 20000);
   // temps de réponse des sources (proposition du mode live) : mesures de plus de 7 jours renouvelées en arrière-plan
   setTimeout(() => { require('./live').mesurerTout().catch((e) => console.warn('[live]', e.message)); }, 90000);
+  // valeurs des fiches rattachées à une couche en direct : calcul et mise en cache (affichage immédiat dans la conception)
+  setTimeout(() => { require('./couches').valeursFiches().catch((e) => console.warn('[couches]', e.message)); }, 45000);
 });

@@ -21,6 +21,7 @@ const filosofi = require('./connectors/filosofi');
 const apientreprise = require('./connectors/apientreprise');
 const inseezip = require('./connectors/inseezip');
 const drees = require('./connectors/drees');
+const iprmorta = require('./connectors/iprmorta');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
 
@@ -49,6 +50,7 @@ const CONNECTORS = {
   apisubventions: apientreprise.fetchSubventions, // idem : subventions (Data Subvention)
   inseezip: inseezip.fetchGeo, // fichiers CSV zippés de l'INSEE
   drees: drees.fetchGeo, // classeurs APL de la DREES
+  iprmorta: iprmorta.fetchGeo, // mortalité 2019-2023 (Institut Paris Region / ORS)
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -208,6 +210,7 @@ const METHODS = {
   apisubventions: { method: 'API Entreprise, Data Subvention (accès habilité, données non publiques), une requête par association', kind: 'api' },
   inseezip: { method: 'Fichier CSV zippé publié sur insee.fr', kind: 'csv' },
   drees: { method: 'Classeurs Excel de la DREES (APL par profession)', kind: 'csv' },
+  iprmorta: { method: 'MapServer ArcGIS de l’Institut Paris Region (canton-ville, EPT, département)', kind: 'api' },
 };
 const methodOf = (d) => METHODS[d.provider] || { method: d.provider, kind: 'api' };
 

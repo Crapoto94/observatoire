@@ -18,7 +18,7 @@ async function workbook(url) {
     const h = rows.findIndex((x) => x[0] === 'Code commune INSEE');
     if (h < 0) continue;
     const head = rows[h].map((x) => String(x || ''));
-    const iApl = 2, iPop = head.findIndex((x) => /population standardis/i.test(x));
+    const iApl = 2, iPop = head.findIndex((x) => /standardis/i.test(x)); // population (féminine pour les sages-femmes) standardisée
     for (const x of rows.slice(h + 1)) {
       const code = String(x[0] || '').padStart(5, '0');
       if (!/^\d[\dAB]\d{3}$/.test(code)) continue;
