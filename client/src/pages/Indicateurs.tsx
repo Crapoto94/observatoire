@@ -43,10 +43,11 @@ function NatureCell({ i, datasets, dsLabel, coucheLabel }: { i: Indicator; datas
   if (prives.length) lignes.push(`Non public : ${prives.map(dsLabel).join(', ')}`);
   if (bi) lignes.push(bi === 'interne' ? 'Besoin de données internes à la collectivité' : 'Complément interne nécessaire');
   const ox = ORIGINES.find((v) => v.key === i.origine);
-  if (ox) lignes.push(`Origine : ${ox.label}`);
+  if (ox) lignes.push(`Origine : ${ox.label} — ${ox.hint}`);
   const cx = CARTOS.find((v) => v.key === i.cartographie);
-  if (i.cartographie) lignes.push(`Cartographie : ${cx?.label ?? i.cartographie}`);
+  if (i.cartographie) lignes.push(`Cartographie : ${cx?.label ?? i.cartographie}${cx ? ` — ${cx.hint}` : ''}`);
   const title = lignes.join('\n');
+  const ORIG_ICON: Record<string, string> = { externe: '🌐', interne: '🏢', mixte: '🔀' };
   return (
     <div className="nature-cell" title={title}>
       <NatureBadge i={i} />
@@ -54,6 +55,9 @@ function NatureCell({ i, datasets, dsLabel, coucheLabel }: { i: Indicator; datas
       {i.couche_id && <span className="acc acc-live" title={`Lu en direct : ${coucheLabel(i.couche_id)}`}>⚡</span>}
       {prives.length > 0 && <span className="acc acc-prive" title={`Non public : ${prives.map(dsLabel).join(', ')}`}>🔒</span>}
       {bi && <span className="acc acc-interne" title={bi === 'interne' ? 'Besoin de données internes' : 'Complément interne nécessaire'}>🏢</span>}
+      {ox && <span className="acc acc-orig" style={{ color: ox.color, borderColor: ox.color }} title={`Origine : ${ox.label} — ${ox.hint}`}>{ORIG_ICON[ox.key] ?? '•'}</span>}
+      {i.cartographie === 'oui' && <span className="acc acc-carto" title={`Cartographiable — ${cx?.hint}`}>🗺</span>}
+      {i.cartographie === 'possible' && <span className="acc acc-carto-possible" title={`Cartographie possible — ${cx?.hint}`}>🗺</span>}
     </div>
   );
 }
@@ -343,6 +347,8 @@ export default function Indicateurs() {
           <span><b><span className="acc acc-live">⚡</span></b> lu en direct</span>
           <span><b><span className="acc acc-prive">🔒</span></b> non public</span>
           <span><b><span className="acc acc-interne">🏢</span></b> données internes requises</span>
+          <span><b><span className="acc acc-orig">🌐</span></b> origine externe (🏢 interne, 🔀 mixte)</span>
+          <span><b><span className="acc acc-carto">🗺</span></b> cartographiable (🗺 possible)</span>
           <span><b className="prio prio-1">P1</b> priorité (1 = haute)</span>
           <span><b className="chip">Brouillon</b> statut de la fiche</span>
         </div>
