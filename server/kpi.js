@@ -150,6 +150,11 @@ const KPIS = [
   { id: 'population_pmun', concept: 'population', label: 'Population municipale (populations légales)', theme: 'Démographie', dataset: 'pop_hist', where: { POPREF_MEASURE: 'PMUN' }, dir: 'none', ind: /^population totale$|^evolution annuelle de la population$|^projection de population/ },
   { id: 'rsa_prest', concept: 'rsa', perK: true, label: 'Foyers au RSA (fichier des prestations de la CAF)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_RSA' }, dir: 'down', ind: /rsa|minima sociaux/ },
   { id: 'lls_sru', concept: 'parc_social', perK: true, label: 'Logements locatifs sociaux (inventaire SRU)', theme: 'Logement', dataset: 'sru', where: { MESURE: 'LLS' }, dir: 'up', ind: /logements sociaux|logement social/ },
+  // Complémentaire santé solidaire (INSEE / Cnam) : communes comptant un QPV ; le GOSB est recalculé à partir de ses communes,
+  // pas le Val-de-Marne ni l'Île-de-France (seules les communes avec QPV sont publiées : une somme serait trompeuse)
+  { id: 'c2s_part', label: 'Part des bénéficiaires de la C2S (ex-CMU-C et ACS) dans la population couverte par le régime général', theme: 'Santé', dataset: 'c2s_cnam', where: {}, ratio: { dim: 'MESURE', num: ['C2S_NP', 'C2S_P'], den: ['BENEF_RG'] }, unit: '%', cmp: true, fromCommunes: true, partial: ['dep', 'reg'], dir: 'down', ind: /^$/, indCarte: /cmu/ },
+  { id: 'c2s_benef', label: 'Bénéficiaires de la Complémentaire santé solidaire (C2S, ex-CMU-C et ACS)', theme: 'Santé', dataset: 'c2s_cnam', where: { MESURE: 'C2S_TOTAL' }, dir: 'down', ind: /^nb beneficiaires cmu et ame$|^evolution du nombre de beneficiaires cmu et ame$/ },
+  { id: 'c2s_np_part', label: 'Part des bénéficiaires de la C2S non participative (ex-CMU-C) dans la population couverte', theme: 'Santé', dataset: 'c2s_cnam', where: {}, ratio: { dim: 'MESURE', num: ['C2S_NP'], den: ['BENEF_RG'] }, unit: '%', cmp: true, fromCommunes: true, partial: ['dep', 'reg'], dir: 'down', ind: /^$/ },
   { id: 'familles_af', perK: true, label: 'Foyers percevant les allocations familiales (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_AF' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
 { id: 'licences_sport', perK: true, label: 'Licences sportives (pour 1 000 hab.)', theme: 'Sport', dataset: 'licences_sportives', where: { MESURE: 'LICENCES', FEDERATION: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, partial: ['reg'], dir: 'up', ind: /licences/ },
 { id: 'lieux_culturels', perK: true, label: 'Lieux et équipements culturels (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'equipements_culturels', where: { MESURE: 'NB_LIEUX', DOMAINE: '_T', TYPE: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /lieux et equipements culturels|equipements culturels/ },
@@ -324,6 +329,7 @@ const PROXY = [
   [/^trame_verte$/, /./, 'composantes de la trame verte (MGP), pas la surface d’espaces verts par habitant'],
   [/^commerces$/, /ecart a l echelle/, 'nombre d’établissements : l’écart se lit par comparaison avec le Val-de-Marne'],
   [/^rpls$/, /menages/, 'logements sociaux (RPLS), pas des ménages'],
+  [/^c2s_/, /\bame\b/, 'C2S seule : l’AME n’est pas publiée à la commune ; régime général uniquement'],
   [/^points_noirs$/, /qualite de l air/, 'cumul de nuisances (air, bruit, sols…), pas la qualité de l’air seule'],
   [/^points_noirs$/, /nuisances sonores/, 'cumul de nuisances, pas le bruit seul'],
   [/^artificialisation$/, /impermeabilite/, 'surface artificialisée : artificialisé ne veut pas dire imperméabilisé'],
@@ -332,14 +338,15 @@ const PROXY = [
 
 function matchOne(k, fiche) {
   const t = norm(fiche.libelle);
-  if (!k.ind.test(t)) return null;
+  const carte0 = norm(fiche.libelle_carte || '');
+  if (!k.ind.test(t) && !(k.indCarte && k.indCarte.test(carte0))) return null;
   if (fiche.theme && THEMES[fiche.theme] && !THEMES[fiche.theme].includes(k.theme)) return null; // thème incompatible
   const carte = norm(fiche.libelle_carte || '');
   const fk = /par (association|assiociation|asso)\b/.test(carte) || /par association/.test(t) ? 'ratio' : ficheKind(t), kk = kpiKind(k);
   if ((fk === 'pct' || fk === 'ratio') && (kk === 'count' || kk === 'money')) return null; // une part ou un indice ne peut pas être un effectif
   if (fk === 'count' && (kk === 'pct' || kk === 'money' || kk === 'ratio')) return null; // un nombre ne peut pas être un pourcentage
   const why = [];
-  const proxy = PROXY.find(([idRe, ficheRe]) => idRe.test(k.id) && ficheRe.test(t));
+  const proxy = PROXY.find(([idRe, ficheRe]) => idRe.test(k.id) && (ficheRe.test(t) || ficheRe.test(carte0)));
   if (proxy) why.push(proxy[2]);
   if (fk === 'count' && kk === 'rate') why.push('taux pour 1 000 habitants, la fiche demande un nombre');
   if (fk === 'pct' && kk === 'ratio') why.push('rapport ou indice, pas un pourcentage');

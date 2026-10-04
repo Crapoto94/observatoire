@@ -27,6 +27,19 @@ export function MultiBadge({ m }: { m: Multi }) {
   return <span className={`multi multi-${m.niveau}`} title={`${m.n} sources (${lib}, écart maximal ${pct})\n${detail}\n${comp}`}>multi ×{m.n} · {pct}</span>;
 }
 
+// Besoin de données internes à la collectivité (SI des services, dossiers de subvention, relevés terrain…)
+const INTERNE_RE = /donn[ée]e interne|SI de la collectivit|SI des services|dossiers? de subvention|SI de la Ville|logiciel des autorisations|relev[ée] terrain|CCAPEX/i;
+export function besoinInterne(i: { origine: string | null; proposition: string | null; formule: string | null }): 'interne' | 'mixte' | null {
+  if (i.origine === 'interne') return 'interne';
+  if (i.origine === 'mixte') return 'mixte';
+  return INTERNE_RE.test(`${i.proposition || ''} ${i.formule || ''}`) ? 'mixte' : null;
+}
+export function InterneBadge({ kind }: { kind: 'interne' | 'mixte' }) {
+  return kind === 'interne'
+    ? <span className="src src-interne" title="Donnée disponible uniquement dans les systèmes d’information de la collectivité : à collecter auprès des services">🏢 Besoin interne</span>
+    : <span className="src src-interne-mixte" title="Source externe à compléter par des données internes de la collectivité (services, dossiers, relevés)">🏢 Complément interne</span>;
+}
+
 export function PriveBadge({ title }: { title?: string }) {
   return <span className="src src-prive" title={title || 'Données non publiques (accès habilité) : ne pas diffuser telles quelles'}>🔒 Non public</span>;
 }

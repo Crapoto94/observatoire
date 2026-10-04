@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
-import { MultiBadge, NatureBadge, PriveBadge, SourceBadge } from '../badges';
+import { InterneBadge, MultiBadge, NatureBadge, PriveBadge, SourceBadge, besoinInterne } from '../badges';
 import { KpiVal, evolutionOf, fiabOf, fmtVal, isEvolution } from '../fiabilite';
 import { CARTOS, Carto, Couche, Dataset, FIABILITES, FAISABILITES, HistoryEntry, Indicator, NIVEAUX, NIVEAU_FILL, Niveau, ORIGINES, Origine, STATUTS, Statut } from '../types';
 
@@ -113,6 +113,7 @@ export default function Indicateurs() {
   const [nature, setNature] = useState(params.get('nature') ?? '');
   const [acces, setAcces] = useState(params.get('acces') ?? '');
   const [fiab, setFiab] = useState(params.get('fiabilite') ?? '');
+  const [interne, setInterne] = useState(params.get('interne') ?? '');
   const [couches, setCouches] = useState<Couche[]>([]);
   const [kpis, setKpis] = useState<Map<string, KpiVal> | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
@@ -165,6 +166,10 @@ export default function Indicateurs() {
       if (nature === 'sans-donnee' && fed) return false;
       if (nature === 'sans-formule' && i.formule) return false;
       if (fiab && fiabOf(i, kpis) !== fiab) return false;
+      const bi = besoinInterne(i);
+      if (interne === 'oui' && !bi) return false;
+      if (interne === 'interne' && bi !== 'interne') return false;
+      if (interne === 'non' && bi) return false;
       if (acces === 'live' && !i.couche_id) return false;
       if (acces === 'import' && !i.dataset_ids.length) return false;
       if (flag === 'sans-source' && i.source) return false;
@@ -187,7 +192,7 @@ export default function Indicateurs() {
       r = [...r].sort((a, b) => (val(a) > val(b) ? dir : val(a) < val(b) ? -dir : 0));
     }
     return r;
-  }, [items, q, theme, groupe, niveau, prio, flag, statut, faisa, origine, carto, nature, acces, fiab, kpis, sort]);
+  }, [items, q, theme, groupe, niveau, prio, flag, statut, faisa, origine, carto, nature, acces, fiab, interne, kpis, sort]);
 
   const toggleSort = (key: SortKey) =>
     setSort((s) => (s?.key === key ? (s.dir === 1 ? { key, dir: -1 } : null) : { key, dir: 1 }));
@@ -256,6 +261,12 @@ export default function Indicateurs() {
           <option value="calcule">Calculé (formule)</option>
           <option value="sans-donnee">Sans donnée</option>
           <option value="sans-formule">Formule non documentée</option>
+        </select>
+        <select value={interne} onChange={(e) => setInterne(e.target.value)} title="Fiches qui demandent des données internes à la collectivité">
+          <option value="">Besoins internes : tous</option>
+          <option value="oui">Avec besoin interne (interne ou complément)</option>
+          <option value="interne">Besoin interne exclusif</option>
+          <option value="non">Sans besoin interne</option>
         </select>
         <select value={fiab} onChange={(e) => setFiab(e.target.value)} title="Fiabilité de la valeur calculée pour Ivry">
           <option value="">Toute fiabilité</option>
@@ -330,6 +341,7 @@ export default function Indicateurs() {
                 </td>
                 <td className="c-stack">
                   <NatureBadge i={i} />
+                  {(() => { const bi = besoinInterne(i); return bi ? <InterneBadge kind={bi} /> : null; })()}
                   {i.dataset_ids.length > 0 && <SourceBadge kind="import" title={`Données importées : ${i.dataset_ids.map(dsLabel).join(', ')}`} />}
                   {i.dataset_ids.some((d) => datasets.find((x) => x.id === d)?.prive) && <PriveBadge title={`Données non publiques : ${i.dataset_ids.filter((d) => datasets.find((x) => x.id === d)?.prive).map(dsLabel).join(', ')}`} />}
                   {i.couche_id && <SourceBadge kind="live" title={`Lu en direct : ${coucheLabel(i.couche_id)} (géoportail du Val-de-Marne)`} />}

@@ -18,6 +18,7 @@ const sante = require('./connectors/sante');
 const arcgis = require('./connectors/arcgis');
 const filosofi = require('./connectors/filosofi');
 const apientreprise = require('./connectors/apientreprise');
+const inseezip = require('./connectors/inseezip');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
 
@@ -44,6 +45,7 @@ const CONNECTORS = {
   filosofi: filosofi.fetchGeo, // API Melodi (millésimes récents) + fichiers INSEE (millésimes antérieurs)
   apientreprise: apientreprise.fetchGeo, // accès habilité (non public), communes listées dans la configuration du jeu
   apisubventions: apientreprise.fetchSubventions, // idem : subventions (Data Subvention)
+  inseezip: inseezip.fetchGeo, // fichiers CSV zippés de l'INSEE
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -64,6 +66,7 @@ const BULK = {
   sante: { fn: sante.fetchMany, size: 100000 },
   arcgis: { fn: arcgis.fetchMany, size: 100000 },
   filosofi: { fn: filosofi.fetchMany, size: 50 },
+  inseezip: { fn: inseezip.fetchMany, size: 100000 },
 };
 
 const jobs = new Map();
@@ -189,6 +192,7 @@ const METHODS = {
   filosofi: { method: 'API Melodi (INSEE) et fichiers INSEE (jeux Filosofi séparés)', kind: 'api' },
   apientreprise: { method: 'API Entreprise (accès habilité, données non publiques), une fiche par association', kind: 'api' },
   apisubventions: { method: 'API Entreprise, Data Subvention (accès habilité, données non publiques), une requête par association', kind: 'api' },
+  inseezip: { method: 'Fichier CSV zippé publié sur insee.fr', kind: 'csv' },
 };
 const methodOf = (d) => METHODS[d.provider] || { method: d.provider, kind: 'api' };
 

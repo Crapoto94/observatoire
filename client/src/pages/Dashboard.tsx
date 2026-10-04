@@ -142,7 +142,8 @@ export default function Dashboard() {
     } catch (e) { setError((e as Error).message); }
   };
   const themes = useMemo(() => [...new Set((d?.kpis ?? []).map((k) => k.theme))], [d]);
-  const shown = (d?.kpis ?? []).filter((k) => !theme || k.theme === theme);
+  // un KPI sans fiche de conception et sans valeur n'apporte rien : il n'est pas proposé
+  const shown = (d?.kpis ?? []).filter((k) => (!theme || k.theme === theme) && !(k.statut === 'sans_fiche' && k.value == null));
   const prioByTheme = useMemo(() => {
     const m = new Map<string, Priority[]>();
     for (const p of d?.priority ?? []) (m.get(p.theme || '—') ?? m.set(p.theme || '—', []).get(p.theme || '—')!).push(p);

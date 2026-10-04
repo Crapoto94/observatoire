@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { CARTOS, FAISABILITES, Indicator, NIVEAUX, ORIGINES, STATUTS } from '../types';
 import { KpiVal, POIDS, synthese } from '../fiabilite';
+import { besoinInterne } from '../badges';
 
 const STOP = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'l', 'd', 'en', 'et', 'a', 'au', 'aux', 'par', 'sur', 'un', 'une']);
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -103,6 +104,10 @@ export default function Pilotage() {
           <div className="big" style={{ color: CARTOS[0].color }}>{actifs.filter((i) => i.cartographie === 'oui' || i.cartographie === 'possible').length}</div>sur une carte
         </Link>
         <Link className="card" to="/indicateurs?flag=sans-source"><div className="big">{actifs.filter((i) => !i.source && !i.lien_donnees).length}</div>sans source ni lien</Link>
+        <Link className="card" to="/indicateurs?interne=oui" title="Fiches qui demandent des données internes à la collectivité (exclusivement ou en complément d’une source externe)">
+          <div className="big" style={{ color: '#9a3412' }}>{actifs.filter((i) => besoinInterne(i)).length}</div>besoins internes
+          <div className="muted small">dont {actifs.filter((i) => besoinInterne(i) === 'interne').length} exclusivement internes</div>
+        </Link>
       </div>
 
       <h3>Valeurs calculées pour Ivry et fiabilité <span className="muted small">(hors abandonnés)</span></h3>

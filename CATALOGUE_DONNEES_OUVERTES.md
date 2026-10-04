@@ -82,6 +82,7 @@ Le jeu d'équipements sportifs retenu reste [recensement-des-equipements-sportif
 | Effectifs d'élèves | [Éducation nationale](https://data.education.gouv.fr/explore/dataset/fr-en-ecoles-effectifs-nb_classes/) | commune | environ 6 000 élèves |
 | Foyers au RSA | [CAF](https://data.caf.fr/explore/dataset/rsa_s_type_com_f-copy/) | commune | 2 615 foyers (déc. 2021) |
 | Accidents corporels (BAAC) | [data.gouv.fr](https://www.data.gouv.fr/datasets/53698f4ca3a729239d2036df/), API tabulaire | commune | 90 accidents en 2024 (120 en 2019) |
+| Complémentaire santé solidaire (C2S, ex-CMU-C et ACS) | [INSEE / Cnam, bénéficiaires du régime général et de la C2S dans les QPV et leurs communes](https://www.insee.fr/fr/statistiques/8736902), fichiers CSV 2023 et 2025 | communes comptant un QPV (26 dans le Val-de-Marne) ; GOSB recalculé | 10 440 bénéficiaires de la C2S en 2025 (9 404 en 2023), 16,2 % de la population couverte par le régime général ; AME non publiée à la commune |
 | Associations et ESS | [API Recherche d'entreprises](https://recherche-entreprises.api.gouv.fr/docs/) | commune | 1 790 associations, 1 768 structures ESS |
 
 ### Sources à accès habilité, non publiques (2 jeux)
