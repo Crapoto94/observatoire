@@ -317,6 +317,21 @@ Règles associées :
 - Un KPI peut référencer **plusieurs jeux** (`datasets`) en plus de son jeu principal (`dataset`), qui sert aux rattachements et à l'étiquette affichée.
 - La vue « Liste des jeux de données » du **Catalogue** offre une **recherche** (jeu, champ, modalité, indicateur) et, pour les administrateurs, un bouton **« Réimporter »** sur chaque jeu importé (relance pour toutes les communes d'Île-de-France).
 
+### 11.4 Données de santé de l'Assurance Maladie (maille départementale)
+
+Trois jeux issus de **data.ameli.fr** (Cnam, Opendatasoft) apportent le contexte départemental de santé, l'application restant centrée sur la commune :
+
+| Jeu | Source | Restitution | Maille |
+|---|---|---|---|
+| `ameli_ald` | Cnam, cartographie des pathologies (`effectifs`) | personnes en affection de longue durée (ALD) par an | département, région (somme) |
+| `ameli_ald_sans_mt` | Cnam (`patients-longueduree-annuelle`) | part des patients en ALD sans médecin traitant | département |
+| `ameli_sas` | Cnam (`couverture-sas`) | part de la population couverte par le service d'accès aux soins | département |
+
+Règles associées :
+
+- L'Assurance Maladie ne diffuse **pas de données communales** : ces jeux alimentent la valeur du **Val-de-Marne** et, quand la mesure est sommable, de l'**Île-de-France** — pas la valeur communale d'Ivry.
+- Le nombre de personnes en ALD (code `top` ALD_CAT_CAT) alimente les indicateurs « nb ALD » et « évolution du nombre d'ALD ».
+
 ## 12. Instructions destinées à Google Stitch
 
 Google Stitch doit **refaire intégralement le style visuel** de cette application à partir des spécifications ci-dessus.

@@ -21,6 +21,7 @@ const SOURCES = {
   idfm: { label: 'Île-de-France Mobilités', icon: '🚆', color: '#0369a1' },
   francetravail: { label: 'France Travail / DARES', icon: '💼', color: '#1d4ed8' },
   sante: { label: 'Ministère de la Santé / ARS', icon: '⚕️', color: '#dc2626' },
+  ameli: { label: 'Assurance Maladie (Cnam)', icon: '🩺', color: '#0284c7' },
   sport: { label: 'Ministère des Sports', icon: '🏟️', color: '#ea580c' },
   georisques: { label: 'Géorisques (Ministère de la Transition écologique)', icon: '⚠️', color: '#b45309' },
   cd94: { label: 'Géoportail du Val-de-Marne (Conseil départemental)', icon: '🗺️', color: '#0f766e' },
@@ -31,6 +32,7 @@ const SOURCES = {
 
 const PRODUCER = {
   dvf: 'dgfip', finances: 'dgfip', ircom: 'dgfip', filosofi: 'insee', filosofi_fichier: 'insee',
+  ameli_ald: 'ameli', ameli_ald_sans_mt: 'ameli', ameli_sas: 'ameli',
   sru: 'logement', loyers: 'logement', sitadel: 'logement', rpls: 'logement',
   artificialisation: 'cerema', lovac: 'cerema', dpe: 'ademe',
   mos: 'ipr', multiexposition: 'ipr', nuisances: 'ipr', icu: 'ipr',
@@ -70,6 +72,7 @@ function frequency(periods) {
 const PRIVES = new Set(require('./datasets').filter((d) => d.prive).map((d) => d.id));
 
 function importedDatasets() {
+  const live = require('./live').etat();
   const { KPIS } = require('./kpi');
   const levelOf = Object.fromEntries(all('SELECT code, level FROM geos').map((g) => [g.code, g.level || 'COM']));
   const sample = all('SELECT code FROM geos WHERE bulk = 0').map((g) => g.code);
@@ -101,6 +104,7 @@ function importedDatasets() {
       indicators: links.filter((l) => l.dataset_id === d.id).map(({ dataset_id, ...i }) => i),
       kpis: KPIS.filter((k) => k.dataset === d.id || (k.datasets || []).includes(d.id)).map((k) => ({ id: k.id, label: k.label })),
       link: `/donnees?ds=${d.id}`,
+      live: live.jeux[d.id] || null, // mode (base / live), temps de réponse mesuré, proposition du mode live
     };
   });
 }
@@ -131,7 +135,7 @@ function liveLayers() {
 function build() {
   const items = [...importedDatasets(), ...liveLayers()];
   const sources = Object.entries(SOURCES).map(([key, s]) => ({ key, ...s, count: items.filter((i) => i.source.key === key).length })).filter((s) => s.count);
-  return { generated: new Date().toISOString(), items, sources };
+  return { generated: new Date().toISOString(), items, sources, seuilLive: require('./live').SEUIL_MS };
 }
 
 // Champs d'une couche en direct : propriétés d'un objet lu sur le WFS (type et exemple de valeur)
