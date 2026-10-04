@@ -167,7 +167,7 @@ const selectDatasets = (ids) => (ids?.length
 
 // ---------------- journal des imports (table import_runs) ----------------
 const METHODS = {
-  melodi: { method: 'API REST Melodi (INSEE)', kind: 'api' },
+  melodi: { method: 'API REST Melodi (INSEE, pagination complète)', kind: 'api' },
   tabular: { method: 'API tabulaire data.gouv.fr', kind: 'api' },
   ods: { method: 'API Opendatasoft (explore v2.1)', kind: 'api' },
   geodvf: { method: 'Fichiers CSV geo-dvf (data.gouv.fr)', kind: 'csv' },
@@ -385,7 +385,8 @@ function startImport({ datasetIds, geoCodes, scope } = {}) {
 const MIN_RELOAD_MS = 7 * 24 * 3600 * 1000;
 
 function autoImportIdf({ intervalMs = 30000 } = {}) {
-  const tried = new Set();
+  const tried = new Map();
+  const RETRY_AFTER_FAILURE_MS = 6 * 3600000;
   let gosbTried = false;
   const tick = () => {
     try {
@@ -399,13 +400,19 @@ function autoImportIdf({ intervalMs = 30000 } = {}) {
       if (!gosbTried && get("SELECT COUNT(*) AS n FROM data_rows WHERE geo = 'GOSB'").n === 0) { gosbTried = true; console.log('[import] chargement des 24 communes du GOSB'); startImport({ scope: 'gosb' }); return; }
       // un jeu chargé avec succès pour l'Île-de-France depuis moins de 7 jours n'est pas rechargé automatiquement (import manuel toujours possible)
       const since = new Date(Date.now() - MIN_RELOAD_MS).toISOString();
-      const recent = new Set(all("SELECT DISTINCT dataset_id FROM import_runs WHERE scope = 'idf' AND status IN ('ok', 'partiel') AND finished >= ?", since).map((r) => r.dataset_id));
-      const todo = all('SELECT id FROM datasets').map((d) => d.id)
-        // La couverture est suivie par journal d'import : ne pas regrouper toute data_rows
-        // à chaque passage du minuteur (plusieurs millions d'observations en production).
-        .filter((id) => !tried.has(id) && !recent.has(id));
+      const recent = new Set(all("SELECT DISTINCT dataset_id FROM import_runs WHERE scope = 'idf' AND status = 'ok' AND finished >= ?", since).map((r) => r.dataset_id));
+      // Une version de méthode distincte force une remise à niveau Melodi après
+      // correction d'un import incomplet, même si l'ancien journal disait « réussi ».
+      const recentMelodi = new Set(all("SELECT DISTINCT dataset_id FROM import_runs WHERE scope = 'idf' AND status = 'ok' AND method = ? AND finished >= ?", METHODS.melodi.method, since).map((r) => r.dataset_id));
+      const nowMs = Date.now();
+      const todo = all('SELECT id, provider FROM datasets')
+        // Le journal évite un scan de plusieurs millions de lignes à chaque tick.
+        // Les erreurs sont retentées après une pause au lieu d'être bloquées jusqu'au redémarrage.
+        .filter((d) => nowMs - (tried.get(d.id) || 0) >= RETRY_AFTER_FAILURE_MS
+          && !(d.provider === 'melodi' ? recentMelodi : recent).has(d.id))
+        .map((d) => d.id);
       if (!todo.length) return;
-      todo.forEach((id) => tried.add(id));
+      todo.forEach((id) => tried.set(id, nowMs));
       console.log(`[import] Île-de-France : ${todo.length} jeu(x) à charger (${todo.join(', ')})`);
       startImport({ datasetIds: todo, scope: 'idf' });
     } catch (e) { console.error('[import] auto IDF', e.message); }

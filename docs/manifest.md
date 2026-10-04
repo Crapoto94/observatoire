@@ -45,7 +45,7 @@ L'application est organisée autour d'une **navigation principale** et de plusie
 | **IA** | `/ia` | Assistant conversationnel adossé aux données |
 | **Pilotage** | `/pilotage` | Suivi de la conception (cohérence, doublons, priorisation) |
 | **Carte mentale** | `/carte` | Vue relationnelle des indicateurs |
-| **Données** | `/donnees` | Explorateur tabulaire et graphique ; chargement/actualisation des jeux sur l'ensemble de l'Île-de-France si les sources le permettent |
+| **Données** | `/donnees` | Explorateur tabulaire et graphique ; chargement/actualisation des jeux sur les 1 266 communes d'Île-de-France si les sources le permettent. Les réponses paginées sont contrôlées ; un lot trop volumineux est subdivisé et réessayé pour éviter qu'une limite d'API ne laisse des communes sans données. |
 | **Cartographie** | `/cartographie` | Carte géographique par couche (contours GOSB, départements, QPV) |
 | **Catalogue** | `/catalogue` | Catalogue des jeux de données |
 | **Nouveautés** | `/nouveautes` | Historique des versions |

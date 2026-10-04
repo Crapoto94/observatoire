@@ -7,6 +7,7 @@ const { fetchJson, fetchRetry } = require('./melodi');
 const open = require('./open');
 
 const BASE = 'https://api.insee.fr/melodi';
+const MELODI_PAGE_SIZE = 10000;
 const chunk = (arr, n) => Array.from({ length: Math.ceil(arr.length / n) }, (_, k) => arr.slice(k * n, (k + 1) * n));
 const upper = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
 const communes = (geos) => geos.filter((g) => (g.level || 'COM') === 'COM');
@@ -27,11 +28,18 @@ function mergeRows(rows) {
 // ---------------- INSEE Melodi : plusieurs paramètres GEO dans la même requête ----------------
 async function melodiMany(config, geos, geoId) {
   const out = emptyMap(geos);
-  let url = `${BASE}/data/${config.ds}?${geos.map((g) => `GEO=${geoId(g)}`).join('&')}&maxResult=10000`;
+  let url = `${BASE}/data/${config.ds}?${geos.map((g) => `GEO=${geoId(g)}`).join('&')}&maxResult=${MELODI_PAGE_SIZE}`;
   let pages = 0;
   while (url && pages++ < 200) {
     const j = await fetchJson(url);
-    for (const o of j.observations || []) {
+    const observations = j.observations || [];
+    // Melodi can return exactly maxResult rows without a `paging.next` link when a
+    // multi-commune request is truncated. Treat that response as incomplete so the
+    // importer splits the batch and retries it at a smaller geographic granularity.
+    if (observations.length >= MELODI_PAGE_SIZE && !j.paging?.next) {
+      throw new Error(`Réponse Melodi limitée à ${MELODI_PAGE_SIZE} observations sans page suivante`);
+    }
+    for (const o of observations) {
       const { GEO, FREQ, TIME_PERIOD, ...dims } = o.dimensions || {};
       const code = /^\d{4}-[A-Z]+-(.+)$/.exec(GEO || '')?.[1];
       if (!code || !out.has(code)) continue;
@@ -42,6 +50,7 @@ async function melodiMany(config, geos, geoId) {
     }
     url = j.paging?.next || null;
   }
+  if (url) throw new Error('Pagination Melodi incomplète après 200 pages');
   return out;
 }
 
