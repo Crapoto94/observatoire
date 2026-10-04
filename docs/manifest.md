@@ -321,6 +321,7 @@ Règles associées :
 - Une valeur non diffusée (secret statistique) n'est pas importée : les périodes réellement disponibles peuvent varier selon les mesures et les communes.
 - Un KPI peut référencer **plusieurs jeux** (`datasets`) en plus de son jeu principal (`dataset`), qui sert aux rattachements et à l'étiquette affichée.
 - La vue « Liste des jeux de données » du **Catalogue** offre une **recherche** (jeu, champ, modalité, indicateur) et, pour les administrateurs, un bouton **« Réimporter »** sur chaque jeu importé (relance pour toutes les communes d'Île-de-France).
+- **Import sans réécriture si les données n'ont pas changé** : pour chaque territoire, l'import compare une **empreinte** des lignes lues à la source à celle des lignes déjà stockées. Si elles sont identiques, rien n'est réécrit (le journal indique « inchangé ») ; la base n'est recréée que si le contenu diffère, ce qui évite les suppressions/réinsertions inutiles et les sauts d'identifiants.
 
 ### 11.4 Données de santé de l'Assurance Maladie (maille départementale)
 

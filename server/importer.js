@@ -1,6 +1,7 @@
 // Import des données dans la base locale (les données ne sont jamais lues en direct par l'interface).
 //  - import « favoris » : un territoire à la fois (Ivry, territoires de comparaison) ;
 //  - import « Île-de-France » : toutes les communes de la région, en masse (plusieurs communes par requête quand la source le permet).
+const crypto = require('crypto');
 const { db, all, get, run, tx } = require('./db');
 const melodi = require('./connectors/melodi');
 const open = require('./connectors/open');
@@ -19,6 +20,7 @@ const arcgis = require('./connectors/arcgis');
 const filosofi = require('./connectors/filosofi');
 const apientreprise = require('./connectors/apientreprise');
 const inseezip = require('./connectors/inseezip');
+const drees = require('./connectors/drees');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
 
@@ -46,6 +48,7 @@ const CONNECTORS = {
   apientreprise: apientreprise.fetchGeo, // accès habilité (non public), communes listées dans la configuration du jeu
   apisubventions: apientreprise.fetchSubventions, // idem : subventions (Data Subvention)
   inseezip: inseezip.fetchGeo, // fichiers CSV zippés de l'INSEE
+  drees: drees.fetchGeo, // classeurs APL de la DREES
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -67,27 +70,38 @@ const BULK = {
   arcgis: { fn: arcgis.fetchMany, size: 100000 },
   filosofi: { fn: filosofi.fetchMany, size: 50 },
   inseezip: { fn: inseezip.fetchMany, size: 100000 },
+  drees: { fn: drees.fetchMany, size: 100000 },
 };
 
 const jobs = new Map();
 let jobSeq = 0;
 const now = () => new Date().toISOString();
 
-// Remplace les lignes d'un jeu pour un territoire (une transaction, instruction préparée une seule fois)
+// Empreinte du contenu d'un jeu pour un territoire : si les lignes lues à la source sont identiques à celles
+// déjà stockées, l'import ne réécrit rien (le jeu reste à jour sans supprimer/réinsérer des milliers de lignes).
+// La clé d'une ligne reprend exactement ce qui est stocké (le dims stocké est la chaîne JSON produite à l'insertion).
+const rowKey = (r) => `${r.period ?? ''}\u0000${typeof r.dims === 'string' ? r.dims : JSON.stringify(r.dims || {})}\u0000${r.measure ?? ''}\u0000${r.value ?? ''}\u0000${r.status ?? ''}`;
+const fingerprint = (rows) => crypto.createHash('sha1').update(rows.map(rowKey).sort().join('\n')).digest('hex');
+const storedFingerprint = (datasetId, geo) => fingerprint(all('SELECT period, dims, measure, value, status FROM data_rows WHERE dataset_id = ? AND geo = ?', datasetId, geo));
+
+// Remplace les lignes d'un jeu pour un territoire (une transaction, instruction préparée une seule fois).
+// Renvoie { rows, skipped } : lignes écrites et territoires laissés tels quels (contenu identique).
 function storeRows(datasetId, geoCodes, rowsOf) {
   const ins = db.prepare('INSERT INTO data_rows (dataset_id, geo, period, dims, measure, value, status) VALUES (?,?,?,?,?,?,?)');
   const del = db.prepare('DELETE FROM data_rows WHERE dataset_id = ? AND geo = ?');
-  let n = 0;
+  let n = 0, skipped = 0;
   tx(() => {
     for (const code of geoCodes) {
+      const rows = rowsOf(code) || [];
+      if (storedFingerprint(datasetId, code) === fingerprint(rows)) { skipped++; continue; }
       del.run(datasetId, code);
-      for (const r of rowsOf(code) || []) {
+      for (const r of rows) {
         ins.run(datasetId, code, r.period ?? null, JSON.stringify(r.dims), r.measure, r.value ?? null, r.status ?? null);
         n++;
       }
     }
   });
-  return n;
+  return { rows: n, skipped };
 }
 
 async function importOne(dataset, geo, log) {
@@ -104,9 +118,9 @@ async function importOne(dataset, geo, log) {
       log(`${dataset.id} / ${geo.nom} : niveau « ${geo.level} » non disponible pour ce jeu`);
       return 0;
     }
-    const n = storeRows(dataset.id, [geo.code], () => rows);
+    const { rows: n, skipped } = storeRows(dataset.id, [geo.code], () => rows);
     run('INSERT INTO import_log (dataset_id, geo, started, finished, status, rows) VALUES (?,?,?,?,?,?)', dataset.id, geo.code, started, now(), 'ok', n);
-    log(`${dataset.id} / ${geo.nom} : ${n} lignes`);
+    log(`${dataset.id} / ${geo.nom} : ${skipped ? 'inchangé (données identiques)' : `${n} lignes`}`);
     return n;
   } catch (e) {
     run('INSERT INTO import_log (dataset_id, geo, started, finished, status, rows, message) VALUES (?,?,?,?,?,?,?)',
@@ -193,6 +207,7 @@ const METHODS = {
   apientreprise: { method: 'API Entreprise (accès habilité, données non publiques), une fiche par association', kind: 'api' },
   apisubventions: { method: 'API Entreprise, Data Subvention (accès habilité, données non publiques), une requête par association', kind: 'api' },
   inseezip: { method: 'Fichier CSV zippé publié sur insee.fr', kind: 'csv' },
+  drees: { method: 'Classeurs Excel de la DREES (APL par profession)', kind: 'csv' },
 };
 const methodOf = (d) => METHODS[d.provider] || { method: d.provider, kind: 'api' };
 
@@ -257,9 +272,10 @@ async function importIdfDataset(d, geos, job, log, attempt) {
         try {
           const map = await withTimeout(b.fn(cfg, part, (m) => lg(`${d.id} : ${m}`)), b.size >= 100000 ? 3 * CHUNK_TIMEOUT : CHUNK_TIMEOUT, `${d.id} (${part.length} communes)`, aborted);
           if (map === null) { lg(`${d.id} : niveau communal non disponible`); job.current.done += part.length; return; }
-          total += storeRows(d.id, part.map((g) => g.code), (code) => map.get(code));
+          const res = storeRows(d.id, part.map((g) => g.code), (code) => map.get(code));
+          total += res.rows;
           job.current.done += part.length;
-          lg(`${d.id} : ${job.current.done} / ${geos.length} communes traitées`);
+          lg(`${d.id} : ${job.current.done} / ${geos.length} communes traitées${res.skipped ? ` (${res.skipped} inchangée(s))` : ''}`);
         } catch (e) {
           if (e instanceof Bypass) throw e;
           if (part.length <= 1) {
