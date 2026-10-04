@@ -174,12 +174,122 @@ const KPIS = [
   // projection : 65 ans ou plus dans 10 ans par vieillissement des générations (taux de survie à 10 ans approchés des tables
   // de mortalité nationales), sans les migrations — base d'une projection locale, à comparer au scénario OMPHALE de l'INSEE
   { id: 'proj_65plus', projection: true, label: 'Personnes de 65 ans ou plus dans 10 ans (vieillissement des générations, hors migrations)', theme: 'Démographie', dataset: 'rp_pop_agesex', where: { SEX: '_T', RP_MEASURE: 'POP' }, weights: { dim: 'AGE', w: { Y55: 0.93, Y56: 0.93, Y57: 0.93, Y58: 0.93, Y59: 0.93, Y60: 0.93, Y61: 0.93, Y62: 0.93, Y63: 0.93, Y64: 0.93, Y65: 0.85, Y66: 0.85, Y67: 0.85, Y68: 0.85, Y69: 0.85, Y70: 0.85, Y71: 0.85, Y72: 0.85, Y73: 0.85, Y74: 0.85, Y75: 0.6, Y76: 0.6, Y77: 0.6, Y78: 0.6, Y79: 0.6, Y80: 0.6, Y81: 0.6, Y82: 0.6, Y83: 0.6, Y84: 0.6, Y85: 0.22, Y86: 0.22, Y87: 0.22, Y88: 0.22, Y89: 0.22, Y90: 0.22, Y91: 0.22, Y92: 0.22, Y93: 0.22, Y94: 0.22, Y95: 0.03, Y96: 0.03, Y97: 0.03, Y98: 0.03, Y99: 0.03, Y_GE100: 0.01 } }, dir: 'none', ind: /personnes agees projetes/ },
+  // ---------------- fiches sans valeur : séries 2012-2017-2023, maille EPT, valeurs dérivées et projections ----------------
+  // démographie (recensement, dossiers complets : trois millésimes)
+  { id: 'pop_lt20_nb', label: 'Personnes de moins de 20 ans (2012, 2017, 2023)', theme: 'Démographie', dataset: 'rp_pop_hist', where: { SEX: '_T', RP_MEASURE: 'POP', AGE: 'Y_LT20' }, cmp: true, fromCommunes: true, dir: 'none', ind: /evolution du nombre et de la part des moins de 18/ },
+  { id: 'pop_lt20_part', label: 'Part des moins de 20 ans (2012, 2017, 2023)', theme: 'Démographie', dataset: 'rp_pop_hist', where: { SEX: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'AGE', num: ['Y_LT20'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^evolution par tranche d age$/ },
+  { id: 'pop_65_nb', label: 'Personnes de 65 ans ou plus (2012, 2017, 2023)', theme: 'Démographie', dataset: 'rp_pop_hist', where: { SEX: '_T', RP_MEASURE: 'POP', AGE: 'Y_GE65' }, cmp: true, fromCommunes: true, dir: 'none', ind: /evolution du nombre et de la part des \+ de 65/ },
+  { id: 'pop_65_part', label: 'Part des 65 ans ou plus (2012, 2017, 2023)', theme: 'Démographie', dataset: 'rp_pop_hist', where: { SEX: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'AGE', num: ['Y_GE65'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^evolution par tranche d age$/ },
+  { id: 'age_somme', aux: true, label: 'Somme des âges (intermédiaire)', theme: 'Démographie', dataset: 'rp_pop_agesex', where: { SEX: '_T', RP_MEASURE: 'POP' }, weights: { dim: 'AGE', w: Object.fromEntries([...Array(100).keys()].map((a) => [`Y${a}`, a + 0.5]).concat([['Y_GE100', 101]])) }, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'age_pop', aux: true, label: 'Population par âge détaillé (intermédiaire)', theme: 'Démographie', dataset: 'rp_pop_agesex', where: { SEX: '_T', RP_MEASURE: 'POP' }, weights: { dim: 'AGE', w: Object.fromEntries([...Array(100).keys()].map((a) => [`Y${a}`, 1]).concat([['Y_GE100', 1]])) }, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'age_moyen', label: 'Âge moyen de la population', theme: 'Démographie', dataset: 'rp_pop_agesex', where: {}, derive: { from: ['age_somme', 'age_pop'], fn: ([a, b]) => combine(a, b, (x, y) => x / y, 0) }, formule: 'rp_pop_agesex : Σ (âge + 0,5) × population de l’âge / population (âges détaillés, 100 ans ou plus comptés 101)', unit: 'ans', cmp: true, dir: 'none', ind: /^pyramide des ages$/ },
+  { id: 'enfants_0_5', projection: true, label: 'Enfants de 0 à 5 ans (élèves de l’élémentaire dans les 6 ans à venir)', theme: 'Démographie', dataset: 'rp_pop_agesex', where: { SEX: '_T', RP_MEASURE: 'POP' }, weights: { dim: 'AGE', w: { Y0: 1, Y1: 1, Y2: 1, Y3: 1, Y4: 1, Y5: 1 } }, cmp: true, fromCommunes: true, dir: 'none', ind: /^besoins scolaires$/ },
+  { id: 'nonscol_num', aux: true, label: 'Non scolarisés de 6 à 17 ans (intermédiaire)', theme: 'Démographie', dataset: 'rp_educ_hist', where: { SEX: '_T', STUD: '0', RP_MEASURE: 'POP' }, weights: { dim: 'AGE', w: { Y6T10: 1, Y11T14: 1, Y15T17: 1 } }, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'nonscol_den', aux: true, label: 'Population de 6 à 17 ans (intermédiaire)', theme: 'Démographie', dataset: 'rp_educ_hist', where: { SEX: '_T', STUD: '_T', RP_MEASURE: 'POP' }, weights: { dim: 'AGE', w: { Y6T10: 1, Y11T14: 1, Y15T17: 1 } }, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'non_scolarises', label: 'Part des 6-17 ans non scolarisés', theme: 'Démographie', dataset: 'rp_educ_hist', where: {}, derive: { from: ['nonscol_num', 'nonscol_den'], fn: ([a, b]) => combine(a, b, (x, y) => (x / y) * 100, 0) }, formule: 'rp_educ_hist : non scolarisés de 6-10, 11-14 et 15-17 ans / population de ces âges × 100 (2012, 2017, 2023)', unit: '%', cmp: true, dir: 'down', ind: /moins de 18 ans non scolarises/ },
+  { id: 'familles_mono_nb', label: 'Familles monoparentales (2012, 2017, 2023)', theme: 'Démographie', dataset: 'rp_famille', where: { NCH: '_T', RP_MEASURE: 'NBFAM', TFN: '1' }, cmp: true, fromCommunes: true, dir: 'none', ind: /evolution du nombre et de la part des menages monoparentaux/ },
+  { id: 'familles_mono_part', label: 'Part des familles monoparentales parmi les familles (2012, 2017, 2023)', theme: 'Démographie', dataset: 'rp_famille', where: { NCH: '_T', RP_MEASURE: 'NBFAM' }, ratio: { dim: 'TFN', num: ['1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /evolution du nombre et de la part des menages monoparentaux/ },
+  { id: 'pop_proj', projection: true, label: 'Population municipale projetée à 10 ans (tendance des 6 derniers millésimes)', theme: 'Démographie', dataset: 'pop_hist', where: {}, derive: { from: ['population_pmun'], fn: ([s]) => trend(s, 10) }, formule: 'pop_hist : tendance linéaire (moindres carrés) de la population municipale sur les 6 derniers millésimes, prolongée de 10 ans', cmp: true, dir: 'none', ind: /^tendances demographiques projetees$/ },
+  // emploi et revenus
+  { id: 'actifs_commune', aux: true, label: 'Actifs occupés travaillant dans leur commune de résidence (intermédiaire)', theme: 'Emploi', dataset: 'rp_navettes_hist', where: { WORK_AREA: '10', TRANS: '_T', EMPSTA_ENQ: '1', RP_MEASURE: 'POP', AGE: 'Y_GE15' }, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'emplois_habitants', label: 'Part des emplois de la commune occupés par ses habitants', theme: 'Emploi', dataset: 'rp_navettes_hist', where: {}, derive: { from: ['actifs_commune', 'emploi_lt'], fn: ([a, b]) => combine(a, b, (x, y) => (x / y) * 100, 0) }, formule: 'rp_navettes_hist : actifs occupés résidant et travaillant dans la commune / rp_emploi_lt : emplois au lieu de travail × 100', unit: '%', dir: 'up', ind: /part d emplois occupes par des habitants/ },
+  { id: 'defm_proj', projection: true, label: 'Demandeurs d’emploi (A, B, C) projetés à 5 ans (tendance des 6 dernières années)', theme: 'Emploi', dataset: 'ft_defm', where: {}, derive: { from: ['defm'], fn: ([s]) => trend(s, 5) }, formule: 'ft_defm : tendance linéaire des demandeurs d’emploi de catégories A, B, C au 4e trimestre des 6 dernières années, prolongée de 5 ans', dir: 'down', ind: /projection du nombre de chomeurs/ },
+  { id: 'ecart_revenu', label: 'Écart du niveau de vie médian à celui du Val-de-Marne', theme: 'Cohésion sociale', dataset: 'filosofi', where: {}, derive: { from: ['niveau_vie'], fn: ([s], key, all) => (key === 'dep' ? [] : combine(s, all.niveau_vie?.dep, (x, y) => (x / y - 1) * 100, 0)) }, formule: 'filosofi : (niveau de vie médian de la commune / niveau de vie médian du Val-de-Marne − 1) × 100', unit: '%', cmp: true, dir: 'up', ind: /ecart de revenu avec l echelle supra/ },
+  // commerces et activités : lignes de la grille distinguées (commerces / entreprises hors commerce)
+  { id: 'commerces_evol', concept: 'commerces', label: 'Établissements du commerce, des transports et de l’hébergement-restauration (évolution)', theme: 'Emploi', dataset: 'side_stocks', where: { SIDE_MEASURE: 'UNIT_LOC', ACTIVITY: 'GI' }, dir: 'up', row: /nb de commerces par types/, ind: /^evolution en nb$/ },
+  { id: 'etab_hors_commerce', label: 'Établissements hors commerce, transports et hébergement-restauration', theme: 'Emploi', dataset: 'side_stocks', where: { SIDE_MEASURE: 'UNIT_LOC' }, ratio: { dim: 'ACTIVITY', num: ['_T'], den: ['GI'] }, diff: true, cmp: true, fromCommunes: true, dir: 'up', row: /entreprises hors commerce/, ind: /^evolution en nb$/ },
+  { id: 'part_commerce', label: 'Part du commerce, des transports et de l’hébergement-restauration parmi les établissements', theme: 'Emploi', dataset: 'side_stocks', where: { SIDE_MEASURE: 'UNIT_LOC' }, ratio: { dim: 'ACTIVITY', num: ['GI'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^evolution en typologie$/ },
+  { id: 'commerces_bpe_1000', label: 'Commerces de la base permanente des équipements (pour 1 000 hab.)', theme: 'Emploi', dataset: 'bpe', where: { BPE_MEASURE: 'FACILITIES', FACILITY_DOM: 'B' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /^besoins en commerces$/ },
+  { id: 'creations_nb', aux: true, label: 'Créations d’établissements (intermédiaire)', theme: 'Emploi', dataset: 'side_creations', where: { SIDE_MEASURE: 'UNIT_LOC_BURE', ACTIVITY: '_T', LEGAL_FORM: '_T' }, cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
+  { id: 'etab_stock', aux: true, label: 'Établissements en stock (intermédiaire)', theme: 'Emploi', dataset: 'side_stocks', where: { SIDE_MEASURE: 'UNIT_LOC', ACTIVITY: '_T' }, cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
+  { id: 'taux_creation', label: 'Taux de création d’établissements (créations de l’année / établissements en stock)', theme: 'Emploi', dataset: 'side_creations', where: {}, derive: { from: ['creations_nb', 'etab_stock'], fn: ([a, b]) => combine(a, b, (x, y) => (x / y) * 100, 1) }, formule: 'side_creations : créations d’établissements de l’année / side_stocks : établissements au 31 décembre précédent × 100', unit: '%', cmp: true, dir: 'up', ind: /^potentiel d implantation$/ },
+  // logement et foncier
+  { id: 'vacants_nb', label: 'Logements vacants du parc privé', theme: 'Logement', dataset: 'lovac', where: { MESURE: 'PP_VACANT' }, cmp: true, fromCommunes: true, dir: 'down', ind: /evolution du nombre de logements vacants/ },
+  { id: 'vacants_longue', label: 'Logements vacants depuis plus de deux ans (parc privé)', theme: 'Logement', dataset: 'lovac', where: { MESURE: 'PP_VACANT_2ANS' }, cmp: true, fromCommunes: true, dir: 'down', ind: /logements pouvant etre remis sur le marche/ },
+  { id: 'autorises_moy3', projection: true, label: 'Logements autorisés par an, moyenne des 3 dernières années (livraisons attendues à 2-3 ans)', theme: 'Logement', dataset: 'sitadel', where: {}, derive: { from: ['autorises'], fn: ([s]) => meanLast(s, 3) }, formule: 'sitadel : moyenne des logements autorisés des 3 dernières années complètes (délai usuel de 2 à 3 ans entre autorisation et livraison)', dir: 'up', ind: /projection de la production de logements$/ },
+  { id: 'valeur_appart', aux: true, label: 'Valeur médiane d’un appartement (intermédiaire)', theme: 'Logement', dataset: 'dvf', where: { MESURE: 'VALEUR_MEDIANE', TYPE_LOCAL: 'Appartement' }, unit: '€', cmp: true, dir: 'none', ind: /^$/ },
+  { id: 'accessibilite_immo', label: 'Prix d’un appartement médian en années de niveau de vie médian', theme: 'Logement', dataset: 'dvf', where: {}, derive: { from: ['valeur_appart', 'niveau_vie'], fn: ([a, b]) => combine(a, b, (x, y) => x / y, 2) }, formule: 'dvf : valeur médiane des ventes d’appartements / filosofi : niveau de vie médian annuel (millésime le plus proche, 2 ans au plus)', unit: 'années', cmp: true, dir: 'down', ind: /accessibilite du marche immobilier/ },
+  { id: 'dvf_ventes', label: 'Mutations immobilières enregistrées (DVF)', theme: 'Logement', dataset: 'dvf', where: { MESURE: 'NB_MUTATIONS', TYPE_LOCAL: '_T' }, cmp: true, dir: 'none', ind: /nombre de dia/ },
+  { id: 'foncier_dispo', label: 'Terrains vacants et chantiers (MOS, ha)', theme: 'Logement', dataset: 'mos', where: { MESURE: 'SURFACE_HA' }, weights: { dim: 'POSTE', w: { 'Terrains vacants': 1, Chantiers: 1 } }, unit: 'ha', dir: 'none', ind: /^foncier disponible$/ },
+  { id: 'foncier_mutable', label: 'Foncier potentiellement mutable : terrains vacants, chantiers, parkings de surface, entreposage à l’air libre (MOS, ha)', theme: 'Logement', dataset: 'mos', where: { MESURE: 'SURFACE_HA' }, weights: { dim: 'POSTE', w: { 'Terrains vacants': 1, Chantiers: 1, 'Parkings de surface': 1, "Entreposage à l'air libre": 1 } }, unit: 'ha', dir: 'none', ind: /mutabilite du foncier|foncier mutable/ },
+  // environnement : occupation du sol (MOS 2021, 2025), déchets (SINOE, EPT), émissions (Airparif, EPT)
+  { id: 'espaces_ouverts', label: 'Espaces naturels, agricoles et verts (MOS, ha)', theme: 'Environnement', dataset: 'mos', where: { MESURE: 'SURFACE_HA' }, weights: { dim: 'POSTE', w: { 'Maraîchage, horticulture': 1, 'Parcs ou jardins publics': 1, 'Autres espaces verts': 1, 'Surfaces engazonnées avec ou sans arbustes entretenus': 1, 'Jardins familiaux': 1, 'Jardins de l\'habitat': 1, Berges: 1, "Cours d'eau": 1 } }, unit: 'ha', dir: 'up', ind: /surfaces naturelles et agricoles consommees|identification des surfaces a preserver/ },
+  { id: 'surfaces_desimper', label: 'Surfaces minérales ouvertes : parkings de surface, places, entreposage à l’air libre (MOS, ha)', theme: 'Environnement', dataset: 'mos', where: { MESURE: 'SURFACE_HA' }, weights: { dim: 'POSTE', w: { 'Parkings de surface': 1, 'Esplanades et places': 1, "Entreposage à l'air libre": 1 } }, unit: 'ha', dir: 'down', ind: /desimpermeabilis/ },
+  { id: 'artif_surface', aux: true, label: 'Surface artificialisée (intermédiaire)', theme: 'Environnement', dataset: 'artificialisation', where: { MESURE: 'SURFACE_ARTIF_HA' }, cmp: true, dir: 'none', ind: /^$/ },
+  { id: 'artif_taux_annuel', label: 'Taux annuel d’artificialisation nette (2018-2021, % de la surface communale par an)', theme: 'Environnement', dataset: 'artificialisation', where: {}, derive: { from: ['flux_artif', 'artif_surface', 'artificialisation'], fn: ([f, a, p]) => combine(f, combine(a, p, (x, y) => (x * 100) / y, 0), (x, y) => (x / 3 / y) * 100, 0) }, formule: 'artificialisation : surface nouvellement artificialisée (ha, 2018-2021) / 3 ans / surface communale (surface artificialisée / part artificialisée) × 100', unit: '%', dir: 'down', ind: /taux annuel de sol impermeabilise/ },
+  { id: 'dechets_hab', label: 'Déchets ménagers et assimilés collectés par habitant (EPT)', theme: 'Environnement', dataset: 'sinoe_dma', maille: 'ept', where: { MAILLE: 'EPT', MESURE: 'DMA_KG_HAB' }, unit: 'kg/hab.', dir: 'down', ind: /^production de dechets par habitant$/ },
+  { id: 'dechets_proj', projection: true, label: 'Déchets ménagers et assimilés par habitant projetés en 2030 (tendance, EPT)', theme: 'Environnement', dataset: 'sinoe_dma', maille: 'ept', where: {}, derive: { from: ['dechets_hab'], fn: ([s]) => (s.length ? trend(s, 2030 - yearOf(s[s.length - 1].period)) : []) }, formule: 'sinoe_dma : tendance linéaire des DMA collectés par habitant (6 dernières années renseignées) prolongée jusqu’en 2030', unit: 'kg/hab.', dir: 'down', ind: /projection de la production de dechets? par habitant/ },
+  { id: 'biodechets_part', label: 'Part des biodéchets dans les déchets ménagers collectés (EPT)', theme: 'Environnement', dataset: 'sinoe_dma', maille: 'ept', where: { MAILLE: 'EPT' }, ratio: { dim: 'MESURE', num: ['TONNAGE_BIO'], den: ['TONNAGE_DMA'] }, unit: '%', dir: 'up', ind: /part de biodechets/ },
+  { id: 'valorisation_matiere', label: 'Part des déchets ménagers orientés vers la valorisation matière (EPT)', theme: 'Environnement', dataset: 'sinoe_dma', maille: 'ept', where: { MAILLE: 'EPT', MESURE: 'PCT_VALO_MAT' }, unit: '%', dir: 'up', ind: /part de dechets tries|evolution du tri des dechets/ },
+  { id: 'ges_hab', label: 'Émissions de gaz à effet de serre par habitant (scopes 1 et 2, EPT)', theme: 'Environnement', dataset: 'airparif_ges', maille: 'ept', where: { POLLUANT: 'GES', SECTEUR: '_T', MESURE: 'EMISSIONS_T_HAB' }, unit: 't éq. CO2/hab.', cmp: true, dir: 'down', ind: /emissions? de gaz a effet de serre par habitant/ },
+  { id: 'ges_proj', projection: true, label: 'Émissions de gaz à effet de serre par habitant projetées en 2030 (tendance 2005-2022, EPT)', theme: 'Environnement', dataset: 'airparif_ges', maille: 'ept', where: {}, derive: { from: ['ges_hab'], fn: ([s]) => (s.length ? trend(s, 2030 - yearOf(s[s.length - 1].period)) : []) }, formule: 'airparif_ges : tendance linéaire des émissions de GES par habitant (2005, 2010, 2015, 2019, 2022) prolongée jusqu’en 2030', unit: 't éq. CO2/hab.', cmp: true, dir: 'down', ind: /projection de reduction des emissions/ },
+  { id: 'ges_transport_hab', label: 'Émissions de GES du transport routier par habitant (EPT)', theme: 'Mobilité', dataset: 'airparif_ges', maille: 'ept', where: { POLLUANT: 'GES', SECTEUR: 'TROUTE', MESURE: 'EMISSIONS_T_HAB' }, unit: 't éq. CO2/hab.', cmp: true, dir: 'down', ind: /emissions liees aux transports motorises/ },
+  // mobilité : part modale active 2017-2023 (le vélo n'est pas distingué des deux-roues motorisés en 2012)
+  { id: 'modes_actifs_hist', label: 'Part des actifs allant travailler à pied ou à vélo (2017, 2023)', theme: 'Mobilité', dataset: 'rp_navettes_hist', where: { WORK_AREA: '_T', EMPSTA_ENQ: '1', RP_MEASURE: 'POP', AGE: 'Y_GE15' }, ratio: { dim: 'TRANS', num: ['2', '3'], den: ['_T'] }, since: '2017', unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
+  { id: 'modes_actifs_proj', projection: true, label: 'Part des actifs allant travailler à pied ou à vélo projetée à 10 ans (tendance 2017-2023)', theme: 'Mobilité', dataset: 'rp_navettes_hist', where: {}, derive: { from: ['modes_actifs_hist'], fn: ([s]) => trend(s, 10) }, formule: 'rp_navettes_hist : tendance linéaire de la part de la marche et du vélo entre 2017 et 2023, prolongée de 10 ans', unit: '%', cmp: true, dir: 'up', ind: /projection de la part modale velo\/marche/ },
+  // cohésion sociale, santé, équipements
+  { id: 'rsa_proj', projection: true, label: 'Foyers au RSA projetés à 5 ans (tendance du fichier RSA de la CAF)', theme: 'Cohésion sociale', dataset: 'caf_rsa', where: {}, derive: { from: ['rsa'], fn: ([s]) => trend(s, 5) }, formule: 'caf_rsa : tendance linéaire des foyers au RSA (décembre de chaque année) prolongée de 5 ans', dir: 'down', ind: /projection des publics en difficulte/ },
+  { id: 'ald_part', label: 'Part de la population en affection de longue durée (ALD) — Val-de-Marne', theme: 'Santé', dataset: 'ameli_ald', contexteDep: 'dep', where: { MESURE: 'ALD' }, perPct: true, unit: '%', cmp: true, dir: 'none', ind: /^$/, indCarte: /nb ald \/ pop|besoins specifiques ald/ },
+  { id: 'emplois_ess_asso', label: 'Salariés déclarés par les associations ayant leur siège dans la commune (part associative de l’ESS)', theme: 'Emploi', dataset: 'associations_api', where: {}, derive: { from: ['asso_salaries'], fn: ([s]) => s }, formule: 'associations_api : somme des salariés déclarés par les associations actives ayant leur siège dans la commune (API Entreprise, données non publiques)', declaratif: true, partielRaison: 'associations seules (coopératives, mutuelles, fondations non comprises) ; effectifs déclarés par une partie des associations', dir: 'up', ind: /emplois generes par les structures ess/ },
+  { id: 'equip_bpe_1000', label: 'Équipements et services de la base permanente des équipements (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'bpe', where: { BPE_MEASURE: 'FACILITIES', FACILITY_DOM: '_T' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /access+ibilite des habitants aux equipements|projection des besoins en equipements/ },
   { id: 'familles_af', perK: true, label: 'Foyers percevant les allocations familiales (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_AF' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
 { id: 'licences_sport', perK: true, label: 'Licences sportives (pour 1 000 hab.)', theme: 'Sport', dataset: 'licences_sportives', where: { MESURE: 'LICENCES', FEDERATION: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, partial: ['reg'], dir: 'up', ind: /licences/ },
 { id: 'lieux_culturels', perK: true, label: 'Lieux et équipements culturels (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'equipements_culturels', where: { MESURE: 'NB_LIEUX', DOMAINE: '_T', TYPE: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /lieux et equipements culturels|equipements culturels/ },
 { id: 'lineaire_velo', label: 'Aménagements cyclables (km)', theme: 'Mobilité', dataset: 'velo_amenagements', where: { MESURE: 'LONGUEUR_M', TYPE: '_T' }, factor: 0.001, unit: 'km', cmp: true, fromCommunes: true, dir: 'up', ind: /amenagements cyclables|voies cyclables/ },
 { id: 'trame_verte', label: 'Surface de trame verte (ha)', theme: 'Environnement', dataset: 'trame_verte', where: { MESURE: 'SURFACE_HA', SOUS_TRAME: '_T', ROLE: '_T' }, unit: 'ha', cmp: true, fromCommunes: true, partial: true, dir: 'up', ind: /trame verte|espaces verts/ },
 ];
+
+// ---------------- KPI dérivés : calculés à partir des séries d'autres KPI, territoire par territoire ----------------
+// spec.derive = { from: [ids], fn: (séries, clé du territoire) => série } ; spec.aux : KPI intermédiaire, non publié.
+const yearOf = (p) => Number(String(p).slice(0, 4));
+// point de la série le plus proche dans le temps d'une période donnée
+function nearest(s, period) {
+  if (!s || !s.length) return null;
+  const y = yearOf(period);
+  return s.reduce((b, p) => (Math.abs(yearOf(p.period) - y) < Math.abs(yearOf(b.period) - y) ? p : b));
+}
+// combinaison de deux séries à la même période (ou à la plus proche, à `gap` ans près)
+function combine(a, b, f, gap = 1) {
+  return (a || []).map((p) => {
+    const q = nearest(b, p.period);
+    if (!q || Math.abs(yearOf(q.period) - yearOf(p.period)) > gap) return null;
+    const v = f(p.value, q.value);
+    return Number.isFinite(v) ? { period: p.period, value: v } : null;
+  }).filter(Boolean);
+}
+// tendance linéaire (moindres carrés) des `window` dernières observations, prolongée de `years` ans :
+// [dernière valeur observée, valeur projetée] (la valeur affichée est la projection, la précédente l'observation)
+function trend(s, years, window = 6) {
+  const pts = (s || []).filter((p) => Number.isFinite(yearOf(p.period))).slice(-window);
+  if (pts.length < 2) return [];
+  const n = pts.length, mx = pts.reduce((a, p) => a + yearOf(p.period), 0) / n, my = pts.reduce((a, p) => a + p.value, 0) / n;
+  const sxx = pts.reduce((a, p) => a + (yearOf(p.period) - mx) ** 2, 0);
+  if (!sxx) return [];
+  const slope = pts.reduce((a, p) => a + (yearOf(p.period) - mx) * (p.value - my), 0) / sxx;
+  const last = pts[n - 1], y = yearOf(last.period) + years;
+  return [{ period: last.period, value: last.value }, { period: String(y), value: Math.max(0, my + slope * (y - mx)) }];
+}
+// moyenne des `k` dernières valeurs (rythme récent)
+const meanLast = (s, k) => { const t = (s || []).slice(-k); return t.length ? [{ period: t[t.length - 1].period, value: t.reduce((a, p) => a + p.value, 0) / t.length }] : []; };
+
+// rattachements supplémentaires de KPI existants (fiches couvertes par approximation)
+for (const [id, re, carte] of [
+  ['precaires', null, /part des contrats precaires/],
+  ['salaries_asso', /emplois generes par les structures ess/],
+  ['creations', /evolution du nombre d activites implantees/],
+  ['personnes_piece', /evolution du nombre de logements\/menages en sur occupation|adequation du parc de logement/],
+  ['passoires', /logements indignes/],
+  ['artificialisation', /evolution de la part de sols impermeabil/],
+  ['proj_65plus', /projections par tranche d age/],
+  ['ess', /opportunites de developpement de l ess/],
+  ['icu_fort', /surfaces impermeabilisees pouvant etre impactees|^evolution des surfaces concernees$/],
+  ['points_noirs', /population exposee aux nuisances sonores|secteurs pouvant etre exposes a des nuisances sonores/],
+]) {
+  const k = KPIS.find((x) => x.id === id);
+  if (!k) continue;
+  if (re) k.ind = new RegExp(`${k.ind.source}|${re.source}`);
+  if (carte) k.indCarte = k.indCarte ? new RegExp(`${k.indCarte.source}|${carte.source}`) : carte;
+}
 
 const matches = (r, where) => Object.entries(where).every(([d, v]) => r.dims[d] === v);
 const totalOnly = (r, used) => Object.entries(r.dims).every(([d, v]) => used.has(d) || IGNORED.has(d) || v === '_T' || v === '_Z' || v == null);
@@ -209,7 +319,7 @@ function seriesOf(rows, spec) {
     for (const p of out) { acc += p.value; p.value = acc; }
     return out.filter((p) => p.period !== '');
   }
-  return out.filter((p) => !spec.skipCurrent || Number(String(p.period).slice(0, 4)) < thisYear).sort((a, b) => (a.period < b.period ? -1 : 1));
+  return out.filter((p) => !spec.since || String(p.period) >= spec.since).filter((p) => !spec.skipCurrent || Number(String(p.period).slice(0, 4)) < thisYear).sort((a, b) => (a.period < b.period ? -1 : 1));
 }
 
 function compute() {
@@ -218,6 +328,7 @@ function compute() {
   const nomOf = (code) => all('SELECT nom FROM geos WHERE code = ?', code)[0]?.nom || code;
   GEOS_MAILLE.dep = { code: '94', label: '94', nom: nomOf('94'), level: 'DEP' };
   GEOS_MAILLE.reg = { code: '11', label: 'IDF', nom: nomOf('11'), level: 'REG' };
+  GEOS_MAILLE.ept = { code: 'GOSB', label: 'EPT', nom: nomOf('GOSB'), level: 'EPT' }; // données publiées à la maille de l'EPT compétent (déchets, émissions)
   const indicators = all('SELECT id, libelle, libelle_carte, statut, priorite, theme, theme_label, niveau FROM indicators');
   const dsInfo = Object.fromEntries(all('SELECT id, label, last_import FROM datasets').map((d) => [d.id, d]));
   const withData = new Set(all('SELECT DISTINCT indicator_id FROM indicator_datasets').map((r) => r.indicator_id));
@@ -235,9 +346,16 @@ function compute() {
   const carto = require('./cartographie'); // chargé ici pour éviter la dépendance circulaire au démarrage
   const pops = require('./importer').populationSeries();
   const communesOf = (key) => (key === 'dep' ? all("SELECT s.code FROM geo_shapes s JOIN geos g ON g.code = s.code WHERE g.dept = '94'") : all('SELECT code FROM geo_shapes')).map((r) => r.code);
+  const resById = {}; // séries par KPI et territoire, pour les KPI dérivés
   const kpis = KPIS.map((spec) => {
     const res = {};
-    for (const [geo, key] of geos) {
+    if (spec.derive) {
+      for (const [, key] of geos) {
+        if (key !== 'ref' && !spec.cmp) continue;
+        res[key] = spec.derive.fn(spec.derive.from.map((id) => resById[id]?.[key] || []), key, resById) || [];
+      }
+    }
+    for (const [geo, key] of spec.derive ? [] : geos) {
       if (key !== 'ref' && !spec.cmp) continue;
       let s = seriesOf(rowsOfAll(spec, geo), spec);
       // jeux communaux : le Val-de-Marne et l'Île-de-France sont recalculés à partir des communes (effectifs ou ratios de sommes)
@@ -253,10 +371,11 @@ function compute() {
       if (spec.kpiPerK || spec.perHab || spec.perPct) { const f = spec.perHab ? 1 : spec.perPct ? 100 : 1000; s = s.map((p) => { const pop = carto.popAt(pops[geo], p.period); return pop ? { period: p.period, value: (p.value / pop) * f } : null; }).filter(Boolean); }
       res[key] = s;
     }
+    resById[spec.id] = res;
     // jeux sans donnée communale (ex. Assurance Maladie, maille départementale) : la valeur de contexte
     // (département ou région) tient lieu de valeur principale, à condition de la déclarer (spec.contexteDep).
     // maille de la valeur affichée : la commune de référence par défaut, sinon le territoire de contexte (94 ou 11)
-    const maille = res.ref?.length ? null : spec.contexteDep ? (spec.contexteDep === 'dep' ? GEOS_MAILLE.dep : GEOS_MAILLE.reg) : null;
+    const maille = spec.maille === 'ept' ? GEOS_MAILLE.ept : res.ref?.length ? null : spec.contexteDep ? (spec.contexteDep === 'dep' ? GEOS_MAILLE.dep : GEOS_MAILLE.reg) : null;
     const s = res.ref?.length ? res.ref : (spec.contexteDep && res[spec.contexteDep]?.length ? res[spec.contexteDep] : []);
     const last = s[s.length - 1] || null, prev = s.length > 1 ? s[s.length - 2] : null;
     const at = (list, period) => (list || []).find((p) => p.period === period) || null;
@@ -264,15 +383,16 @@ function compute() {
     const states = { valide: 0, brouillon: 0, abandonne: 0 };
     cands.forEach((i) => { states[i.statut || 'brouillon']++; });
     const statut = states.valide ? 'valide' : states.brouillon ? 'brouillon' : cands.length ? 'abandonne' : 'sans_fiche';
-    const year = last ? Number(String(last.period).slice(0, 4)) : null;
+    const year = spec.projection && spec.derive && prev ? yearOf(prev.period) : last ? Number(String(last.period).slice(0, 4)) : null; // projection : âge de la dernière observation
     return {
+      aux: !!spec.aux, projection: !!spec.projection,
       prive: PRIVES.has(spec.dataset), // jeu à accès habilité : valeur non publique
       concept: spec.concept || spec.id, // KPI de même concept : sources comparables entre elles
       id: spec.id, label: spec.label, theme: spec.theme, unit: spec.unit || (spec.kpiPerK ? 'pour 1 000 hab.' : ''), dir: spec.dir, dataset: spec.dataset, datasetLabel: dsInfo[spec.dataset]?.label || spec.dataset,
       last_import: dsInfo[spec.dataset]?.last_import || null,
       maille, // maille de la valeur affichée (null = commune de référence ; { code, label, nom, level } sinon)
       value: last?.value ?? null, period: last?.period ?? null, prev, series: s.slice(-8),
-      ept: last && res.ept ? at(res.ept, last.period) : null,
+      ept: spec.maille === 'ept' ? null : last && res.ept ? at(res.ept, last.period) : null,
       dep: spec.contexteDep === 'dep' ? null : last && res.dep ? at(res.dep, last.period) : null,
       reg: spec.contexteDep === 'reg' ? null : last && res.reg ? at(res.reg, last.period) : null,
       age: year == null || Number.isNaN(year) ? null : new Date().getFullYear() - year,
@@ -283,6 +403,7 @@ function compute() {
 
   // cohérence entre sources d'un même concept : comparaison à la dernière période commune (sinon dernières valeurs)
   // écart relatif |a − b| / max(|a|, |b|) : ≤ 2 % cohérent, ≤ 20 % écart, au-delà incohérent
+  for (let i = kpis.length - 1; i >= 0; i--) if (kpis[i].aux) kpis.splice(i, 1); // KPI intermédiaires : non publiés
   const byConcept = new Map();
   for (const k of kpis) if (k.value != null) (byConcept.get(k.concept) || byConcept.set(k.concept, []).get(k.concept)).push(k);
   for (const k of kpis) {
@@ -314,7 +435,8 @@ function compute() {
 
 // Nature et formule lisible d'un KPI, déduites de sa définition (pour les fiches créées depuis « Autres »)
 function formulaOf(spec) {
-  const filt = Object.entries(spec.where).filter(([, v]) => v !== '_T').map(([d, v]) => `${d} = ${v}`).join(', ');
+  if (spec.formule) return { mode: 'calcule', formule: spec.formule };
+  const filt = Object.entries(spec.where || {}).filter(([, v]) => v !== '_T').map(([d, v]) => `${d} = ${v}`).join(', ');
   const base = `${spec.dataset}${filt ? ` [${filt}]` : ''}`;
   let f, mode = 'direct';
   const list = (c) => (c.length > 6 ? `${c[0]} … ${c[c.length - 1]} (${c.length} modalités)` : c.join(', '));
@@ -358,29 +480,79 @@ const PROXY = [
   [/^c2s_/, /\bame\b/, 'C2S seule : l’AME n’est pas publiée à la commune ; régime général uniquement'],
   [/^points_noirs$/, /qualite de l air/, 'cumul de nuisances (air, bruit, sols…), pas la qualité de l’air seule'],
   [/^points_noirs$/, /nuisances sonores/, 'cumul de nuisances, pas le bruit seul'],
-  [/^artificialisation$/, /impermeabilite/, 'surface artificialisée : artificialisé ne veut pas dire imperméabilisé'],
+  [/^artificialisation$/, /impermeabil/, 'surface artificialisée : artificialisé ne veut pas dire imperméabilisé'],
   [/^apl_mg$/, /secteurs en deficit/, 'APL de la commune : l’identification des secteurs demande la maille infra-communale ou le zonage ARS'],
   [/^idh2_sante$/, /indice determinant/, 'composante santé de l’IDH-2 (espérance de vie), pas un indice composite des déterminants de santé'],
   [/^idh2/, /./, 'dernière édition de l’IDH-2 : 2013'],
   [/^rsa_couverture$/, /minima sociaux/, 'RSA seul : AAH, ASS et minimum vieillesse non compris'],
   [/^proj_65plus$/, /./, 'projection simplifiée : survie moyenne nationale, sans les migrations'],
+  [/^pop_lt20/, /moins de 18/, 'moins de 20 ans : seule tranche publiée aux trois millésimes'],
+  [/^pop_lt20_part$|^pop_65_part$/, /tranche d age/, 'une tranche d’âge : voir aussi les autres KPI de la série 2012-2023'],
+  [/^familles_mono/, /menages/, 'familles monoparentales (dossier complet), pas ménages'],
+  [/^non_scolarises$/, /moins de 18/, '6-17 ans : les moins de 6 ans ne relèvent pas tous de la scolarisation'],
+  [/^enfants_0_5$/, /besoins scolaires/, 'effectif des futurs élèves, sans les flux migratoires ni les constructions nouvelles'],
+  [/^pop_proj$|^defm_proj$|^rsa_proj$|^modes_actifs_proj$|^dechets_proj$|^ges_proj$/, /./, 'prolongation de la tendance récente, sans hypothèse de rupture'],
+  [/^emplois_habitants$/, /./, 'actifs occupés travaillant dans la commune / emplois au lieu de travail (recensement)'],
+  [/^ecart_revenu$/, /./, 'écart au Val-de-Marne ; l’écart à l’EPT se lit dans la comparaison GOSB'],
+  [/^commerces_bpe_1000$/, /./, 'densité commerciale actuelle comparée au Val-de-Marne, base d’une estimation des besoins'],
+  [/^taux_creation$/, /./, 'taux de création global : le potentiel par secteur demande une étude dédiée'],
+  [/^part_commerce$/, /./, 'part d’un grand secteur : la typologie fine des commerces (BPE) n’a qu’un millésime'],
+  [/^vacants_longue$/, /./, 'vacance de plus de deux ans (parc privé) : gisement mobilisable, pas une projection'],
+  [/^autorises_moy3$/, /./, 'rythme récent des autorisations, pas un programme de logements'],
+  [/^accessibilite_immo$/, /./, 'prix d’un appartement médian rapporté au niveau de vie médian d’une personne'],
+  [/^dvf_ventes$/, /dia/, 'mutations enregistrées (DVF) : chaque vente en zone de préemption suit une DIA, mais toutes les DIA n’aboutissent pas', true],
+  [/^foncier_/, /./, 'occupation du sol (MOS) : surfaces potentiellement mobilisables, sans analyse de propriété ni de constructibilité'],
+  [/^espaces_ouverts$/, /consommees/, 'surfaces 2021 et 2025 : l’évolution se lit entre les deux millésimes'],
+  [/^espaces_ouverts$/, /preserver/, 'surfaces ouvertes actuelles, sans hiérarchie écologique'],
+  [/^surfaces_desimper$/, /./, 'surfaces minérales ouvertes (MOS), sans diagnostic de faisabilité'],
+  [/^artif_taux_annuel$/, /./, 'artificialisation nette (occupation du sol), pas l’imperméabilisation'],
+  [/^valorisation_matiere$/, /./, 'valorisation matière (recyclage) des déchets ménagers : approche de la part triée'],
+  [/^biodechets_part$/, /./, 'biodéchets collectés séparément rapportés à l’ensemble des déchets ménagers et assimilés'],
+  [/^ges_transport_hab$/, /./, 'transport routier seul (aérien et ferroviaire à part)'],
+  [/^ald_part$/, /besoins/, 'part de la population en ALD : mesure du besoin, pas des besoins d’accompagnement'],
+  [/^equip_bpe_1000$/, /./, 'densité d’équipements, pas les temps d’accès'],
+  [/^salaries_asso$/, /ess/, 'salariés des associations seulement (coopératives, mutuelles et fondations non comprises)'],
+  [/^creations$/, /implantees/, 'créations seules : les départs (radiations) ne sont pas publiés à la commune'],
+  [/^personnes_piece$/, /sur.occupation|adequation/, 'personnes par pièce : indice de peuplement, pas le nombre de logements suroccupés', true],
+  [/^passoires$/, /indignes/, 'logements classés F ou G au DPE : précarité énergétique, pas l’indignité (le PPPI n’est pas diffusé en open data)'],
+  [/^precaires$/, /adequation/, 'part des contrats précaires : un seul aspect de l’adéquation des emplois aux profils'],
+  [/^proj_65plus$/, /tranche d age/, 'une seule tranche (65 ans ou plus) : les autres demandent les naissances et les migrations'],
+  [/^icu_fort$/, /evolution/, 'un seul millésime (2021) : pas d’évolution mesurable'],
+  [/^icu_fort$/, /projection/, 'surface actuellement en aléa fort, base d’une projection'],
+  [/^ess$/, /opportunites/, 'établissements de l’ESS actuels, base d’une analyse des opportunités'],
   [/^generalistes$/, /rapport entre l offre et la demande/, 'densité de généralistes, pas l’accessibilité potentielle localisée (APL)'],
 ];
 
+// libellés de la ligne de la grille (contexte, suivi, évaluation, prospective) : distingue deux fiches de même libellé
+// (« évolution en nb » des commerces et des entreprises hors commerce)
+let gridRows = null;
+function rowText(id) {
+  if (!gridRows || Date.now() - gridRows.at > 60000) {
+    const list = all('SELECT id, groupe, excel_row, libelle FROM indicators');
+    const by = new Map();
+    for (const i of list) { const k = `${i.groupe}|${i.excel_row}`; by.set(k, `${by.get(k) || ''} ${norm(i.libelle)}`); }
+    gridRows = { at: Date.now(), map: new Map(list.map((i) => [i.id, i.excel_row == null ? norm(i.libelle) : by.get(`${i.groupe}|${i.excel_row}`)])) };
+  }
+  return gridRows.map.get(id) || '';
+}
+
 function matchOne(k, fiche) {
   const t = norm(fiche.libelle);
+  if (k.row && !(fiche.id != null && k.row.test(rowText(fiche.id)))) return null;
   const carte0 = norm(fiche.libelle_carte || '');
   if (!k.ind.test(t) && !(k.indCarte && k.indCarte.test(carte0))) return null;
   if (fiche.theme && THEMES[fiche.theme] && !THEMES[fiche.theme].includes(k.theme)) return null; // thème incompatible
   const carte = norm(fiche.libelle_carte || '');
   const fk = /par (association|assiociation|asso)\b/.test(carte) || /par association/.test(t) ? 'ratio' : ficheKind(t), kk = kpiKind(k);
-  if ((fk === 'pct' || fk === 'ratio') && (kk === 'count' || kk === 'money')) return null; // une part ou un indice ne peut pas être un effectif
-  if (fk === 'count' && (kk === 'pct' || kk === 'money' || kk === 'ratio')) return null; // un nombre ne peut pas être un pourcentage
-  const why = [];
   const proxy = PROXY.find(([idRe, ficheRe]) => idRe.test(k.id) && (ficheRe.test(t) || ficheRe.test(carte0)));
+  const force = proxy && proxy[3] === true; // approximation assumée : l'unité diffère de celle de la fiche
+  if (!force && (fk === 'pct' || fk === 'ratio') && (kk === 'count' || kk === 'money')) return null; // une part ou un indice ne peut pas être un effectif
+  if (!force && fk === 'count' && (kk === 'pct' || kk === 'money' || kk === 'ratio')) return null; // un nombre ne peut pas être un pourcentage
+  const why = [];
   if (proxy) why.push(proxy[2]);
   if (fk === 'count' && kk === 'rate') why.push('taux pour 1 000 habitants, la fiche demande un nombre');
   if (fk === 'pct' && kk === 'ratio') why.push('rapport ou indice, pas un pourcentage');
+  if (k.maille === 'ept') why.push('valeur de l’EPT Grand-Orly Seine Bièvre (collectivité compétente), pas de la commune');
   if (fiche.niveau === 'prospective' && !k.projection) why.push('valeur actuelle : base de la projection, pas la projection elle-même');
   else if (fiche.niveau === 'evaluation' && !/^(densite|taux|part|indice|indicateur|rapport|attractivite|respect|accidents|nombre de|nb d emplois)/.test(t)) why.push('valeur de contexte : l’évaluation demande une analyse');
   // effectifs et comptes des associations : déclarations partielles (seules certaines associations les renseignent)

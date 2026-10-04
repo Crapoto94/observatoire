@@ -36,6 +36,19 @@ const MELODI_DATASETS = [
   d('rp_menages_type', 'DS_RP_TD_MENAGES_TPH_COMP', 'Ménages selon le type (MEN5/MEN6)',
     'Recensement : ménages selon l\'âge de la personne de référence et le type de ménage (dont familles monoparentales).',
     ['demographie'], [{ theme: 'demographie', re: /monoparentaux|monoparentales/ }]),
+  // dossiers complets (trois millésimes 2012, 2017, 2023) : évolutions par tranche d'âge, familles, navettes, scolarisation
+  d('rp_pop_hist', 'DS_RP_POPULATION_PRINC', 'Population par grande tranche d’âge, 2012-2017-2023 (dossier complet)',
+    "Recensement : population par sexe et grande tranche d'âge (moins de 15 ans, moins de 20 ans, 15-24, 25-39, 40-54, 55-64, 65-79, 65 ans ou plus, 80 ans ou plus) aux trois derniers millésimes, pour les évolutions par tranche d'âge.",
+    ['demographie'], [{ theme: 'demographie', re: /evolution par tranche d age|evolution du nombre et de la part des (moins de 18|\+ de 65)/ }]),
+  d('rp_famille', 'DS_RP_FAMILLE_COMP', 'Familles selon le type, 2012-2017-2023 (dossier complet)',
+    "Recensement : familles selon le type (couples avec ou sans enfant, familles monoparentales d'un homme ou d'une femme) et le nombre d'enfants de moins de 25 ans, aux trois derniers millésimes.",
+    ['demographie'], [{ theme: 'demographie', re: /monoparenta/ }]),
+  d('rp_navettes_hist', 'DS_RP_NAVETTES_PRINC', 'Déplacements domicile-travail, 2012-2017-2023 (dossier complet)',
+    'Recensement : actifs occupés de 15 ans ou plus selon le mode de transport principal et le lieu de travail (commune de résidence ou non), aux trois derniers millésimes.',
+    ['mobilite', 'emploi'], [{ theme: 'mobilite', re: /part modale|domicile travail/ }]),
+  d('rp_educ_hist', 'DS_RP_EDUCATION_PRINC', 'Scolarisation par âge, 2012-2017-2023 (dossier complet)',
+    "Recensement : population scolarisée ou non par tranche d'âge (2-5, 6-10, 11-14, 15-17, 18-24 ans…) aux trois derniers millésimes.",
+    ['demographie'], [{ theme: 'demographie', re: /non scolarises/ }]),
   d('rp_nationalite', 'DS_RP_TD_NAT_AGESEX_PRINC', 'Population par sexe, âge et nationalité (NAT1)',
     'Recensement : population par nationalité (étrangers / Français). À utiliser pour la part d\'étrangers.',
     ['demographie'], [{ theme: 'demographie', re: /etrangers/ }]),
@@ -122,4 +135,4 @@ const MELODI_DATASETS = [
     ['mobilite'], [{ theme: 'mobilite', re: /part modale|deplacements par type|domicile travail/ }]),
 ];
 
-module.exports = [...MELODI_DATASETS, ...require('./datasets_open'), ...require('./datasets_energy'), ...require('./datasets_idf'), ...require('./datasets_emploi'), ...require('./datasets_autres'), ...require('./datasets_sante'), ...require('./datasets_prives'), ...require('./datasets_c2s'), ...require('./datasets_c2s'), ...require('./datasets_c2s'), ...require('./datasets_apl'), ...require('./datasets_ipr')];
+module.exports = [...MELODI_DATASETS, ...require('./datasets_open'), ...require('./datasets_energy'), ...require('./datasets_idf'), ...require('./datasets_emploi'), ...require('./datasets_autres'), ...require('./datasets_sante'), ...require('./datasets_prives'), ...require('./datasets_c2s'), ...require('./datasets_apl'), ...require('./datasets_ipr'), ...require('./datasets_env')];

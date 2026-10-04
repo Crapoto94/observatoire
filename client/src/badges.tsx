@@ -40,7 +40,7 @@ export function InterneBadge({ kind }: { kind: 'interne' | 'mixte' }) {
     : <span className="src src-interne-mixte" title="Source externe à compléter par des données internes de la collectivité (services, dossiers, relevés)">🏢 Complément interne</span>;
 }
 
-export interface Maille { code: string; label: string; nom: string; level: 'DEP' | 'REG' }
+export interface Maille { code: string; label: string; nom: string; level: 'DEP' | 'REG' | 'EPT' }
 
 // Maille de la valeur affichée : la valeur d'un indicateur peut être départementale (94) ou régionale (IDF)
 // au lieu d'être celle de la commune de référence — le badge évite toute confusion.

@@ -10,7 +10,7 @@ const EXTRA = [
   { id: 'validations', label: 'Validations du réseau ferré (1er trimestre, pour 1 000 hab.)', theme: 'Mobilité', dataset: 'idfm_ferre', where: { MESURE: 'VALIDATIONS' }, perK: true, dir: 'none' },
   { id: 'velo', label: 'Capacité de stationnement vélo (pour 1 000 hab.)', theme: 'Mobilité', dataset: 'velo_stationnement', where: { MESURE: 'CAPACITE', MOBILIER: '_T' }, perK: true, dir: 'up' },
 ];
-const LAYERS = [...KPIS, ...EXTRA].map((k) => ({ ...k, label: k.perK && !/1 000/.test(k.label) ? `${k.label} (pour 1 000 hab.)` : k.label }));
+const LAYERS = [...KPIS.filter((k) => !k.derive && !k.aux && !k.maille), ...EXTRA].map((k) => ({ ...k, label: k.perK && !/1 000/.test(k.label) ? `${k.label} (pour 1 000 hab.)` : k.label }));
 
 // jeux construits par comptage d'événements (accidents, autorisations) : l'absence de ligne signifie « zéro » et non « inconnu »
 const ZERO_FILL = new Set(['accidents', 'autorises', 'commences']);

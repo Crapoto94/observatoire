@@ -352,3 +352,8 @@ Google Stitch doit **refaire intégralement le style visuel** de cette applicati
 - **Respecte les interactions fonctionnelles** : filtres synchronisés, navigation retour, accès fiche depuis liste/carte, bascule entre vues, états dynamiques.
 
 **Point clé** : Ce document décrit le **« quoi » et le « comment ça fonctionne »**. Il n'impose **aucun « à quoi ça ressemble »**. Google Stitch est invité à proposer une **identité visuelle et un style UI entièrement nouveaux**, en s'assurant uniquement que le fonctionnement décrit ci-dessus est intégralement préservé.
+
+### Couverture des fiches par approximation (octobre 2026)
+- Nouveaux jeux : déchets ménagers (ADEME SINOE®, maille EPT), émissions de GES par secteur (Airparif, EPT / 94 / IDF), séries 2012-2017-2023 du recensement (tranches d'âge, familles, navettes, scolarisation).
+- KPI dérivés (ratios entre jeux, écart au Val-de-Marne) et projections par tendance linéaire (population, demandeurs d'emploi, RSA, part modale active, déchets, GES), badge de maille « EPT » quand la valeur est celle de l'EPT compétent.
+- Rattachement des fiches selon la ligne de la grille (deux fiches de même libellé distinguées), approximations documentées par une raison affichée (fiabilité « approchée »).
