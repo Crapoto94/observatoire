@@ -11,6 +11,7 @@ export interface Kpi {
   multi?: Multi; // autres sources du même concept et cohérence
   id: string; label: string; theme: string; unit: string; dir: 'up' | 'down' | 'none'; dataset: string; datasetLabel: string; last_import: string | null;
   value: number | null; period: string | null; prev: Pt | null; series: Pt[]; ept: Pt | null; dep: Pt | null; reg: Pt | null; age: number | null; maille?: Maille | null;
+  projection?: boolean; fourchette?: { bas: number; haut: number; methode: string } | null; // projections : hypothèses basse et haute
   indicators: { id: number; libelle: string; statut: string; priorite: number | null }[];
   statut: 'valide' | 'brouillon' | 'abandonne' | 'sans_fiche';
   states: { valide: number; brouillon: number; abandonne: number };
@@ -86,6 +87,7 @@ export function Card({ k, focus, onAdd, trend, style }: { k: Kpi; focus: boolean
               </div>
             )}
           </div>
+          {k.fourchette && <div className="kpi-fourchette small" title={`Fourchette : ${k.fourchette.methode}`}>fourchette {fmt(k.fourchette.bas)} – {fmt(k.fourchette.haut)}{unit}</div>}
           {(st.showPeriod !== false || st.showDelta !== false) && (
             <div className="kpi-sub small">
               {st.showPeriod !== false && <span className="muted">{k.period}</span>}

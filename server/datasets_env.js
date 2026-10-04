@@ -22,6 +22,20 @@ module.exports = [
     },
   },
   {
+    id: 'atmo_indices', provider: 'atmo',
+    label: 'Indice ATMO de la qualité de l’air, historique communal (Airparif)',
+    description: "Airparif : indice ATMO communal de chaque jour depuis 2021 (indice national : 1 bon, 2 moyen, 3 dégradé, 4 mauvais, 5 très mauvais, 6 extrêmement mauvais), constaté la veille. Agrégats annuels : jours renseignés, jours « dégradé » ou pire, jours « mauvais » ou pire, jours « dégradé » ou pire par polluant (dioxyde d'azote, ozone, particules PM10 et PM2,5), indice moyen. Année en cours incomplète. GOSB : moyenne de ses communes pondérée par la population.",
+    themes: ['environnement'], doc_url: 'https://data-airparif-asso.opendata.arcgis.com/',
+    link: [{ groupe: 'environnement', re: /pollution|qualite de l air/ }],
+    config: {
+      url: 'https://magellan.airparif.asso.fr/geoserver/siteweb/wfs', layer: 'siteweb:vue_indice_atmo_2020_histo', seuilDegrade: 3, seuilMauvais: 4,
+      labels: mesure({
+        JOURS: 'Jours renseignés', JOURS_DEGRADE: 'Jours dégradés ou pire (indice 3 ou plus)', JOURS_MAUVAIS: 'Jours mauvais ou pire (indice 4 ou plus)', INDICE_MOYEN: 'Indice moyen de l’année',
+        DEGRADE_NO2: 'Jours dégradés ou pire pour le dioxyde d’azote', DEGRADE_O3: 'Jours dégradés ou pire pour l’ozone', DEGRADE_PM10: 'Jours dégradés ou pire pour les particules PM10', DEGRADE_PM25: 'Jours dégradés ou pire pour les particules PM2,5',
+      }),
+    },
+  },
+  {
     id: 'airparif_ges', provider: 'airparif',
     label: 'Émissions de gaz à effet de serre par secteur (Airparif)',
     description: "Airparif, inventaire régional des émissions : gaz à effet de serre (kt éq. CO2, scopes 1 et 2) et oxydes d'azote par secteur d'activité (résidentiel, tertiaire, transport routier, industrie, aérien, déchets…), années 2005, 2010, 2015, 2019 et 2022. Maille EPT pour les communes (valeurs du Grand-Orly Seine Bièvre), département et région. Ratio par habitant calculé avec la population du territoire au recensement le plus proche.",

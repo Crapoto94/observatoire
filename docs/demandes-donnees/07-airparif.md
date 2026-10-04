@@ -1,6 +1,6 @@
 # Airparif : historique de la qualité de l'air à Ivry
 
-*Priorité 4*
+*Priorité 4* · **Mise à jour (oct. 2026)** : l'historique communal de l'indice ATMO est désormais lu directement sur le GeoServer d'Airparif (jeu `atmo_indices`). La demande ne reste utile que pour les dépassements réglementaires mesurés en station et la population exposée.
 
 | | |
 |---|---|

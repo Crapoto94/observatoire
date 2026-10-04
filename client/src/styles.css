@@ -989,3 +989,9 @@ button.fiche-btn:hover { background: rgba(37, 99, 235, .08); }
 .q-table th button.link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
 .q-compo { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .q-compo ul { margin: 6px 0 0; padding-left: 18px; }
+
+.kpi-fourchette { color: var(--muted); font-variant-numeric: tabular-nums; }
+.cal-badge { padding: 0 7px; border-radius: 9999px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); white-space: nowrap; }
+.q-qpv { min-width: 760px; }
+.q-qpv tr { cursor: default; }
+.q-qpv tr.q-theme-row td { background: var(--panel-3); }

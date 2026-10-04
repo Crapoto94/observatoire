@@ -25,9 +25,12 @@ const SOURCES = [
   { id: 'rp', label: 'Recensement 2022, diplômes et formation', period: '2022', url: `${INSEE}/8647010/base-ic-diplomes-formation-2022_csv.zip` },
   { id: 'filo', label: 'Filosofi 2021, revenus disponibles (INSEE)', period: '2021', url: `${INSEE}/8229323/BASE_TD_FILO_IRIS_2021_DISP_CSV.zip`, note: 'DISP_NOTE21' },
 ];
+// revenus Filosofi 2021 des quartiers prioritaires (géographie 2015, seule publiée par l'INSEE pour 2021) ; appariés par nom aux QPV 2024
+const QPV_FILO = { url: `${INSEE}/8243026/revenus_pauvrete_2021_qp15_csv.zip`, data: /revenu-disponible-qp15-2021_QP\.csv$/, meta: /^meta_indic-revenu-disponible-qp15-2021_QP\.csv$/, ens: /revenu-disponible-qp15-2021_ENSQP\.csv$/ };
+const QPV_VARS = ['DISP_MED_A21', 'DISP_TP60_A21', 'DISP_PPSOC_A21', 'DISP_D1_A21', 'DISP_D9_A21', 'DISP_RD_A21'];
 const DOCS = {
   rp: 'https://www.insee.fr/fr/statistiques/8647014', filo: 'https://www.insee.fr/fr/statistiques/8229323', caf: 'https://data.caf.fr/explore/dataset/ndur_s_qf_400_iris_f/',
-  iris: 'https://geoservices.ign.fr/contoursiris',
+  iris: 'https://geoservices.ign.fr/contoursiris', qpv: 'https://www.insee.fr/fr/statistiques/8243026',
 };
 
 db.exec(`
@@ -135,6 +138,91 @@ async function loadCaf(codes) {
   return out;
 }
 
+// lignes d'un fichier texte (marque d'ordre des octets retirée)
+const linesOf = (text) => text.replace(/^﻿/, '').split(/\r?\n/).filter(Boolean);
+const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+// QPV d'Ivry (géographie 2024) retrouvés par leur nom dans le fichier de 2015 ; ENSQP : ensemble des QPV de France métropolitaine
+async function loadQpv() {
+  const qpvs = all("SELECT code, nom FROM qpv_shapes WHERE communes LIKE ?", `%${COMMUNE}%`);
+  if (!qpvs.length) return [];
+  const r = await fetchRetry(QPV_FILO.url, { signal: AbortSignal.timeout(300000) });
+  const zip = await JSZip.loadAsync(Buffer.from(await r.arrayBuffer()));
+  const file = async (re) => { const n = Object.keys(zip.files).find((x) => re.test(x)); return n ? linesOf(await zip.files[n].async('string')) : []; };
+  const names = new Map((await file(QPV_FILO.meta)).map((l) => l.split(';')).filter((c) => c[0] === 'CODGEO').map((c) => [plain(c[3]), c[2]]));
+  const out = [];
+  const take = (lines, wanted) => {
+    const head = lines[0].split(';');
+    for (const l of lines.slice(1)) {
+      const c = l.split(';');
+      const code = wanted.get(c[0]);
+      if (!code) continue;
+      for (const v of QPV_VARS) { const x = num(c[head.indexOf(v)]); if (x != null) out.push([code, 'qpv', v, '2021', x]); }
+    }
+  };
+  take(await file(QPV_FILO.data), new Map(qpvs.map((q) => [names.get(plain(q.nom)), q.code]).filter(([k]) => k)));
+  take(await file(QPV_FILO.ens), new Map([['00', 'ENSQP']])); // 00 : ensemble des QPV de France métropolitaine
+  return out;
+}
+
+// arrêts de transport en commun d'Île-de-France Mobilités (référentiel des arrêts) dans un rayon de 3,5 km autour d'Ivry :
+// les stations des communes voisines (Paris 13e, Vitry, Charenton…) desservent aussi les habitants
+const IDFM_ARRETS = 'https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/arrets/exports/json';
+async function loadArrets() {
+  const where = "within_distance(arrgeopoint, geom'POINT(2.385 48.813)', 3.5km)";
+  const list = await fetchJson(`${IDFM_ARRETS}?select=${encodeURIComponent('arrid,zdaid,arrname,arrtype,arrgeopoint')}&where=${encodeURIComponent(where)}`);
+  const arrets = (Array.isArray(list) ? list : []).filter((a) => a.arrgeopoint).map((a) => ({ zda: a.zdaid, nom: a.arrname, type: a.arrtype, lon: a.arrgeopoint.lon, lat: a.arrgeopoint.lat }));
+  if (!arrets.length) throw new Error('aucun arrêt renvoyé');
+  run("INSERT INTO app_settings (key, value) VALUES ('quartiers_arrets', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify({ at: new Date().toISOString(), arrets }));
+  return arrets.length;
+}
+
+// desserte : population de chaque IRIS supposée uniforme, répartie sur une grille de points ; distance de chaque point
+// à la station lourde (métro, RER et train, tramway) et à l'arrêt de bus les plus proches (distance à vol d'oiseau)
+function desserte(shapes, pop, byQuartier) {
+  const raw = get("SELECT value FROM app_settings WHERE key = 'quartiers_arrets'")?.value;
+  if (!raw) return null;
+  const { arrets, at } = JSON.parse(raw);
+  const lourds = arrets.filter((a) => a.type !== 'bus'), bus = arrets.filter((a) => a.type === 'bus');
+  const lat0 = 48.81, kx = 111320 * Math.cos((lat0 * Math.PI) / 180), ky = 110540;
+  const dist = (p, list) => list.reduce((m, a) => Math.min(m, Math.hypot((a.lon - p[0]) * kx, (a.lat - p[1]) * ky)), Infinity);
+  const acc = new Map([...byQuartier.keys(), '_commune'].map((k) => [k, { w: 0, lourd: 0, bus: 0, d: 0 }]));
+  const N = 40;
+  for (const s of shapes) {
+    const g = JSON.parse(s.geometry), p = pop(s.code);
+    if (!p) continue;
+    const pts = ringsOf(g).flatMap((r) => r[0]);
+    const xs = pts.map((c) => c[0]), ys = pts.map((c) => c[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const inside = [];
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { const pt = [x0 + ((i + 0.5) / N) * (x1 - x0), y0 + ((j + 0.5) / N) * (y1 - y0)]; if (inGeom(pt, g)) inside.push(pt); }
+    const w = p / (inside.length || 1);
+    for (const pt of inside) {
+      const dl = dist(pt, lourds), db = dist(pt, bus);
+      const q = QUARTIERS.find((f) => inGeom(pt, f.geometry))?.properties.code;
+      for (const k of q ? [q, '_commune'] : ['_commune']) {
+        const a = acc.get(k);
+        if (!a) continue;
+        a.w += w; a.d += w * dl; if (dl <= 500) a.lourd += w; if (db <= 300) a.bus += w;
+      }
+    }
+  }
+  const inQ = (code) => QUARTIERS.find((f) => f.properties.code === code);
+  const zones = (filter) => new Set(bus.filter(filter).map((a) => a.zda)).size;
+  const val = (k, f) => { const a = acc.get(k); return a && a.w ? f(a) : null; };
+  const mk = (id, label, unit, f, approx) => ({
+    id, theme: 'Mobilité', label, unit, approx, source: 'idfm', period: at.slice(0, 4),
+    valeurs: Object.fromEntries([...byQuartier.keys()].map((k) => [k, val(k, f)])), commune: val('_commune', f),
+  });
+  return [
+    mk('acces_lourd', 'Part de la population à moins de 500 m d’une station de métro, RER, train ou tramway', '%', (a) => (a.lourd / a.w) * 100, 'distance à vol d’oiseau ; population supposée uniforme dans chaque IRIS'),
+    mk('acces_bus', 'Part de la population à moins de 300 m d’un arrêt de bus', '%', (a) => (a.bus / a.w) * 100, 'distance à vol d’oiseau ; population supposée uniforme dans chaque IRIS'),
+    mk('dist_station', 'Distance moyenne à la station de métro, RER, train ou tramway la plus proche', 'm', (a) => a.d / a.w, 'distance à vol d’oiseau, moyenne pondérée par la population'),
+    { id: 'arrets_bus', theme: 'Mobilité', label: 'Arrêts de bus (zones d’arrêt) dans le quartier', unit: 'arrêts', approx: null, source: 'idfm', period: at.slice(0, 4),
+      valeurs: Object.fromEntries([...byQuartier.keys()].map((k) => [k, zones((a) => inGeom([a.lon, a.lat], inQ(k).geometry))])),
+      commune: zones((a) => QUARTIERS.some((f) => inGeom([a.lon, a.lat], f.geometry))) },
+  ];
+}
+
 let running = null;
 /** Recharge les contours IRIS, la composition des quartiers et les données à l'IRIS. */
 function refresh({ log = (m) => console.log(`[quartiers] ${m}`) } = {}) {
@@ -147,6 +235,8 @@ function refresh({ log = (m) => console.log(`[quartiers] ${m}`) } = {}) {
       try { const r = await loadInsee(src, codes); rows.push(...r); log(`${src.label} : ${r.length} valeurs`); } catch (e) { log(`${src.label} : échec (${e.message})`); }
     }
     try { const r = await loadCaf(codes); rows.push(...r); log(`CAF : ${r.length} valeurs`); } catch (e) { log(`CAF : échec (${e.message})`); }
+    try { const r = await loadQpv(); rows.push(...r); log(`Filosofi des QPV : ${r.length} valeurs`); } catch (e) { log(`Filosofi des QPV : échec (${e.message})`); }
+    try { const n = await loadArrets(); log(`Arrêts de transport (IDFM) : ${n}`); } catch (e) { log(`Arrêts IDFM : échec (${e.message})`); }
     const sources = new Set(rows.map((r) => r[1]));
     tx(() => {
       for (const s of sources) run('DELETE FROM iris_values WHERE source = ?', s); // une source en échec garde ses valeurs précédentes
@@ -239,6 +329,11 @@ function build() {
       iris: (byQ.get(q.properties.code) || []).map(([code, part]) => ({ code, nom: nomIris[code] || code, part })).sort((a, b) => b.part - a.part),
     })),
     iris: shapes.map((s) => ({ code: s.code, nom: s.nom, geometry: JSON.parse(s.geometry) })),
+    qpv: (() => {
+      const q = all("SELECT code, nom FROM qpv_shapes WHERE communes LIKE ? ORDER BY nom", `%${COMMUNE}%`);
+      const row = (code) => Object.fromEntries(QPV_VARS.map((v) => [v, vals.get(code)?.get(`qpv:${v}`)?.value ?? null]));
+      return { periode: '2021', geographie: 'quartiers prioritaires 2015 (périmètres proches de ceux de 2024, appariés par nom)', quartiers: q.map((x) => ({ code: x.code, nom: x.nom, ...row(x.code) })), ensemble: row('ENSQP') };
+    })(),
     indicateurs: INDICATEURS.map((ind) => {
       const keys = ind.mean ? [ind.mean] : ind.num;
       const source = keys[0].split(':')[0];
@@ -247,11 +342,13 @@ function build() {
         valeurs: Object.fromEntries([...byQ].map(([code, members]) => [code, valueOf(ind, members)])),
         commune: valueOf(ind, commune),
       };
-    }),
+    }).concat(desserte(shapes, (iris) => v(iris, 'rp:P22_POP'), byQ) || []),
     sources: [
       { id: 'iris', label: 'Contours des IRIS (IGN, Contours… IRIS®)', url: DOCS.iris },
       ...[...new Map(SOURCES.map((s) => [s.id, s])).values()].map((s) => ({ id: s.id, label: s.id === 'rp' ? 'Recensement de la population 2022, bases infracommunales IRIS (INSEE)' : s.label, url: DOCS[s.id] })),
       { id: 'caf', label: 'Allocataires CAF par IRIS (data.caf.fr), décembre 2024', url: DOCS.caf },
+      { id: 'idfm', label: 'Référentiel des arrêts de transport (Île-de-France Mobilités)', url: 'https://data.iledefrance-mobilites.fr/explore/dataset/arrets/' },
+      { id: 'qpv', label: 'Revenus, pauvreté et niveau de vie en 2021 des quartiers prioritaires (INSEE, Filosofi)', url: DOCS.qpv },
     ],
   };
   return memo;

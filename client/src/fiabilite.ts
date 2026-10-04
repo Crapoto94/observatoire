@@ -7,7 +7,9 @@ export interface KpiVal {
   prive?: boolean; multi?: Multi; id: string; label: string; unit: string; value: number | null; period: string | null;
   prev: { period: string; value: number } | null; dep: { value: number } | null; dataset: string;
   maille?: Maille | null; // maille de la valeur (94, IDF) quand elle n'est pas communale
+  projection?: boolean; fourchette?: Fourchette | null; // projections : hypothèses basse et haute
 }
+export interface Fourchette { bas: number; haut: number; methode: string }
 
 export const fmtVal = (v: number) => v.toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2 }).replace(/ /g, ' ');
 

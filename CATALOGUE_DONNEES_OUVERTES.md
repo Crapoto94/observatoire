@@ -90,6 +90,7 @@ Le jeu d'équipements sportifs retenu reste [recensement-des-equipements-sportif
 | Jeu | Source | Niveaux | Ce qui est calculé |
 |---|---|---|---|
 | Collecte des déchets ménagers et assimilés | [ADEME SINOE®, flux de collecte](https://data.ademe.fr/datasets/rsqxbwsxhk-ngmmu5fcasf5t) (API Data Fair) | EPT Grand-Orly Seine Bièvre 2016-2024 (collectivité compétente, valeurs reportées sur ses communes) ; Ivry seule 2009-2015 | kg/hab., part des biodéchets, valorisation matière, projection 2030 |
+| Indice ATMO communal, historique | [Airparif, GeoServer](https://magellan.airparif.asso.fr/geoserver/siteweb/wfs) (couche `vue_indice_atmo_2020_histo`) | communes, chaque jour depuis 2021 | jours de qualité de l'air dégradée ou mauvaise par an, par polluant |
 | Émissions de GES par secteur | [Airparif, inventaire des émissions](https://data-airparif-asso.opendata.arcgis.com/) (FeatureServer ArcGIS) | EPT, Val-de-Marne, Île-de-France ; 2005, 2010, 2015, 2019, 2022 | t éq. CO2/hab. (scopes 1 et 2), transport routier, projection 2030 |
 | Population par grande tranche d'âge, familles, navettes, scolarisation | INSEE, dossiers complets Melodi (`DS_RP_POPULATION_PRINC`, `DS_RP_FAMILLE_COMP`, `DS_RP_NAVETTES_PRINC`, `DS_RP_EDUCATION_PRINC`) | communes, 2012, 2017, 2023 | évolutions par tranche d'âge, familles monoparentales, 6-17 ans non scolarisés, part modale active et sa projection, emplois occupés par des habitants |
 
@@ -107,6 +108,8 @@ KPI dérivés (sans nouveau jeu) : âge moyen, écart de niveau de vie au Val-de
 | Recensement 2022 à l'IRIS | [INSEE, bases infracommunales](https://www.insee.fr/fr/statistiques/8647014) (population, activité, logement, familles, diplômes) | IRIS | indicateurs par quartier |
 | Revenus Filosofi 2021 à l'IRIS | [INSEE](https://www.insee.fr/fr/statistiques/8229323) (revenus disponibles ; dernier millésime publié) | IRIS (communes de 5 000 habitants ou plus) | niveau de vie médian, taux de pauvreté, prestations sociales (moyennes pondérées) |
 | Allocataires CAF à l'IRIS | [CAF, data.caf.fr](https://data.caf.fr/explore/dataset/ndur_s_qf_400_iris_f/) (RSA, aides au logement, quotient familial) | IRIS, décembre 2024 | foyers au RSA et aux aides au logement, quotient familial |
+| Revenus Filosofi 2021 des QPV | [INSEE](https://www.insee.fr/fr/statistiques/8243026) (géographie prioritaire 2015, appariée par nom aux QPV 2024) | 4 QPV d'Ivry et ensemble des QPV de France métropolitaine | niveau de vie médian, pauvreté, déciles, prestations sociales |
+| Arrêts de transport en commun | [Île-de-France Mobilités, référentiel des arrêts](https://data.iledefrance-mobilites.fr/explore/dataset/arrets/) | arrêts dans un rayon de 3,5 km | desserte par quartier (distance aux stations lourdes et aux arrêts de bus) |
 
 Les quartiers (fichier fourni par la Ville) sont reconstitués en répartissant chaque IRIS au prorata de sa surface dans chaque quartier.
 
@@ -125,7 +128,6 @@ Ces valeurs sont signalées par un badge « Non public » dans l'application (ca
 |---|---|---|---|
 | Logements autorisés et commencés, séries officielles | SDES, [logements autorisés et commencés par commune](https://www.statistiques.developpement-durable.gouv.fr/catalogue) (séries annuelles et mensuelles) | l'intégration recalcule les années à partir de Sit@del2 au logement ; les séries officielles serviraient de contrôle | comparer les deux calculs |
 | Parc de véhicules et immatriculations par commune | SDES, [catalogue](https://www.statistiques.developpement-durable.gouv.fr/catalogue) (parc de véhicules, immatriculations) | l'Agence ORE couvre déjà le parc par commune ; le SDES ajouterait énergie et vignette Crit'Air | agréger le CSV par commune et motorisation |
-| Qualité de l'air (jours de dépassement) | [hub Airparif](https://data-airparif-asso.opendata.arcgis.com/) (seuls les indices communaux du jour ; l'inventaire des émissions est intégré) | pas d'historique communal ouvert | demande à Airparif (voir `docs/demandes-donnees/07-airparif.md`) |
 | Bruit | aucun jeu communal ouvert trouvé (Bruitparif, cartes stratégiques) | substitut intégré : multi-exposition et grille de nuisances | demande à Bruitparif |
 | Fréquentation des bus | IDFM, [validations du réseau de surface](https://data.iledefrance-mobilites.fr/explore/dataset/validations-reseau-surface-nombre-validations-par-jour-1er-trimestre/) | publiées par ligne, sans arrêt ni commune | non rattachable |
 | Accessibilité aux équipements (isochrones) | IDFM, [offre de transports GTFS](https://data.iledefrance-mobilites.fr/explore/dataset/offre-de-transports-gtfs/) et indicateurs 981/984/985 | les indicateurs supposent un calcul d'isochrones par arrêt (routage, temps de trajet), pas un simple comptage d'équipements | calculer les isochrones 10/20/30 minutes à partir des arrêts et de la graphine GTFS |
@@ -166,7 +168,7 @@ Ces valeurs sont signalées par un badge « Non public » dans l'application (ca
 
 ## 4. Indicateurs sans source ouverte exploitable
 
-Il reste 24 fiches sans valeur. Elles relèvent des systèmes d'information de la Ville ou de données d'organismes accessibles sur demande. Les demandes sont préparées dans `docs/demandes-donnees/` du dépôt (méthode, suivi, un dossier par organisme avec le texte à envoyer) :
+Il reste 21 fiches sans valeur. Elles relèvent des systèmes d'information de la Ville ou de données d'organismes accessibles sur demande. Les demandes sont préparées dans `docs/demandes-donnees/` du dépôt (méthode, suivi, un dossier par organisme avec le texte à envoyer) :
 
 | Données | Détenteur | Dossier |
 |---|---|---|
@@ -176,7 +178,6 @@ Il reste 24 fiches sans valeur. Elles relèvent des systèmes d'information de l
 | Allocataires par quartier, non-recours | CAF du Val-de-Marne | `04-caf-94.md` |
 | AME, C2S et ALD à la commune | CPAM du Val-de-Marne | `05-cpam-94.md` |
 | Demandeurs d'emploi par QPV, métiers | France Travail | `06-france-travail.md` |
-| Jours de dépassement des seuils de pollution | Airparif | `07-airparif.md` |
 | Trafic routier | Département du Val-de-Marne | `08-cd94-comptages-routiers.md` |
 | Temps de trajet, accessibilité aux pôles | IDFM, Institut Paris Region | `09-idfm-ipr-mobilite.md` |
 | Impayés de loyer et d'énergie, accès aux droits | CCAS (Millésime) | `11-interne-millesime.md` |

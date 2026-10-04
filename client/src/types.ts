@@ -55,7 +55,7 @@ export interface Indicator {
   couche_id: string | null; // couche géographique lue en direct (géoportail du Val-de-Marne)
   dataset_ids: string[];
   kpi_ids?: string[]; // KPI du tableau de bord correspondants (du plus fiable au moins fiable)
-  kpi_matches?: { id: string; fiabilite: Fiabilite; raison: string | null }[];
+  kpi_matches?: { id: string; fiabilite: Fiabilite; raison: string | null; piste?: { label: string; dossier: string | null } | null }[];
 }
 
 export type Fiabilite = 'fiable' | 'approchee' | 'partielle';

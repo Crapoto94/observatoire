@@ -107,6 +107,7 @@ function ValeurCell({ i, kpis, live }: { i: Indicator; kpis: Map<string, KpiVal>
       <Link className={`val-link fiab-${m.fiabilite}`} to={`/tableau-de-bord?kpi=${k.id}`} title={title}>
         <strong>{fmtVal(k.value!)}</strong>{k.unit && <span className="muted"> {k.unit}</span>}{k.maille && <> <MailleBadge m={k.maille} /></>}{k.prive && <> <PriveBadge /></>}
         <div className="muted small">{k.period}{(i.kpi_ids?.length ?? 0) > 1 ? ` · ${i.kpi_ids!.length} calculs` : ''} ↗</div>
+        {k.fourchette && <div className="muted small" title={`Fourchette : ${k.fourchette.methode}`}>fourchette {fmtVal(k.fourchette.bas)} – {fmtVal(k.fourchette.haut)}</div>}
         {badge}
       </Link>
     );

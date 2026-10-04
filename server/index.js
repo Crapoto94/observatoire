@@ -165,6 +165,7 @@ app.get('/api/jeux/:id/champs', async (req, res) => { try { res.json(await requi
 const couchesErr = (res, e) => res.status(e.status || 502).json({ error: e.message });
 app.get('/api/couches', (req, res) => res.json(require('./couches').list()));
 // Quartiers officiels de la Ville : composition en IRIS et indicateurs par quartier (recensement, Filosofi, CAF)
+app.get('/api/calendrier', (req, res) => { try { res.json(require('./calendrier').list()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.get('/api/quartiers', (req, res) => { try { res.json(require('./quartiers').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
 app.post('/api/quartiers/rafraichir', auth.requireAdmin, async (req, res) => {
   try { res.json(await require('./quartiers').refresh()); } catch (e) { res.status(502).json({ error: e.message }); }
@@ -620,6 +621,11 @@ app.listen(PORT, '0.0.0.0', () => {
   setTimeout(() => { require('./live').mesurerTout().catch((e) => console.warn('[live]', e.message)); }, 90000);
   // valeurs des fiches rattachées à une couche en direct : calcul et mise en cache (affichage immédiat dans la conception)
   setTimeout(() => { require('./couches').valeursFiches().catch((e) => console.warn('[couches]', e.message)); }, 45000);
+  // calendrier des sources : réimport des jeux dont la nouvelle édition est attendue (premier passage 10 min après le démarrage, puis quotidien)
+  if (process.env.AUTO_IMPORT !== 'false') {
+    setTimeout(() => require('./calendrier').tick().catch((e) => console.warn('[calendrier]', e.message)), 10 * 60000);
+    setInterval(() => require('./calendrier').tick().catch((e) => console.warn('[calendrier]', e.message)), 24 * 3600 * 1000);
+  }
   // quartiers : chargement des IRIS au premier démarrage, puis une fois par mois
   setTimeout(() => { const q = require('./quartiers'); if (q.isEmpty()) q.refresh().catch((e) => console.warn('[quartiers]', e.message)); }, 60000);
   setInterval(() => { require('./quartiers').refreshIfOld(30).catch((e) => console.warn('[quartiers]', e.message)); }, 24 * 3600 * 1000); // vérification quotidienne (un délai de 30 jours dépasserait la limite de setInterval)

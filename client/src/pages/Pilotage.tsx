@@ -51,6 +51,17 @@ export default function Pilotage() {
     return [...by.entries()].map(([k, v]) => row(v.label, v.list, k)).concat(row('Ensemble', actifs));
   }, [actifs, kpis, live]);
   const fiab = useMemo(() => synthese(actifs, kpis, live), [actifs, kpis, live]);
+  // fiches approchées ou partielles regroupées par piste de fiabilisation (source qui donnerait la valeur exacte)
+  const pistes = useMemo(() => {
+    const by = new Map<string, { label: string; dossier: string | null; fiches: Indicator[] }>();
+    for (const i of actifs) {
+      const m = i.kpi_matches?.find((x) => kpis?.get(x.id)?.value != null);
+      if (!m || m.fiabilite === 'fiable' || !m.piste) continue;
+      const g = by.get(m.piste.label) || by.set(m.piste.label, { ...m.piste, fiches: [] }).get(m.piste.label)!;
+      g.fiches.push(i);
+    }
+    return [...by.values()].sort((a, b) => b.fiches.length - a.fiches.length);
+  }, [actifs, kpis]);
   const pct = (v: number | null) => (v == null ? '—' : `${Math.round(v * 100)} %`);
 
   const matrice = useMemo(() => {
@@ -131,6 +142,27 @@ export default function Pilotage() {
             <div className="big"><span style={{ color: '#c2410c' }}>{fiab.multiEcart}</span> / <span style={{ color: '#b91c1c' }}>{fiab.multiIncoherent}</span></div>sources en écart / incohérentes
           </div>
         </div>
+      )}
+
+      {kpis && pistes.length > 0 && (
+        <>
+          <h3>Fiabiliser les valeurs approchées <span className="muted small">({pistes.reduce((n, p) => n + p.fiches.length, 0)} fiches, regroupées par source qui donnerait la valeur exacte)</span></h3>
+          <div className="table-wrap short">
+            <table className="grid compact pistes">
+              <thead><tr><th>Piste de fiabilisation</th><th className="num">Fiches</th><th>Dossier de demande</th><th>Fiches concernées</th></tr></thead>
+              <tbody>
+                {pistes.map((p) => (
+                  <tr key={p.label}>
+                    <td>{p.label}</td>
+                    <td className="num">{p.fiches.length}</td>
+                    <td>{p.dossier ? <code title="Dossier dans docs/demandes-donnees du dépôt">{p.dossier}</code> : <span className="muted">—</span>}</td>
+                    <td><details><summary className="small">voir</summary>{p.fiches.map((i) => <div key={i.id} className="small"><Link to={`/indicateurs/${i.id}`}>#{i.id} {i.libelle}</Link></div>)}</details></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <h3>Couverture par thème <span className="muted small">(hors abandonnés)</span></h3>

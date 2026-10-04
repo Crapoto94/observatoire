@@ -236,6 +236,34 @@ const KPIS = [
   { id: 'qf_bas_qpv', label: 'Part des foyers allocataires CAF des QPV au quotient familial inférieur à 800 €', theme: 'Emploi', dataset: 'caf_qf_qpv', where: { MESURE: 'FOYERS', QPV: '_T' }, ratio: { dim: 'QF', num: ['QF_LT400', 'QF_400_799'], den: ['QF_LT400', 'QF_400_799', 'QF_800_1199', 'QF_1200_1599', 'QF_1600_1999', 'QF_2000_3999', 'QF_GE4000'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /^revenus qpv$/ },
   { id: 'urssaf_salaries', label: 'Effectifs salariés du secteur privé (URSSAF, au 31 décembre)', theme: 'Emploi', dataset: 'urssaf_effectifs', where: { MESURE: 'EFFECTIFS', SECTEUR: '_T' }, cmp: true, dir: 'up', ind: /^$/ },
   { id: 'secteurs_croissance', label: 'Part des emplois salariés privés dans les secteurs en croissance sur 5 ans (URSSAF)', theme: 'Emploi', dataset: 'urssaf_effectifs', where: { SECTEUR: '_T' }, ratio: { dim: 'MESURE', num: ['EFFECTIFS_CROISSANCE'], den: ['EFFECTIFS'] }, unit: '%', cmp: true, dir: 'up', ind: /identification des secteurs a potentiel/ },
+  // solde migratoire apparent (INSEE) : variation de population entre deux recensements − solde naturel de la période
+  { id: 'solde_migratoire', label: 'Solde migratoire apparent entre deux recensements (variation de population − solde naturel)', theme: 'Démographie', dataset: 'rp_serie_historique', where: {}, derive: { from: ['population', 'solde_naturel'], fn: ([pop, sn]) => sn.map((p) => {
+    const i = pop.findIndex((x) => x.period === p.period);
+    return i > 0 ? { period: p.period, value: pop[i].value - pop[i - 1].value - p.value } : null;
+  }).filter(Boolean) }, formule: 'rp_serie_historique : (population au recensement − population au recensement précédent) − (naissances − décès entre les deux recensements)', dir: 'none', ind: /solde migratoire|attractivite residentielle/ },
+  // espaces verts publics par habitant (MOS) : parcs et jardins publics, autres espaces verts
+  { id: 'espaces_verts_ha', aux: true, label: 'Espaces verts publics (MOS, ha, intermédiaire)', theme: 'Environnement', dataset: 'mos', where: { MESURE: 'SURFACE_HA' }, weights: { dim: 'POSTE', w: { 'Parcs ou jardins publics': 1, 'Autres espaces verts': 1 } }, dir: 'up', ind: /^$/ },
+  { id: 'espaces_verts_hab', label: 'Espaces verts publics par habitant (parcs, jardins et autres espaces verts du MOS)', theme: 'Environnement', dataset: 'mos', where: {}, derive: { from: ['espaces_verts_ha', 'population_pmun'], fn: ([a, b]) => combine(a, b, (x, y) => (x * 10000) / y, 2) }, formule: 'mos : surfaces en parcs ou jardins publics et autres espaces verts (ha) × 10 000 / population municipale (pop_hist, millésime le plus proche)', unit: 'm²/hab.', dir: 'up', ind: /espaces verts par habitant|evolution de la surface d espaces verts/ },
+  // suroccupation (norme de l'INSEE) : bases infracommunales du recensement, somme des IRIS de la commune
+  { id: 'suroccupation', label: 'Part des résidences principales suroccupées (recensement 2022, somme des IRIS)', theme: 'Logement', dataset: 'rp_logement', where: {}, derive: { from: [], fn: (_s, key) => {
+    if (key !== 'ref') return [];
+    const r = all("SELECT period, SUM(CASE WHEN variable IN ('C22_RP_SUROCC_MOD','C22_RP_SUROCC_ACC') THEN value END) AS n, SUM(CASE WHEN variable IN ('C22_RP_NORME','C22_RP_SOUSOCC_MOD','C22_RP_SOUSOCC_ACC','C22_RP_SOUSOCC_TACC','C22_RP_SUROCC_MOD','C22_RP_SUROCC_ACC') THEN value END) AS d FROM iris_values WHERE source = 'rp' GROUP BY period")[0];
+    return r && r.d ? [{ period: r.period, value: (r.n / r.d) * 100 }] : [];
+  } }, formule: 'bases infracommunales du recensement : résidences principales en suroccupation modérée ou accentuée / ensemble des résidences principales (norme d’occupation de l’INSEE), somme des IRIS', unit: '%', dir: 'down', ind: /part des menages sur.occupes/ },
+  // desserte de proximité (référentiel des arrêts IDFM et population à l'IRIS, calculée avec les quartiers)
+  { id: 'acces_transport', label: 'Part de la population à moins de 500 m d’une station de métro, RER, train ou tramway', theme: 'Mobilité', dataset: 'rp_navettes', where: {}, derive: { from: [], fn: (_s, key) => {
+    if (key !== 'ref') return [];
+    try { const i = require('./quartiers').build().indicateurs.find((x) => x.id === 'acces_lourd'); return i && i.commune != null ? [{ period: i.period, value: i.commune }] : []; } catch { return []; }
+  } }, formule: 'référentiel des arrêts IDFM et recensement 2022 à l’IRIS : population (supposée uniforme dans chaque IRIS) à moins de 500 m à vol d’oiseau d’une station de métro, RER, train ou tramway / population totale', unit: '%', dir: 'up', ind: /accessibilite des habitants aux poles majeurs|necessitant une amelioration de l accessibilite/ },
+  // revenus des quartiers prioritaires (Filosofi 2021 des QPV, chargé avec les quartiers) : moyenne simple des QPV de la commune
+  { id: 'revenu_qpv', label: 'Niveau de vie médian des quartiers prioritaires (moyenne des QPV, Filosofi 2021)', theme: 'Emploi', dataset: 'filosofi', where: {}, derive: { from: [], fn: (_s, key) => {
+    if (key !== 'ref') return [];
+    const r = all("SELECT AVG(value) AS v, COUNT(*) AS n FROM iris_values WHERE source = 'qpv' AND variable = 'DISP_MED_A21' AND iris <> 'ENSQP'")[0];
+    return r && r.n ? [{ period: '2021', value: r.v }] : [];
+  } }, formule: 'Filosofi 2021 des quartiers prioritaires (INSEE, géographie 2015 appariée par nom aux QPV 2024) : moyenne simple des niveaux de vie médians des QPV de la commune', unit: '€', dir: 'up', ind: /^revenus qpv$/ },
+  // qualité de l'air : jours d'indice ATMO dégradé ou mauvais (historique communal d'Airparif, années complètes)
+  { id: 'jours_mauvais', label: 'Jours de qualité de l’air mauvaise ou pire (indice ATMO 4 ou plus)', theme: 'Environnement', dataset: 'atmo_indices', where: { MESURE: 'JOURS_MAUVAIS' }, skipCurrent: true, cmp: true, dir: 'down', ind: /jours de depassement des seuils de pollution/ },
+  { id: 'jours_degrades', label: 'Jours de qualité de l’air dégradée ou pire (indice ATMO 3 ou plus)', theme: 'Environnement', dataset: 'atmo_indices', where: { MESURE: 'JOURS_DEGRADE' }, skipCurrent: true, cmp: true, dir: 'down', ind: /qualite de l air/ },
   { id: 'equip_bpe_1000', label: 'Équipements et services de la base permanente des équipements (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'bpe', where: { BPE_MEASURE: 'FACILITIES', FACILITY_DOM: '_T' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /access+ibilite des habitants aux equipements|projection des besoins en equipements/ },
   { id: 'familles_af', perK: true, label: 'Foyers percevant les allocations familiales (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_AF' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
 { id: 'licences_sport', perK: true, label: 'Licences sportives (pour 1 000 hab.)', theme: 'Sport', dataset: 'licences_sportives', where: { MESURE: 'LICENCES', FEDERATION: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, partial: ['reg'], dir: 'up', ind: /licences/ },
@@ -271,11 +299,22 @@ function trend(s, years, window = 6) {
   const sxx = pts.reduce((a, p) => a + (yearOf(p.period) - mx) ** 2, 0);
   if (!sxx) return [];
   const slope = pts.reduce((a, p) => a + (yearOf(p.period) - mx) * (p.value - my), 0) / sxx;
-  const last = pts[n - 1], y = yearOf(last.period) + years;
-  return [{ period: last.period, value: last.value }, { period: String(y), value: Math.max(0, my + slope * (y - mx)) }];
+  const last = pts[n - 1], y = yearOf(last.period) + years, v = my + slope * (y - mx);
+  // fourchette : intervalle de prévision à 80 % (écart des observations à la tendance) à partir de 3 points ;
+  // avec 2 points seulement, hypothèses de rythme (moitié et une fois et demie le rythme récent)
+  let low, high, methode;
+  if (n >= 3) {
+    const s = Math.sqrt(pts.reduce((a, p) => a + (p.value - (my + slope * (yearOf(p.period) - mx))) ** 2, 0) / (n - 2));
+    const e = 1.28 * s * Math.sqrt(1 + 1 / n + ((y - mx) ** 2) / sxx);
+    [low, high, methode] = [v - e, v + e, `intervalle de prévision à 80 % (${n} observations)`];
+  } else {
+    const d = v - last.value;
+    [low, high, methode] = [last.value + d * 0.5, last.value + d * 1.5, 'rythme récent divisé par deux ou multiplié par 1,5 (2 observations)'];
+  }
+  return [{ period: last.period, value: last.value }, { period: String(y), value: Math.max(0, v), low: Math.max(0, Math.min(low, high)), high: Math.max(0, Math.max(low, high)), methode }];
 }
 // moyenne des `k` dernières valeurs (rythme récent)
-const meanLast = (s, k) => { const t = (s || []).slice(-k); return t.length ? [{ period: t[t.length - 1].period, value: t.reduce((a, p) => a + p.value, 0) / t.length }] : []; };
+const meanLast = (s, k) => { const t = (s || []).slice(-k); return t.length ? [{ period: t[t.length - 1].period, value: t.reduce((a, p) => a + p.value, 0) / t.length, low: Math.min(...t.map((p) => p.value)), high: Math.max(...t.map((p) => p.value)), methode: `plus faible et plus forte des ${t.length} dernières années` }] : []; };
 
 // rattachements supplémentaires de KPI existants (fiches couvertes par approximation)
 for (const [id, re, carte] of [
@@ -391,6 +430,7 @@ function compute() {
     const year = spec.projection && spec.derive && prev ? yearOf(prev.period) : last ? Number(String(last.period).slice(0, 4)) : null; // projection : âge de la dernière observation
     return {
       aux: !!spec.aux, projection: !!spec.projection,
+      fourchette: last && last.low != null ? { bas: last.low, haut: last.high, methode: last.methode } : null, // projections : hypothèses basse et haute
       prive: PRIVES.has(spec.dataset), // jeu à accès habilité : valeur non publique
       concept: spec.concept || spec.id, // KPI de même concept : sources comparables entre elles
       id: spec.id, label: spec.label, theme: spec.theme, unit: spec.unit || (spec.kpiPerK ? 'pour 1 000 hab.' : ''), dir: spec.dir, dataset: spec.dataset, datasetLabel: dsInfo[spec.dataset]?.label || spec.dataset,
@@ -525,8 +565,12 @@ const PROXY = [
   [/^icu_fort$/, /evolution/, 'un seul millésime (2021) : pas d’évolution mesurable'],
   [/^icu_fort$/, /projection/, 'surface actuellement en aléa fort, base d’une projection'],
   [/^ess$/, /opportunites/, 'établissements de l’ESS actuels, base d’une analyse des opportunités'],
+  [/^acces_transport$/, /./, 'desserte de proximité (distance à vol d’oiseau à une station), pas les temps de trajet vers les pôles ; détail par quartier dans la page Quartiers'],
+  [/^revenu_qpv$/, /./, 'moyenne simple des QPV (sans pondération par leur population) ; périmètres de 2015, proches de ceux de 2024 ; détail par QPV dans la page Quartiers'],
   [/^qf_bas_qpv$/, /./, 'quotient familial des allocataires CAF des QPV (décembre 2024), pas le revenu disponible de l’ensemble des habitants ; comparer à la commune (KPI qf_bas_part)'],
   [/^secteurs_croissance$/, /./, 'part des emplois dans les secteurs en croissance ; le détail par secteur (NA17) figure dans le jeu URSSAF'],
+  [/^jours_mauvais$/, /./, 'jours d’indice ATMO communal mauvais ou pire (modélisation Airparif), pas les dépassements réglementaires mesurés en station'],
+  [/^jours_degrades$/, /./, 'jours d’indice ATMO dégradé ou pire : qualité de l’air globale, tous polluants'],
   [/^generalistes$/, /rapport entre l offre et la demande/, 'densité de généralistes, pas l’accessibilité potentielle localisée (APL)'],
 ];
 
@@ -541,6 +585,41 @@ function rowText(id) {
     gridRows = { at: Date.now(), map: new Map(list.map((i) => [i.id, i.excel_row == null ? norm(i.libelle) : by.get(`${i.groupe}|${i.excel_row}`)])) };
   }
   return gridRows.map.get(id) || '';
+}
+
+// pistes de fiabilisation des fiches approchées : source qui donnerait la valeur exacte (dossiers docs/demandes-donnees)
+const PISTES = [
+  [/vacance des (commerces|locaux)|locaux (commerciaux|d activite)|foncier|mutab|indignes|pppi|desimpermeabil/, { label: 'Fichiers fonciers et DV3F (Cerema)', dossier: '01-cerema-fichiers-fonciers.md' }],
+  [/logements? vacants?|remis sur le marche/, { label: 'LOVAC détaillé (Zéro Logement Vacant)', dossier: '02-zlv-lovac.md' }],
+  [/demandes?|attributions?|logements? sociaux|sur.occupation|adequation du parc/, { label: 'Infocentre SNE (DRIHL) et Pelehas', dossier: '03-drihl-infocentre-sne.md' }],
+  [/ald|ame|cmu|c2s|medecin|soins|sante|mortalite|esperance/, { label: 'Données agrégées de la CPAM du Val-de-Marne', dossier: '05-cpam-94.md' }],
+  [/non.recours|minima|publics en difficulte|allocataires|beneficiaires|droits/, { label: 'Données infracommunales de la CAF du Val-de-Marne', dossier: '04-caf-94.md' }],
+  [/chomeurs?|demandeurs d emploi|emplois?|profils|secteurs|ess/, { label: 'France Travail (demandeurs par QPV, métiers)', dossier: '06-france-travail.md' }],
+  [/pollution|qualite de l air|emissions?/, { label: 'Airparif (historique et inventaire communal)', dossier: '07-airparif.md' }],
+  [/trafic/, { label: 'Comptages routiers du Département', dossier: '08-cd94-comptages-routiers.md' }],
+  [/trajet|accessibilite|liaisons|part modale|desserte/, { label: 'IDFM et Institut Paris Region', dossier: '09-idfm-ipr-mobilite.md' }],
+  [/impayes|acces aux droits/, { label: 'Extraction Millésime (CCAS)', dossier: '11-interne-millesime.md' }],
+  [/dechets?|tri|biodechets/, { label: 'Tonnages de collecte par commune (EPT Grand-Orly Seine Bièvre)', dossier: null }],
+  [/adherents|associations?|benevoles|salaries/, { label: 'Recueil auprès des associations (dossiers de subvention)', dossier: null }],
+  [/dia/, { label: 'Logiciel d’urbanisme de la Ville (DIA reçues)', dossier: null }],
+  [/qpv/, { label: 'Revenus Filosofi des QPV (INSEE)', dossier: null }],
+  [/bruit|sonores/, { label: 'Cartes de bruit et population exposée (Bruitparif)', dossier: null }],
+  [/impermeab/, { label: 'Cartographie de l’imperméabilisation des sols (Institut Paris Region)', dossier: null }],
+  [/surfaces concernees|ilots? de chaleur/, { label: 'Nouveau millésime de la carte des îlots de chaleur (Institut Paris Region)', dossier: null }],
+  [/csp|socio.professionnelle/, { label: 'Répartition complète par catégorie socioprofessionnelle (recensement, déjà en base) : calcul à ajouter', dossier: null }],
+  [/typologie/, { label: 'Bases permanentes des équipements des millésimes antérieurs (INSEE)', dossier: null }],
+  [/activites implantees|departs/, { label: 'Fermetures d’établissements (historique Sirene)', dossier: null }],
+  [/ess|structures de l ess/, { label: 'Observatoire régional de l’ESS (CRESS Île-de-France)', dossier: null }],
+  [/tranche d age|moins de 18|monoparen|non scolarises/, { label: 'Tableaux détaillés du recensement des millésimes antérieurs (INSEE)', dossier: null }],
+];
+function pisteOf(k, fiche, why) {
+  if (k.projection || fiche.niveau === 'prospective') return { label: 'Méthode de projection à valider (projection INSEE OMPHALE ou étude dédiée)', dossier: null };
+  const t = `${norm(fiche.libelle)} ${norm(fiche.libelle_carte || '')}`;
+  const p = PISTES.find(([re]) => re.test(t));
+  if (p) return p[1];
+  if (/^idh2/.test(k.id)) return { label: 'IDH-2 non mis à jour depuis 2013 : recalcul possible (espérance de vie, diplômes, revenus)', dossier: null };
+  if (fiche.niveau === 'evaluation' && why.some((w) => /evaluation demande une analyse/.test(norm(w)))) return { label: 'Analyse à conduire par le service référent', dossier: null };
+  return { label: 'Source à identifier', dossier: null };
 }
 
 function matchOne(k, fiche) {
@@ -563,8 +642,8 @@ function matchOne(k, fiche) {
   if (fiche.niveau === 'prospective' && !k.projection) why.push('valeur actuelle : base de la projection, pas la projection elle-même');
   else if (fiche.niveau === 'evaluation' && !/^(densite|taux|part|indice|indicateur|rapport|attractivite|respect|accidents|nombre de|nb d emplois)/.test(t)) why.push('valeur de contexte : l’évaluation demande une analyse');
   // effectifs et comptes des associations : déclarations partielles (seules certaines associations les renseignent)
-  if (k.declaratif) return { id: k.id, fiabilite: why.length ? 'approchee' : 'partielle', raison: [...why, k.partielRaison || 'données déclaratives, connues pour une partie des associations seulement'].join(' ; ') };
-  return { id: k.id, fiabilite: why.length ? 'approchee' : 'fiable', raison: why.join(' ; ') || null };
+  if (k.declaratif) return { id: k.id, fiabilite: why.length ? 'approchee' : 'partielle', raison: [...why, k.partielRaison || 'données déclaratives, connues pour une partie des associations seulement'].join(' ; '), piste: pisteOf(k, fiche, why) };
+  return { id: k.id, fiabilite: why.length ? 'approchee' : 'fiable', raison: why.join(' ; ') || null, piste: why.length ? pisteOf(k, fiche, why) : null };
 }
 
 // KPI d'une fiche, du plus fiable au moins fiable

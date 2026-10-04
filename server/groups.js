@@ -27,7 +27,7 @@ function ensureGroups() {
 }
 
 // valeurs « intensives » : à moyenner (pondération par la population) plutôt qu'à additionner
-const INTENSIVE_DATASETS = new Set(['filosofi', 'finances', 'ipr_idh2', 'ipr_mortalite', 'sinoe_dma', 'airparif_ges']); // sinoe_dma, airparif_ges : valeurs de l'EPT reportées sur chaque commune (moyenne = valeur de l'EPT) // ipr_* : indices et espérances de vie, moyennés // finances : montants par habitant, pondérés par la population
+const INTENSIVE_DATASETS = new Set(['filosofi', 'finances', 'ipr_idh2', 'ipr_mortalite', 'sinoe_dma', 'airparif_ges', 'atmo_indices']); // sinoe_dma, airparif_ges : valeurs de l'EPT reportées sur chaque commune (moyenne = valeur de l'EPT) // ipr_* : indices et espérances de vie, moyennés // finances : montants par habitant, pondérés par la population
 const ADDITIVE_MEASURES = new Set(['POP_BUDGET']);
 // dimensions de nomenclature : leurs codes ne disent rien de la nature de la valeur (ACTIVITY « GI » n'est pas un indice de Gini)
 const NOMENCLATURES = new Set(['ACTIVITY', 'FACILITY_DOM', 'FACILITY_SDOM', 'FACILITY_TYPE', 'POSTE', 'PCS', 'NAF', 'LEGAL_FORM']);

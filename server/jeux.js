@@ -42,7 +42,7 @@ const PRODUCER = {
   education_annuaire: 'education', education_effectifs: 'education', ips_ecoles: 'education',
   caf_rsa: 'caf', caf_prestations: 'caf', baac: 'interieur', ssmsi: 'interieur', entreprises: 'entreprises',
   ore_conso: 'ore', ore_parc_auto: 'ore', ore_irve: 'ore', velo_stationnement: 'osm', idfm_ferre: 'idfm',
-  associations_api: 'apientreprise', subventions_asso: 'apientreprise', c2s_cnam: 'insee', apl_drees: 'sante', ipr_idh2: 'ipr', ipr_mortalite: 'ipr', sinoe_dma: 'ademe', airparif_ges: 'airparif', urssaf_effectifs: 'urssaf', caf_qf: 'caf', caf_qf_qpv: 'caf',
+  associations_api: 'apientreprise', subventions_asso: 'apientreprise', c2s_cnam: 'insee', apl_drees: 'sante', ipr_idh2: 'ipr', ipr_mortalite: 'ipr', sinoe_dma: 'ademe', airparif_ges: 'airparif', atmo_indices: 'airparif', urssaf_effectifs: 'urssaf', caf_qf: 'caf', caf_qf_qpv: 'caf',
   ft_defm: 'francetravail', finess: 'sante', sante_pro: 'sante', equipements_sportifs: 'sport', gaspar: 'georisques',
 };
 const producerOf = (d) => PRODUCER[d.id] || (d.provider === 'melodi' ? 'insee' : /grand-?paris|metropolegrandparis/i.test(d.doc_url || '') ? 'mgp' : 'autre');
@@ -82,6 +82,7 @@ function importedDatasets() {
   const mapped = Object.fromEntries(all(`SELECT dataset_id, territories AS n FROM import_runs
     WHERE id IN (SELECT MAX(id) FROM import_runs WHERE scope = 'idf' GROUP BY dataset_id) AND status IN ('ok', 'partiel') AND rows > 0`).map((r) => [r.dataset_id, r.n || 0]));
   const links = all(`SELECT l.dataset_id, i.id, i.libelle, i.theme_label, i.niveau, i.statut, i.mode_calcul FROM indicator_datasets l JOIN indicators i ON i.id = l.indicator_id ORDER BY i.theme, i.groupe, i.ordre`);
+  const cal = Object.fromEntries(require('./calendrier').list().map((c) => [c.id, c]));
   return all('SELECT id, label, provider, description, themes, doc_url, labels, last_import, nb_rows FROM datasets ORDER BY label').map((d) => {
     const geos = sample.filter((g) => get('SELECT 1 FROM data_rows WHERE dataset_id = ? AND geo = ? LIMIT 1', d.id, g));
     const levels = [...new Set(geos.map((g) => levelOf[g] || 'COM'))];
@@ -108,6 +109,7 @@ function importedDatasets() {
       kpis: KPIS.filter((k) => k.dataset === d.id || (k.datasets || []).includes(d.id)).map((k) => ({ id: k.id, label: k.label })),
       link: `/donnees?ds=${d.id}`,
       live: live.jeux[d.id] || null, // mode (base / live), temps de réponse mesuré, proposition du mode live
+      calendrier: cal[d.id] || null, // prochaine édition attendue et réimport automatique
     };
   });
 }

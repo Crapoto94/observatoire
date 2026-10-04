@@ -19,7 +19,9 @@ interface Jeu {
   granularite: { geo: string; maille: string | null; temps: string | null; periodes: string | null };
   fields: Field[] | null; nb_rows?: number; last_import?: string | null; etat: string;
   indicators: Ref[]; kpis: { id: string; label: string }[]; indicators_live?: { id: string; label: string; formule: string }[]; link: string;
+  calendrier?: Calendrier | null;
 }
+interface Calendrier { frequence: string; derniere: string | null; attendue: string | null; delai?: string; etat: 'a_jour' | 'a_actualiser' | 'en_attente'; essai?: string | null; auto: boolean }
 
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -149,6 +151,7 @@ export default function JeuxDonnees({ embedded = false }: { embedded?: boolean }
                 {j.live?.eligible && j.live.mode !== 'live' && <span className="live-propose" title={`La source répond en ${j.live.latence?.liveMs} ms (seuil ${seuil} ms) : le mode live est possible`}>⚡ live proposé</span>}
                 {j.prive && <PriveBadge />}
                 {j.mode === 'import' && j.etat === 'vide' && <span className="al-attention small">vide</span>}
+                {j.calendrier && j.calendrier.etat !== 'a_jour' && <span className="cal-badge small" title={`Nouvelle édition attendue depuis le ${fmtDate(j.calendrier.attendue)}${j.calendrier.auto ? ' : réimport automatique' : ''}${j.calendrier.etat === 'en_attente' ? ' ; la source n’a encore rien publié, nouvel essai sous 14 jours' : ''}`}>🗓 nouvelle édition attendue</span>}
                 <span className="jeu-meta small"><span title="Périmètre">🌍 {j.perimetre.couverture}</span><span title="Granularité géographique">▦ {j.granularite.geo}</span>{j.granularite.periodes && <span title="Périodes disponibles">🗓 {j.granularite.periodes}</span>}</span>
                 <span className="jeu-count small" title="Indicateurs de la conception qui font référence à ce jeu">{j.indicators.length} indic.</span>
                 <span className="jeu-caret">{isOpen ? '▾' : '▸'}</span>
@@ -165,6 +168,12 @@ export default function JeuxDonnees({ embedded = false }: { embedded?: boolean }
                       <dt>Granularité</dt><dd>{j.granularite.geo}{j.granularite.maille && <div className="muted small">{j.granularite.maille}</div>}</dd>
                       <dt>Temporalité</dt><dd>{j.granularite.temps || '—'}{j.granularite.periodes && <div className="muted small">{j.granularite.periodes}</div>}</dd>
                       {j.mode === 'import' && <><dt>Volume</dt><dd>{(j.nb_rows || 0).toLocaleString('fr-FR')} observations · {fmtDate(j.last_import ?? null)}</dd></>}
+                      {j.calendrier && (
+                        <><dt>Mise à jour</dt><dd>{j.calendrier.frequence}{j.calendrier.derniere ? ` · dernière période ${j.calendrier.derniere}` : ''}
+                          {j.calendrier.attendue && <div className="muted small">prochaine édition attendue vers le {fmtDate(j.calendrier.attendue)}{j.calendrier.delai ? ` (${j.calendrier.delai})` : ''}{j.calendrier.auto ? ' · réimport automatique' : ' · réimport manuel'}</div>}
+                          {j.calendrier.etat === 'en_attente' && <div className="muted small">essai le {fmtDate(j.calendrier.essai ?? null)} : pas encore de nouvelle édition, nouvel essai sous 14 jours</div>}
+                        </dd></>
+                      )}
                       {j.mode === 'import' && j.live && (
                         <>
                           <dt>Mode</dt>

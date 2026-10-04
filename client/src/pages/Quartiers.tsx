@@ -9,7 +9,8 @@ import { fmtVal } from '../fiabilite';
 type Geometry = { type: 'Polygon' | 'MultiPolygon'; coordinates: number[][][] | number[][][][] };
 interface Quartier { code: string; nom: string; geometry: Geometry; iris: { code: string; nom: string; part: number }[] }
 interface Indicateur { id: string; theme: string; label: string; unit: string; approx: string | null; source: string; period: string | null; valeurs: Record<string, number | null>; commune: number | null }
-interface Data { maj: string | null; quartiers: Quartier[]; iris: { code: string; nom: string; geometry: Geometry }[]; indicateurs: Indicateur[]; sources: { id: string; label: string; url: string }[] }
+type QpvRow = { DISP_MED_A21: number | null; DISP_TP60_A21: number | null; DISP_PPSOC_A21: number | null; DISP_D1_A21: number | null; DISP_D9_A21: number | null; DISP_RD_A21: number | null };
+interface Data { qpv?: { periode: string; geographie: string; quartiers: (QpvRow & { code: string; nom: string })[]; ensemble: QpvRow }; maj: string | null; quartiers: Quartier[]; iris: { code: string; nom: string; geometry: Geometry }[]; indicateurs: Indicateur[]; sources: { id: string; label: string; url: string }[] }
 
 const W = 640, H = 470, PAD = 14;
 const polys = (g: Geometry) => (g.type === 'Polygon' ? [g.coordinates as number[][][]] : (g.coordinates as number[][][][]));
@@ -30,7 +31,7 @@ function useProjection(qs: Quartier[]) {
   }, [qs]);
 }
 
-const fmt = (v: number | null, unit: string) => (v == null ? '—' : `${fmtVal(v)}${unit === '%' ? ' %' : unit && !/^(hab\.|logements)$/.test(unit) ? ` ${unit}` : ''}`);
+const fmt = (v: number | null, unit: string) => (v == null ? '—' : `${fmtVal(v)}${unit === '%' ? ' %' : unit && !/^(hab\.|logements|arrêts|pour 1 000 hab\.)$/.test(unit) ? ` ${unit}` : ''}`);
 const SOURCE = { rp: 'Recensement', filo: 'Filosofi', caf: 'CAF' } as Record<string, string>;
 
 export default function Quartiers() {
@@ -163,6 +164,31 @@ export default function Quartiers() {
         </div>
         <p className="small muted">* Moyenne des IRIS pondérée par leur population : ordre de grandeur (une médiane ou un taux de pauvreté ne s'additionnent pas). La colonne Ivry est calculée à partir des 22 IRIS ; elle peut différer légèrement des chiffres communaux publiés.</p>
       </section>
+
+      {data.qpv && data.qpv.quartiers.some((q) => q.DISP_MED_A21 != null) && (
+        <section>
+          <h2>Quartiers prioritaires (QPV)</h2>
+          <div className="q-table-wrap">
+            <table className="q-table q-qpv">
+              <thead><tr><th>Quartier prioritaire</th><th>Niveau de vie médian</th><th>Taux de pauvreté</th><th>Part des prestations sociales</th><th>1er décile (D1)</th><th>9e décile (D9)</th><th>Rapport D9/D1</th></tr></thead>
+              <tbody>
+                {[...data.qpv.quartiers.map((q) => ({ ...q, ens: false })), { ...data.qpv.ensemble, code: 'ens', nom: 'Ensemble des QPV de France métropolitaine', ens: true }].map((q) => (
+                  <tr key={q.code} className={q.ens ? 'q-theme-row' : ''}>
+                    <td>{q.ens ? <span className="muted">{q.nom}</span> : q.nom}</td>
+                    <td className="num">{fmt(q.DISP_MED_A21, '€')}</td>
+                    <td className="num">{fmt(q.DISP_TP60_A21, '%')}</td>
+                    <td className="num">{fmt(q.DISP_PPSOC_A21, '%')}</td>
+                    <td className="num">{fmt(q.DISP_D1_A21, '€')}</td>
+                    <td className="num">{fmt(q.DISP_D9_A21, '€')}</td>
+                    <td className="num">{q.DISP_RD_A21 == null ? '—' : fmtVal(q.DISP_RD_A21)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="small muted">Revenus disponibles par unité de consommation, Filosofi {data.qpv.periode} (INSEE). Publiés pour les {data.qpv.geographie}. Ivry dans son ensemble : niveau de vie médian {fmt(data.indicateurs.find((i) => i.id === 'niveau_vie')?.commune ?? null, '€')} (moyenne des IRIS), taux de pauvreté {fmt(data.indicateurs.find((i) => i.id === 'pauvrete')?.commune ?? null, '%')}.</p>
+        </section>
+      )}
 
       <section>
         <h2>Composition et méthode</h2>
