@@ -5,7 +5,7 @@ const { REF_GEO } = require('./seed');
 
 // jeux NON PUBLICS (accès habilité) : les KPI qui en sont issus sont signalés dans l'interface
 const PRIVES = new Set(require('./datasets').filter((d) => d.prive).map((d) => d.id));
-const IGNORED = new Set(['UNIT_MEASURE', 'OBS_STATUS']);
+const IGNORED = new Set(['UNIT_MEASURE', 'UNIT_MULT', 'OBS_STATUS']);
 const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['’]/g, ' ').toLowerCase();
 
 // dir : sens favorable (up = une hausse est positive, down = une hausse est défavorable, none = neutre)

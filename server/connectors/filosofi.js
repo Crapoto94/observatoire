@@ -65,7 +65,8 @@ async function loadFichier(fichier, parCommune) {
       const code = valeurs[0];
       if (!/^\d{4,5}$/.test(code)) continue;
       const rows = parCommune.get(code) || parCommune.set(code, []).get(code);
-      const dims = (mesure, unite) => ({ FILOSOFI_MEASURE: mesure, UNIT_MEASURE: unite, UNIT_MULT: '0' });
+      // mêmes dimensions que les observations Melodi (UNIT_MULT y est un attribut, pas une dimension)
+      const dims = (mesure, unite) => ({ FILOSOFI_MEASURE: mesure, UNIT_MEASURE: unite });
       const pauvres = !!theme[1];
       const period = String(fichier.year);
       for (let i = 1; i < entete.length; i++) {
