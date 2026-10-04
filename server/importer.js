@@ -186,7 +186,7 @@ const METHODS = {
   icu: { method: 'Export CSV + rattachement point dans polygone', kind: 'csv' },
   idfm: { method: 'API Opendatasoft (IDFM) + référentiel des zones d\'arrêts', kind: 'api' },
   arcgis: { method: 'API FeatureServer ArcGIS (MGP), agrégats par commune', kind: 'api' },
-  filosofi: { method: 'API Melodi (INSEE) et fichiers INSEE des millésimes antérieurs', kind: 'api' },
+  filosofi: { method: 'API Melodi (INSEE) et fichiers INSEE (jeux Filosofi séparés)', kind: 'api' },
   apientreprise: { method: 'API Entreprise (accès habilité, données non publiques), une fiche par association', kind: 'api' },
   apisubventions: { method: 'API Entreprise, Data Subvention (accès habilité, données non publiques), une requête par association', kind: 'api' },
 };
