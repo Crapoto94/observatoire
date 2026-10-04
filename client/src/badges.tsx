@@ -6,7 +6,7 @@ export function NatureBadge({ i }: { i: Pick<Indicator, 'mode_calcul' | 'formule
   const fed = i.dataset_ids.length > 0 || !!i.couche_id;
   if (!fed) return <span className="nat nat-none" title={`Aucune donnée rattachée${i.formule ? ` · formule : ${i.formule}` : ''}`}>Sans donnée</span>;
   if (i.mode_calcul === 'calcule') return <span className="nat nat-calc" title={i.formule ? `Formule : ${i.formule}` : 'Indicateur calculé (formule à documenter)'}>ƒx Calculé</span>;
-  if (i.mode_calcul === 'direct') return <span className="nat nat-direct" title={i.formule ? `Lecture : ${i.formule}` : 'Valeur lue directement dans le jeu de données'}>● Donnée directe</span>;
+  if (i.mode_calcul === 'direct') return <span className="nat nat-direct" title={i.formule ? `Lecture : ${i.formule}` : 'Valeur lue directement dans le jeu de données'}>● Directe</span>;
   return <span className="nat nat-none" title="Nature non renseignée">Nature ?</span>;
 }
 

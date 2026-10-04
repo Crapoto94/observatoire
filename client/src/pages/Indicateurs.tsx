@@ -352,13 +352,17 @@ export default function Indicateurs() {
                   <StatutPill s={i.statut} />
                   {i.faisabilite ? <span className={`faisa faisa-${i.faisabilite}`}>{FAISABILITES.find((f) => f.key === i.faisabilite)?.short}</span> : null}
                 </td>
-                <td className="c-stack">
-                  <NatureBadge i={i} />
-                  {(() => { const bi = besoinInterne(i); return bi ? <InterneBadge kind={bi} /> : null; })()}
-                  {i.dataset_ids.length > 0 && <SourceBadge kind="import" title={`Données importées : ${i.dataset_ids.map(dsLabel).join(', ')}`} />}
-                  {i.dataset_ids.some((d) => datasets.find((x) => x.id === d)?.prive) && <PriveBadge title={`Données non publiques : ${i.dataset_ids.filter((d) => datasets.find((x) => x.id === d)?.prive).map(dsLabel).join(', ')}`} />}
-                  {i.couche_id && <SourceBadge kind="live" title={`Lu en direct : ${coucheLabel(i.couche_id)} (géoportail du Val-de-Marne)`} />}
-                  <OrigineChip o={i.origine} /><CartoChip c={i.cartographie} />
+                <td className="c-nature">
+                  <div className="badge-row">
+                    <NatureBadge i={i} />
+                    {i.dataset_ids.some((d) => datasets.find((x) => x.id === d)?.prive) && <PriveBadge title={`Données non publiques : ${i.dataset_ids.filter((d) => datasets.find((x) => x.id === d)?.prive).map(dsLabel).join(', ')}`} />}
+                  </div>
+                  <div className="badge-row">
+                    {i.dataset_ids.length > 0 && <SourceBadge kind="import" title={`Données importées : ${i.dataset_ids.map(dsLabel).join(', ')}`} />}
+                    {i.couche_id && <SourceBadge kind="live" title={`Lu en direct : ${coucheLabel(i.couche_id)} (géoportail du Val-de-Marne)`} />}
+                    {(() => { const bi = besoinInterne(i); return bi ? <InterneBadge kind={bi} /> : null; })()}
+                  </div>
+                  {(i.origine || i.cartographie) && <div className="badge-row"><OrigineChip o={i.origine} /><CartoChip c={i.cartographie} /></div>}
                 </td>
                 <td className="clamp" title={i.source || ''}>
                   <div className="clamp2">{i.source || <span className="muted">—</span>}</div>

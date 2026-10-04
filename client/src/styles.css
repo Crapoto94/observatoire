@@ -338,8 +338,16 @@ ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent
 .ind-table td.clamp, .ind-table td.prop { max-width: none; }
 .ind-table .clamp2 { max-width: none; }
 .clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.c-stack { display: table-cell; }
-.c-stack > * { display: block; width: fit-content; margin-bottom: 3px; }
+.c-stack { display: table-cell; vertical-align: top; }
+.c-stack > * { display: inline-block; width: fit-content; margin: 0 3px 3px 0; vertical-align: middle; }
+/* colonne « Suivi » : pastilles de même hauteur (priorité, statut, faisabilité) */
+.c-stack .prio, .c-stack .chip, .c-stack .faisa { line-height: 1.6; padding: 1px 8px; font-size: 11.5px; }
+/* colonne « Nature » : badges rangés par famille (nature, accès, attributs), alignés et de taille homogène */
+.c-nature { vertical-align: top; }
+.badge-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 4px; }
+.badge-row:last-child { margin-bottom: 0; }
+.badge-row > * { margin: 0 !important; }
+.c-nature .nat, .c-nature .src { padding: 1px 8px; }
 .c-chips .chip { display: inline-block; margin: 0 3px 3px 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: top; }
 .c-theme .chip { margin-top: 3px; display: inline-block; }
 .c-links a { word-break: break-all; }
