@@ -54,8 +54,17 @@ export interface Indicator {
   mode_calcul: 'direct' | 'calcule' | null; // donnée lue telle quelle ou calculée (formule)
   couche_id: string | null; // couche géographique lue en direct (géoportail du Val-de-Marne)
   dataset_ids: string[];
-  kpi_ids?: string[]; // KPI du tableau de bord correspondants
+  kpi_ids?: string[]; // KPI du tableau de bord correspondants (du plus fiable au moins fiable)
+  kpi_matches?: { id: string; fiabilite: Fiabilite; raison: string | null }[];
 }
+
+export type Fiabilite = 'fiable' | 'approchee' | 'partielle';
+export const FIABILITES: { key: Fiabilite | 'aucune'; label: string; hint: string }[] = [
+  { key: 'fiable', label: 'Fiable', hint: 'Valeur calculée qui mesure ce que demande la fiche' },
+  { key: 'approchee', label: 'Approchée', hint: 'Valeur voisine, base d’une projection ou d’une évaluation, ou unité différente' },
+  { key: 'partielle', label: 'Partielle', hint: 'Données déclaratives incomplètes (minimum)' },
+  { key: 'aucune', label: 'Sans valeur', hint: 'Aucune valeur calculée : données manquantes ou calcul à définir' },
+];
 
 export type Origine = 'externe' | 'interne' | 'mixte';
 export type Carto = 'oui' | 'possible' | 'non';

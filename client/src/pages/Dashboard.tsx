@@ -1,3 +1,4 @@
+import { PriveBadge } from '../badges';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Line, LineChart, ResponsiveContainer } from 'recharts';
@@ -6,6 +7,7 @@ import { DEFAULT_TILE_STYLE, TileStyle } from '../dashConfig';
 
 interface Pt { period: string; value: number }
 export interface Kpi {
+  prive?: boolean; // jeu à accès habilité : valeur non publique
   id: string; label: string; theme: string; unit: string; dir: 'up' | 'down' | 'none'; dataset: string; datasetLabel: string; last_import: string | null;
   value: number | null; period: string | null; prev: Pt | null; series: Pt[]; ept: Pt | null; dep: Pt | null; reg: Pt | null; age: number | null;
   indicators: { id: number; libelle: string; statut: string; priorite: number | null }[];
@@ -66,7 +68,7 @@ export function Card({ k, focus, onAdd, trend, style }: { k: Kpi; focus: boolean
           </span>
         </div>
       )}
-      <div className="kpi-label" style={{ fontSize: st.titleSize, color: st.titleColor || st.textColor || undefined }}>{k.label}</div>
+      <div className="kpi-label" style={{ fontSize: st.titleSize, color: st.titleColor || st.textColor || undefined }}>{k.label}{k.prive && <PriveBadge />}</div>
       {k.value == null ? (
         <div className="kpi-val muted">non disponible</div>
       ) : (
