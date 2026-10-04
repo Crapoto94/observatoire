@@ -164,7 +164,7 @@ export const VIEWS: Record<string, View> = {
   },
   filosofi: {
     keyfigures: true,
-    note: 'Les valeurs non diffusées (statut O : valeur manquante, secret statistique) sont affichées « n.d. ». Millésime 2023 : seuls le niveau de vie médian et le taux de pauvreté sont diffusés pour Ivry.',
+    note: 'Les valeurs non diffusées (statut O : valeur manquante, secret statistique) sont affichées « n.d. ». Millésimes importés : 2020, 2021 et 2023 (l’API Melodi de l’INSEE ne diffuse que 2021 et 2023, le millésime 2020 est téléchargé depuis insee.fr). Le millésime 2023 ne diffuse, pour Ivry, que le niveau de vie médian et le taux de pauvreté.',
     presets: [
       { label: 'Niveau de vie médian', x: '@GEO', pins: { FILOSOFI_MEASURE: 'MED_SL' } },
       { label: 'Taux de pauvreté (seuil à 60 %)', x: '@GEO', pins: { FILOSOFI_MEASURE: 'PR_MD60' } },

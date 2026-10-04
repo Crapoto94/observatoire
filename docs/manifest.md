@@ -300,6 +300,15 @@ Règles fonctionnelles associées :
 - Le badge **« Non public »** accompagne le jeu dans le catalogue, la liste des jeux importés, la valeur d'Ivry d'un indicateur et les cartes de KPI.
 - Une **formule d'indicateur** qui s'appuie sur ce jeu renvoie vers la source habilitée et mentionne que la donnée n'est pas publique.
 
+### 11.3 Millésimes historiques d'un même jeu
+
+Un jeu peut réunir **plusieurs millésimes** issus de sources différentes dès lors qu'ils produisent les **mêmes mesures**. C'est le cas de **Filosofi** (niveau de vie et pauvreté) : l'API Melodi de l'INSEE ne diffuse que 2021 et 2023 ; le millésime **2020** est téléchargé depuis insee.fr puis ramené au même format. L'ensemble se présente comme **une seule série par commune** (mêmes mesures, périodes empilées), ce qui permet de calculer des évolutions.
+
+Règles associées :
+
+- Une valeur non diffusée (secret statistique) n'est pas importée : les périodes réellement disponibles peuvent varier selon les mesures et les communes.
+- Un jeu multi-millésimes reste interchangeable avec un jeu mono-millésime : les KPI (niveau de vie médian, taux de pauvreté) sélectionnent la mesure, pas le millésime.
+
 ## 12. Instructions destinées à Google Stitch
 
 Google Stitch doit **refaire intégralement le style visuel** de cette application à partir des spécifications ci-dessus.

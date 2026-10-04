@@ -16,6 +16,7 @@ const ips = require('./connectors/ips');
 const ircom = require('./connectors/ircom');
 const sante = require('./connectors/sante');
 const arcgis = require('./connectors/arcgis');
+const filosofi = require('./connectors/filosofi');
 const apientreprise = require('./connectors/apientreprise');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
@@ -40,6 +41,7 @@ const CONNECTORS = {
   ircom: ircom.fetchGeo,
   sante: sante.fetchGeo,
   arcgis: arcgis.fetchGeo,
+  filosofi: filosofi.fetchGeo, // API Melodi (millésimes récents) + fichiers INSEE (millésimes antérieurs)
   apientreprise: apientreprise.fetchGeo, // accès habilité (non public), communes listées dans la configuration du jeu
 };
 
@@ -60,6 +62,7 @@ const BULK = {
   ircom: { fn: ircom.fetchMany, size: 100000 },
   sante: { fn: sante.fetchMany, size: 100000 },
   arcgis: { fn: arcgis.fetchMany, size: 100000 },
+  filosofi: { fn: filosofi.fetchMany, size: 50 },
 };
 
 const jobs = new Map();
@@ -147,8 +150,8 @@ function refreshStats(datasetId) {
 async function ensureLabels(d, log) {
   try {
     const cfg = JSON.parse(d.config || '{}');
-    if (d.provider === 'melodi' && !d.labels) {
-      run('UPDATE datasets SET labels = ? WHERE id = ?', JSON.stringify(await melodi.fetchLabels(cfg.ds)), d.id);
+    if ((d.provider === 'melodi' || d.provider === 'filosofi') && !d.labels) {
+      run('UPDATE datasets SET labels = ? WHERE id = ?', JSON.stringify(await melodi.fetchLabels(cfg.ds || (cfg.jeux || [])[0])), d.id);
     } else if (d.provider !== 'melodi' && cfg.labels) {
       run('UPDATE datasets SET labels = ? WHERE id = ?', JSON.stringify(cfg.labels), d.id);
     }
@@ -182,6 +185,7 @@ const METHODS = {
   icu: { method: 'Export CSV + rattachement point dans polygone', kind: 'csv' },
   idfm: { method: 'API Opendatasoft (IDFM) + référentiel des zones d\'arrêts', kind: 'api' },
   arcgis: { method: 'API FeatureServer ArcGIS (MGP), agrégats par commune', kind: 'api' },
+  filosofi: { method: 'API Melodi (INSEE) et fichiers INSEE des millésimes antérieurs', kind: 'api' },
   apientreprise: { method: 'API Entreprise (accès habilité, données non publiques), une fiche par association', kind: 'api' },
 };
 const methodOf = (d) => METHODS[d.provider] || { method: d.provider, kind: 'api' };

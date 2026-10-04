@@ -67,12 +67,25 @@ const MELODI_DATASETS = [
   d('rp_diplomes', 'DS_RP_DIPLOMES_PRINC', 'Diplômes et formation (dossier complet)',
     'Recensement : population de 15 ans ou plus non scolarisée selon le diplôme le plus élevé (sans diplôme, CAP-BEP, bac, supérieur), 2012, 2017, 2023.',
     ['emploi', 'cohesion'], [{ theme: 'cohesion', re: /developpement social/ }, { theme: 'emploi', re: /profils des actifs/ }]),
-  d('filosofi', 'DS_FILOSOFI_CC', 'Filosofi : niveau de vie et pauvreté',
-    'Revenus localisés sociaux et fiscaux : niveau de vie médian, taux de pauvreté, déciles (millésime 2023).',
-    ['emploi', 'cohesion'], [
+  {
+    id: 'filosofi', provider: 'filosofi',
+    config: {
+      // 2023 (DS_FILOSOFI_CC) et 2021 (DS_FILOSOFI_CC_2021) : API Melodi.
+      jeux: ['DS_FILOSOFI_CC', 'DS_FILOSOFI_CC_2021'],
+      // Millésimes antérieurs : plus diffusés par l'API, téléchargés au format large puis ramenés au format Melodi.
+      fichiers: [
+        { year: 2020, url: 'https://www.insee.fr/fr/statistiques/fichier/6692220/indic-struct-distrib-revenu-2020-COMMUNES_csv.zip' },
+      ],
+    },
+    label: 'Filosofi : niveau de vie et pauvreté',
+    description: 'Revenus localisés sociaux et fiscaux : niveau de vie médian, déciles, indice de Gini, taux de pauvreté, structure du revenu disponible. Millésimes 2023 et 2021 (API Melodi de l\'INSEE) et 2020 (base « structure et distribution des revenus », téléchargée depuis insee.fr) : une même série par commune.',
+    themes: ['emploi', 'cohesion'],
+    doc_url: `${MELODI}/catalog/DS_FILOSOFI_CC`,
+    link: [
       { theme: 'emploi', re: /revenu median|bas revenus|ecart de revenu/ },
       { theme: 'cohesion', re: /taux de pauvrete|evolution du taux de pauvrete/ },
-    ]),
+    ],
+  },
   d('side_stocks', 'DS_SIDE_STOCKS_COM', 'Stocks d\'établissements par activité',
     'Sirene (SIDE) : stocks d\'unités légales et d\'établissements par secteur d\'activité (A10).',
     ['emploi'], [{ groupe: 'commerces', re: /nb de commerces|entreprises hors commerce|dynamique|ess/ }]),
