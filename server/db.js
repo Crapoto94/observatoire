@@ -215,6 +215,21 @@ CREATE TABLE IF NOT EXISTS ia_logs (
   rated_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_ia_logs_at ON ia_logs(at);
+-- Usage : une ligne par requête applicative (pour l'API) — sert à comptabiliser les clics/requêtes par utilisateur
+-- et à qualifier l'usage (consultation, analyse, édition, exploration). Les appels techniques ne sont pas journalisés.
+CREATE TABLE IF NOT EXISTS usage_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT DEFAULT CURRENT_TIMESTAMP,
+  user_id INTEGER,
+  method TEXT,
+  path TEXT,
+  ressource TEXT,
+  categorie TEXT,
+  status INTEGER,
+  ms INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_usage_user_at ON usage_events(user_id, at);
+CREATE INDEX IF NOT EXISTS idx_usage_cat ON usage_events(categorie, at);
 `);
 
 const clean = (params) => params.map((p) => (p === undefined ? null : p));

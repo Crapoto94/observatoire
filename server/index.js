@@ -17,6 +17,7 @@ syncPopulations();
 const app = express();
 app.use(express.json({ limit: '5mb' }));
 app.use(require('./auth').attach); // identifie l'utilisateur à partir du jeton de session (Authorization: Bearer)
+app.use(require('./usage').middleware); // compte les requêtes par utilisateur et qualifie l'usage (consultation, analyse, édition, exploration)
 
 const FIELDS = ['theme', 'theme_label', 'groupe', 'groupe_label', 'niveau', 'libelle', 'libelle_carte', 'priorite', 'source',
   'lien_origine', 'lien_corrige', 'periodicite', 'proposition', 'lien_donnees', 'notes', 'ordre', 'sous_ligne', 'excel_sheet', 'excel_row',
@@ -76,6 +77,10 @@ app.get('/api/admin/users', auth.requireAdmin, (req, res) => res.json(auth.listU
 app.put('/api/admin/users/:id/role', auth.requireAdmin, (req, res) => {
   const r = auth.setRole(Number(req.params.id), req.body?.role);
   r.error ? res.status(r.status || 400).json({ error: r.error }) : res.json(r);
+});
+// Statistiques d'usage par utilisateur (clics/requêtes, qualification consultation → exploration)
+app.get('/api/admin/usage', auth.requireAdmin, (req, res) => {
+  res.json(require('./usage').build({ days: Math.min(Math.max(Number(req.query.days) || 30, 1), 365) }));
 });
 
 // ---------------- Paramètres (compte, préférences, état des services) ----------------
