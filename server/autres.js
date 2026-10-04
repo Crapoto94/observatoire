@@ -1,6 +1,6 @@
 // Onglet « Autres » : indicateurs calculables à partir des données ouvertes mais absents de la conception actuelle,
 // avec une proposition de fiche prête à être ajoutée, et un éclairage emploi (France Travail).
-const { build } = require('./kpi');
+const { build, KPIS, formulaOf } = require('./kpi');
 const emploi = require('./emploi');
 const { all } = require('./db');
 
@@ -21,6 +21,7 @@ function suggestion(k) {
     source: `${k.datasetLabel} (données ouvertes)`, periodicite: 'annuelle',
     proposition: `Donnée déjà importée dans l'observatoire (jeu « ${k.datasetLabel} »), dernière valeur pour Ivry-sur-Seine : ${f1(k.value)}${k.unit ? ' ' + k.unit : ''} (${k.period})${ref ? `, repère : ${ref}` : ''}. À valider : définition, périmètre et sens de lecture avec les services concernés.`,
     origine: 'externe', cartographie: 'oui', statut: 'brouillon', unite: k.unit || null, dataset_ids: [k.dataset],
+    ...(() => { const spec = KPIS.find((x) => x.id === k.id); if (!spec) return {}; const { mode, formule } = formulaOf(spec); return { mode_calcul: mode, formule }; })(),
   };
 }
 
@@ -33,8 +34,14 @@ function buildAutres() {
   const groups = [...byTheme.entries()].map(([theme, kpis]) => ({ theme, kpis: kpis.map((k) => ({ ...k, adopted: already.has(k.suggestion.libelle) })) }));
   // jeux importés sans aucun indicateur de la conception rattaché
   const orphanDatasets = all(`SELECT d.id, d.label, d.nb_rows FROM datasets d WHERE d.nb_rows > 0 AND d.id NOT IN (SELECT dataset_id FROM indicator_datasets) ORDER BY d.label`);
+  // couches du Val-de-Marne lues en direct : indicateurs disponibles (nombre, pour 1 000 hab., sommes) et fiches déjà créées
+  const adoptedCouches = all('SELECT couche_id, libelle FROM indicators WHERE couche_id IS NOT NULL');
+  const couches = require('./couches').list().couches.map((c) => ({
+    id: c.id, label: c.label, theme: c.theme, color: c.color, doc_url: c.doc_url, stats: c.stats,
+    fiches: adoptedCouches.filter((a) => a.couche_id === c.id).map((a) => a.libelle),
+  }));
   const e = emploi.build(d);
-  return { generated: d.generated, groups, orphanDatasets, emploi: { insights: e.insights, ranking: e.ranking, kpis: e.kpis }, sources: e.sources };
+  return { generated: d.generated, groups, orphanDatasets, couches, emploi: { insights: e.insights, ranking: e.ranking, kpis: e.kpis }, sources: e.sources };
 }
 
 module.exports = { build: buildAutres };

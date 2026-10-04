@@ -41,7 +41,7 @@ L'application est organisée autour d'une **navigation principale** et de plusie
 | **Mon tableau de bord** | `/mon-tableau` | Vue synthétique personnalisable (KPI, graphiques et cartes dont les styles cartographiques et la position de légende sont enregistrés par tuile) |
 | **Indicateurs** | `/tableau-de-bord` | Consultation synthétique des indicateurs clés (KPI) par thématique |
 | **Conception des indicateurs** | `/indicateurs` | Vue exploratoire (liste, filtres, tri, recherche, fiches) |
-| **Autres** | `/autres` | Vues thématiques complémentaires (ex. emploi) |
+| **Autres** | `/autres` | Indicateurs calculables à partir des données importées mais absents de la conception, regroupés par thème avec valeur d'Ivry et repères GOSB / Val-de-Marne / Île-de-France (dont formes d'emploi, diplômes, immigrés, modes de déplacement domicile-travail, véhicules électriques et bornes de recharge, délinquance, DGF, allocations familiales) ; « Ajouter à la conception » crée une fiche brouillon avec nature et formule de calcul déjà renseignées. Section « Couches géographiques du Val-de-Marne (lecture en direct) » : indicateurs disponibles par couche (nombre, pour 1 000 hab., sommes) et lien vers la carte pour créer la fiche. Éclairage emploi (France Travail). |
 | **IA** | `/ia` | Assistant conversationnel adossé aux données |
 | **Pilotage** | `/pilotage` | Suivi de la conception (cohérence, doublons, priorisation) |
 | **Carte mentale** | `/carte` | Vue relationnelle des indicateurs |

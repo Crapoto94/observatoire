@@ -9,6 +9,9 @@ const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,
 // dir : sens favorable (up = une hausse est positive, down = une hausse est défavorable, none = neutre)
 // where : modalités retenues ; les autres dimensions doivent valoir _T (total). ratio : num / den sur une dimension.
 // cmp : comparaison pertinente avec le Val-de-Marne et l'Île-de-France (taux, prix, niveaux de vie ; pas les effectifs bruts)
+// cumul : série de flux annuels transformée en stock (somme cumulée ; les lignes sans date comptent dans le stock initial)
+// sum : dimensions additionnées (toutes modalités) au lieu d'exiger leur total _T (jeux sans modalité totale, ex. Flores par activité)
+// partial : la source ne couvre pas tout le territoire (true = aucun cumul, ou liste de clés 'dep'/'reg' à ne pas cumuler)
 const KPIS = [
   { id: 'population', label: 'Population', theme: 'Démographie', dataset: 'rp_serie_historique', where: { RP_MEASURE: 'POP', OCS: '_T' }, dir: 'none', ind: /population/ },
   { id: 'naissances', perK: true, label: 'Naissances domiciliées', theme: 'Démographie', dataset: 'etat_civil_nais', where: { EC_MEASURE: 'LVB' }, dir: 'none', ind: /naissance/ },
@@ -62,13 +65,41 @@ const KPIS = [
   { id: 'conso', perK: true, label: "Consommation d'énergie résidentielle (MWh)", theme: 'Environnement', dataset: 'ore_conso', where: { MESURE: 'CONSO_MWH', FILIERE: '_T', SECTEUR: 'RESIDENTIEL' }, dir: 'down', ind: /energie|consommation/ },
   { id: 'accidents', perK: true, label: 'Accidents corporels', theme: 'Mobilité', dataset: 'baac', where: { MESURE: 'ACCIDENTS', LUMINOSITE: '_T', AGGLOMERATION: '_T' }, dir: 'down', ind: /accident/ },
   { id: 'associations', perK: true, label: 'Associations (stock du jour)', theme: 'Vie associative', dataset: 'entreprises', where: { MESURE: 'ASSOCIATIONS' }, dir: 'none', ind: /association/ },
+  // formes d'emploi, diplômes, effectifs salariés (jeux INSEE ajoutés pour nourrir la conception)
+  { id: 'precaires', label: 'Part des salariés en contrat précaire (CDD, intérim, apprentissage…)', theme: 'Emploi', dataset: 'rp_formes_emploi', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', WKTIME: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'EMPFORM', num: ['22T27'], den: ['211', '22T27'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /contrats precaires/ },
+  { id: 'temps_partiel', label: 'Part des actifs occupés à temps partiel', theme: 'Emploi', dataset: 'rp_formes_emploi', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', EMPFORM: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'WKTIME', num: ['PT'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'non_salaries', label: 'Part des non-salariés parmi les actifs occupés', theme: 'Emploi', dataset: 'rp_formes_emploi', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', WKTIME: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'EMPFORM', num: ['1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'sans_diplome', label: 'Part des 15 ans ou plus non scolarisés sans diplôme', theme: 'Éducation', dataset: 'rp_diplomes', where: { SEX: '_T', AGE: 'Y_GE15', RP_MEASURE: 'POP' }, ratio: { dim: 'EDUC', num: ['001T100_RP'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'diplomes_sup', label: 'Part des 15 ans ou plus non scolarisés diplômés du supérieur', theme: 'Éducation', dataset: 'rp_diplomes', where: { SEX: '_T', AGE: 'Y_GE15', RP_MEASURE: 'POP' }, ratio: { dim: 'EDUC', num: ['500T702_RP'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
+  { id: 'salaries', label: 'Effectifs salariés des établissements (Flores)', theme: 'Emploi', dataset: 'flores', where: { FLORES_MEASURE: 'EMPL3112', LEGAL_FORM_WITH_PUBLIC: '1T9X7' }, sum: ['ACTIVITY'], dir: 'up', ind: /^$/ },
+  { id: 'salaries_asso', perK: true, label: 'Salariés des organisations associatives (Flores)', theme: 'Vie associative', dataset: 'flores', where: { FLORES_MEASURE: 'EMPL3112', LEGAL_FORM_WITH_PUBLIC: '1T9X7', ACTIVITY: '94' }, dir: 'none', ind: /^nb de salaries$/ },
+  // autres jeux importés encore peu exploités
+  { id: 'immigres', label: 'Part des immigrés dans la population', theme: 'Démographie', dataset: 'rp_immigration', where: { SEX: '_T', AGE: '_T', EMPSTA_ENQ: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'IMMI', num: ['1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'travail_commune', label: 'Part des actifs occupés travaillant dans leur commune de résidence', theme: 'Mobilité', dataset: 'rp_navettes', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', TRANS: '_T', WORK_URBAN_AREA: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'WORK_AREA', num: ['10'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'modes_actifs', label: 'Part des actifs allant travailler à pied ou à vélo', theme: 'Mobilité', dataset: 'rp_navettes', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', WORK_AREA: '_T', WORK_URBAN_AREA: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'TRANS', num: ['2', '3'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^part modale/ },
+  { id: 'transports_commun', label: 'Part des actifs allant travailler en transports en commun', theme: 'Mobilité', dataset: 'rp_navettes', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', WORK_AREA: '_T', WORK_URBAN_AREA: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'TRANS', num: ['6'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
+  { id: 'voiture_travail', label: 'Part des actifs allant travailler en voiture', theme: 'Mobilité', dataset: 'rp_navettes', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', WORK_AREA: '_T', WORK_URBAN_AREA: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'TRANS', num: ['5'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'vp_electriques', label: 'Part des voitures particulières électriques', theme: 'Mobilité', dataset: 'ore_parc_auto', where: {}, ratio: { dim: 'MESURE', num: ['VP_ELECTRIQUES'], den: ['VP'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
+  { id: 'irve', label: 'Points de recharge en service pour véhicules électriques (pour 1 000 hab.)', theme: 'Mobilité', dataset: 'ore_irve', where: { MESURE: 'PDC_MIS_EN_SERVICE', IMPLANTATION: '_T' }, cumul: true, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
+  { id: 'creations', label: 'Créations d’établissements (pour 1 000 hab.)', theme: 'Emploi', dataset: 'side_creations', where: { SIDE_MEASURE: 'UNIT_LOC_BURE', ACTIVITY: '_T', LEGAL_FORM: '_T' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /creations\/fermetures|dynamiques d implantation/ },
+  { id: 'artificialisation', label: 'Part de la surface communale artificialisée', theme: 'Environnement', dataset: 'artificialisation', where: { MESURE: 'PART_ARTIF' }, unit: '%', cmp: true, dir: 'down', ind: /impermeabilite des sols/ },
+  { id: 'viol_sexuelles', label: 'Violences sexuelles (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'VIOL_SEXUELLES' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'vols_violents', label: 'Vols violents sans arme (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'VOLS_VIOLENTS' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'escroqueries', label: 'Escroqueries (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'ESCROQUERIES' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'vols_vehicules', label: 'Vols de véhicules (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'VOL_VEHICULE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
+  { id: 'dgf_hab', label: 'Dotation globale de fonctionnement (€/hab.)', theme: 'Finances locales', dataset: 'finances', where: { MESURE: 'DGF_HAB' }, unit: '€', cmp: true, dir: 'none', ind: /^$/ },
+  { id: 'familles_af', perK: true, label: 'Foyers percevant les allocations familiales (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_AF' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+{ id: 'licences_sport', perK: true, label: 'Licences sportives (pour 1 000 hab.)', theme: 'Sport', dataset: 'licences_sportives', where: { MESURE: 'LICENCES', FEDERATION: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, partial: ['reg'], dir: 'up', ind: /licences/ },
+{ id: 'lieux_culturels', perK: true, label: 'Lieux et équipements culturels (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'equipements_culturels', where: { MESURE: 'NB_LIEUX', DOMAINE: '_T', TYPE: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /lieux et equipements culturels|equipements culturels/ },
+{ id: 'lineaire_velo', label: 'Aménagements cyclables (km)', theme: 'Mobilité', dataset: 'velo_amenagements', where: { MESURE: 'LONGUEUR_M', TYPE: '_T' }, factor: 0.001, unit: 'km', cmp: true, fromCommunes: true, dir: 'up', ind: /amenagements cyclables|voies cyclables/ },
+{ id: 'trame_verte', label: 'Surface de trame verte (ha)', theme: 'Environnement', dataset: 'trame_verte', where: { MESURE: 'SURFACE_HA', SOUS_TRAME: '_T', ROLE: '_T' }, unit: 'ha', cmp: true, fromCommunes: true, partial: true, dir: 'up', ind: /trame verte|espaces verts/ },
 ];
 
 const matches = (r, where) => Object.entries(where).every(([d, v]) => r.dims[d] === v);
 const totalOnly = (r, used) => Object.entries(r.dims).every(([d, v]) => used.has(d) || IGNORED.has(d) || v === '_T' || v === '_Z' || v == null);
 
 function seriesOf(rows, spec) {
-  const used = new Set([...Object.keys(spec.where), ...(spec.ratio ? [spec.ratio.dim] : [])]);
+  const used = new Set([...Object.keys(spec.where), ...(spec.ratio ? [spec.ratio.dim] : []), ...(spec.sum || [])]);
   const by = new Map();
   const slot = (p) => by.get(p) || by.set(p, { num: 0, den: 0, n: 0 }).get(p);
   for (const r of rows) {
@@ -82,10 +113,16 @@ function seriesOf(rows, spec) {
   }
   const out = [];
   for (const [period, m] of by) {
-    if (spec.ratio) { if (m.den) out.push({ period, value: (m.num / m.den) * (spec.factor ?? 100) }); } else if (m.n) out.push({ period, value: m.num });
+    if (spec.ratio) { if (m.den) out.push({ period, value: (m.num / m.den) * (spec.factor ?? 100) }); } else if (m.n) out.push({ period, value: m.num * (spec.factor ?? 1) });
   }
   // année en cours : données encore incomplètes pour certaines sources (déclarations tardives)
   const thisYear = new Date().getFullYear();
+  if (spec.cumul) {
+    out.sort((a, b) => (a.period < b.period ? -1 : 1));
+    let acc = 0;
+    for (const p of out) { acc += p.value; p.value = acc; }
+    return out.filter((p) => p.period !== '');
+  }
   return out.filter((p) => !spec.skipCurrent || Number(String(p.period).slice(0, 4)) < thisYear).sort((a, b) => (a.period < b.period ? -1 : 1));
 }
 
@@ -111,7 +148,8 @@ function build() {
       if (key !== 'ref' && !spec.cmp) continue;
       let s = seriesOf(rowsOf(spec.dataset, geo), spec);
       // jeux communaux : le Val-de-Marne et l'Île-de-France sont recalculés à partir des communes (effectifs ou ratios de sommes)
-      if (!s.length && spec.fromCommunes && (key === 'dep' || key === 'reg')) {
+      const partial = spec.partial === true || (Array.isArray(spec.partial) && spec.partial.includes(key));
+      if (!s.length && !partial && spec.fromCommunes && (key === 'dep' || key === 'reg')) {
         const codes = communesOf(key);
         const byGeo = carto.rowsFor(spec, codes);
         // jeu encore peu chargé pour ce périmètre : une somme partielle serait trompeuse
@@ -151,10 +189,24 @@ function build() {
   };
 }
 
+// Nature et formule lisible d'un KPI, déduites de sa définition (pour les fiches créées depuis « Autres »)
+function formulaOf(spec) {
+  const filt = Object.entries(spec.where).filter(([, v]) => v !== '_T').map(([d, v]) => `${d} = ${v}`).join(', ');
+  const base = `${spec.dataset}${filt ? ` [${filt}]` : ''}`;
+  let f, mode = 'direct';
+  if (spec.ratio) { mode = 'calcule'; f = `${base} : ${spec.ratio.dim} ∈ {${spec.ratio.num.join(', ')}} / ${spec.ratio.dim} ∈ {${spec.ratio.den.join(', ')}} × ${spec.factor ?? 100}`; }
+  else f = spec.sum ? `${base}, somme sur ${spec.sum.join(', ')}` : base;
+  if (spec.sum) mode = 'calcule';
+  if (spec.cumul) { mode = 'calcule'; f += ' ; cumul des mises en service (stock)'; }
+  if (spec.kpiPerK) { mode = 'calcule'; f += ' × 1 000 / population municipale'; }
+  if (spec.fromCommunes) f += ' (Val-de-Marne et Île-de-France recalculés à partir des communes)';
+  return { mode, formule: f };
+}
+
 // KPI du tableau de bord correspondant à un intitulé d'indicateur (rapprochement par intitulé)
 function kpiIdsFor(libelle) {
   const t = norm(libelle);
   return KPIS.filter((k) => k.ind.test(t)).map((k) => k.id);
 }
 
-module.exports = { build, KPIS, kpiIdsFor, seriesOf, matches, totalOnly };
+module.exports = { build, KPIS, kpiIdsFor, seriesOf, matches, totalOnly, formulaOf };

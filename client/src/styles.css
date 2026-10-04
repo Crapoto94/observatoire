@@ -894,3 +894,7 @@ button.fiche-btn:hover { background: rgba(37, 99, 235, .08); }
 .doc-table th, .doc-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .doc-files { margin: 4px 0; padding-left: 18px; font-size: 13px; }
 .doc-links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
+.couches-propose { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.couche-prop { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--panel); display: flex; flex-direction: column; gap: 4px; }
+.couche-prop-head { display: flex; align-items: center; gap: 6px; }
+.couche-prop .chip { margin: 1px 3px 1px 0; }

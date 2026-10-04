@@ -15,6 +15,7 @@ const gaspar = require('./connectors/gaspar');
 const ips = require('./connectors/ips');
 const ircom = require('./connectors/ircom');
 const sante = require('./connectors/sante');
+const arcgis = require('./connectors/arcgis');
 const { bootstrapIdf } = require('./idf');
 const groups = require('./groups');
 
@@ -37,6 +38,7 @@ const CONNECTORS = {
   ips: ips.fetchGeo,
   ircom: ircom.fetchGeo,
   sante: sante.fetchGeo,
+  arcgis: arcgis.fetchGeo,
 };
 
 // import en masse : fonction, taille de lot de territoires. Les autres jeux sont importés commune par commune (4 en parallèle).
@@ -55,6 +57,7 @@ const BULK = {
   ips: { fn: ips.fetchMany, size: 100000 },
   ircom: { fn: ircom.fetchMany, size: 100000 },
   sante: { fn: sante.fetchMany, size: 100000 },
+  arcgis: { fn: arcgis.fetchMany, size: 100000 },
 };
 
 const jobs = new Map();
@@ -176,6 +179,7 @@ const METHODS = {
   datafair: { method: 'API Data Fair (Agence ORE)', kind: 'api' },
   icu: { method: 'Export CSV + rattachement point dans polygone', kind: 'csv' },
   idfm: { method: 'API Opendatasoft (IDFM) + référentiel des zones d\'arrêts', kind: 'api' },
+  arcgis: { method: 'API FeatureServer ArcGIS (MGP), agrégats par commune', kind: 'api' },
 };
 const methodOf = (d) => METHODS[d.provider] || { method: d.provider, kind: 'api' };
 

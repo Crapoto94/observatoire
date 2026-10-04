@@ -81,7 +81,7 @@ module.exports = [
     id: 'equipements_sportifs', provider: 'ods', label: 'Équipements sportifs (recensement national)',
     description: "Recensement des équipements sportifs (Data ES) publié par la Région Île-de-France : nombre d'équipements par commune et par famille (terrains de grands jeux, salles multisports, courts de tennis, bassins de natation, city-stades…). Stock à la date de l'import.",
     themes: ['cohesion', 'environnement'], doc_url: 'https://data.iledefrance.fr/explore/dataset/recensement-des-equipements-sportifs/',
-    link: [],
+    link: [{ groupe: 'conditions-vie', re: /equipements/ }],
     config: {
       base: 'https://data.iledefrance.fr', dataset: 'recensement-des-equipements-sportifs', levels: { COM: 'new_code' }, marginals: true, sum: true,
       columns: [{ field: 'n', measure: 'EQUIPEMENTS' }],

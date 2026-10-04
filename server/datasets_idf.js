@@ -1,8 +1,31 @@
 // Jeux issus de téléchargements complets agrégés par commune à l'import : logements vacants (LOVAC), stationnements cyclables (OpenStreetMap),
-// nuisances environnementales (grille de 500 m), îlots de chaleur urbains (rattachés aux communes par point dans polygone).
+// nuisances environnementales (grille de 500 m), îlots de chaleur urbains (rattachés aux communes par point dans polygone),
+// aménagements cyclables, équipements sportifs et culturels, licences sportives (Institut Paris Région),
+// trame verte (Métropole du Grand Paris, serveur ArcGIS).
 const DG = (id) => `https://www.data.gouv.fr/datasets/${id}/`;
 const IDF = "https://data.iledefrance.fr/explore/dataset";
+const MGP = "https://metropole-grand-paris.opendata.arcgis.com";
 const mesure = (values) => ({ MESURE: { label: "Mesure", values } });
+
+const TYPE_VELO = {
+  cycleway: "Piste cyclable",
+  footway: "Piste piétonne (mixte vélo-piéton)",
+  path: "Chemin",
+  living_street: "Rue résidentielle apaisée",
+  pedestrian: "Zone piétonne",
+  primary: "Rue principale",
+  primary_link: "Voie de desserte (principale)",
+  secondary: "Rue secondaire",
+  secondary_link: "Voie de desserte (secondaire)",
+  tertiary: "Rue tertiaire",
+  tertiary_link: "Voie de desserte (tertiaire)",
+  residential: "Rue résidentielle",
+  service: "Voie de desserte interne",
+  track: "Chemin non revêtu",
+  steps: "Escalier",
+  trunk_link: "Voie de desserte (autoroute)",
+  unclassified: "Voie non classée",
+};
 
 const lovacColumns = [];
 for (let yy = 20; yy <= 26; yy++) {
@@ -101,6 +124,82 @@ module.exports = [
             FIN_10: "PLA d'intégration (PLAI)", FIN_12: "PLA ordinaire", FIN_13: "PLUS", FIN_14: "PLS / PPLS / PLA CFF", FIN_17: "PCL conventionné ou non", FIN_51: "PLR / PSR", FIN_52: "HLM/O", FIN_54: "ILN",
           },
         },
+      },
+    },
+  },
+  {
+    id: "velo_amenagements", provider: "ods", label: "Aménagements cyclables (OpenStreetMap)",
+    description: "Institut Paris Région, données OpenStreetMap : linéaire et nombre de segments de voies aménagées pour les vélos, par commune et par type de voie (piste cyclable, voie verte, chaussée à voie centrale banalisée, piste piétonne…). Agrégation faite à l'import sur le contour communal indiqué par la source. Communes d'Île-de-France uniquement.",
+    themes: ["mobilite"], doc_url: `${IDF}/amenagements-velo-en-ile-de-france/`,
+    link: [{ theme: "mobilite", re: /modes actifs|stationnements velo/ }],
+    config: {
+      base: "https://data.iledefrance.fr", dataset: "amenagements-velo-en-ile-de-france", levels: { COM: "insee_com" },
+      marginals: true,
+      columns: [{ field: "n", measure: "NB_SEGMENTS" }, { field: "longueur", measure: "LONGUEUR_M" }],
+      queries: [{ select: "highway, count(*) as n, sum(longueur) as longueur", groupBy: "highway", period: "$YEAR", dimFields: [{ field: "highway", dim: "TYPE", map: TYPE_VELO }] }],
+      labels: {
+        ...mesure({ NB_SEGMENTS: "Segments recensés", LONGUEUR_M: "Linéaire aménagé (m)" }),
+        TYPE: { label: "Type de voie", values: { _T: "Tous types", ...TYPE_VELO } },
+      },
+    },
+  },
+  {
+    id: "licences_sportives", provider: "ods", label: "Licences sportives par fédération (Val-de-Marne)",
+    description: "Institut Paris Région : licences sportives par fédération et par commune du Val-de-Marne, avec la répartition par âge et par sexe. Millésime 2011 : à lire comme un état historique, pas comme une situation actuelle. Communes du Val-de-Marne uniquement.",
+    themes: ["cohesion"], doc_url: `${IDF}/carte-des-licencies-sportifs-dans-le-val-de-marne/`,
+    link: [{ groupe: "conditions-vie", re: /equipements/ }],
+    config: {
+      base: "https://data.iledefrance.fr", dataset: "carte-des-licencies-sportifs-dans-le-val-de-marne", levels: { COM: "code_insee" },
+      geoQuote: false, marginals: true,
+      columns: [
+        { field: "licences", measure: "LICENCES" }, { field: "m20", measure: "MOINS_20_ANS" },
+        { field: "a2060", measure: "20_A_60_ANS" }, { field: "p60", measure: "PLUS_60_ANS" },
+        { field: "femmes", measure: "FEMMES" }, { field: "zus", measure: "LICENCES_ZUS" },
+      ],
+      queries: [{ select: "federation, sum(licences_en_2011) as licences, sum(moins_de_20_ans) as m20, sum(entre_20_et_60_ans) as a2060, sum(plus_de_60_ans) as p60, sum(femmes) as femmes, sum(licences_en_zone_urbaine_sensible_zus) as zus", groupBy: "federation", period: "2011", dimFields: [{ field: "federation", dim: "FEDERATION" }] }],
+      labels: {
+        ...mesure({
+          LICENCES: "Licences", MOINS_20_ANS: "Licences de moins de 20 ans", "20_A_60_ANS": "Licences de 20 à 60 ans",
+          PLUS_60_ANS: "Licences de plus de 60 ans", FEMMES: "Licences féminines", LICENCES_ZUS: "Licences en zone urbaine sensible",
+        }),
+        FEDERATION: { label: "Fédération", values: { _T: "Toutes fédérations" } },
+      },
+    },
+  },
+  {
+    id: "equipements_culturels", provider: "ods", label: "Lieux et équipements culturels (Basilic)",
+    description: "Institut Paris Région, base Basilic : lieux et équipements culturels recensés par domaine (patrimoine, livre et presse, arts du spectacle, cinéma, lecture publique, archives…) et par type d'équipement, rattachés à la commune. Communes d'Île-de-France uniquement.",
+    themes: ["cohesion"], doc_url: `${IDF}/base-des-lieux-et-des-equipements-culturels-ile-de-france/`,
+    link: [{ groupe: "conditions-vie", re: /equipements/ }],
+    config: {
+      base: "https://data.iledefrance.fr", dataset: "base-des-lieux-et-des-equipements-culturels-ile-de-france", levels: { COM: "code_insee" },
+      marginals: true,
+      columns: [{ field: "n", measure: "NB_LIEUX" }],
+      queries: [{ select: "domaine, type_equipement_ou_lieu, count(*) as n", groupBy: "domaine, type_equipement_ou_lieu", period: "$YEAR", dimFields: [{ field: "domaine", dim: "DOMAINE" }, { field: "type_equipement_ou_lieu", dim: "TYPE" }] }],
+      labels: {
+        ...mesure({ NB_LIEUX: "Lieux et équipements recensés" }),
+        DOMAINE: { label: "Domaine", values: { _T: "Tous domaines" } },
+        TYPE: { label: "Type d'équipement", values: { _T: "Tous types" } },
+      },
+    },
+  },
+  {
+    id: "trame_verte", provider: "arcgis", label: "Trame verte (composantes par commune, MGP)",
+    description: "Métropole du Grand Paris : composantes de la trame verte (sous-trames boisée, ouverte, semi-ouverte et composite) rattachées aux communes, avec le nombre de secteurs et la surface couverte par sous-trame et par rôle (zone de respiration ZR, niveaux N1 et N2). Surfaces converties en hectares. Les 123 communes de la Métropole du Grand Paris uniquement.",
+    themes: ["environnement"], doc_url: `${MGP}/server/rest/services/opendata_trameVerte_composantesCommune/FeatureServer/8`,
+    link: [{ theme: "environnement", re: /espaces verts|espaces naturels/ }],
+    config: {
+      url: "https://www.carto-metropolegrandparis.fr/server/rest/services/opendata_trameVerte_composantesCommune/FeatureServer",
+      layer: 8, idField: "code_insee", where: "code_insee is not null", period: "$YEAR",
+      measures: [
+        { stat: "count", measure: "NB_SECTEURS" },
+        { stat: "sum", field: "Shape__Area", measure: "SURFACE_HA", scale: 0.0001 },
+      ],
+      dimFields: [{ field: "type", dim: "SOUS_TRAME" }, { field: "role", dim: "ROLE" }],
+      labels: {
+        ...mesure({ NB_SECTEURS: "Secteurs de la trame verte", SURFACE_HA: "Surface couverte (ha)" }),
+        SOUS_TRAME: { label: "Sous-trame", values: { _T: "Toutes sous-trames", Boise: "Boisée", Composite: "Composite", Ouvert: "Ouverte", "Semi-ouvert": "Semi-ouverte" } },
+        ROLE: { label: "Rôle", values: { _T: "Tous rôles", ZR: "Zone de respiration", N1: "Niveau 1", N2: "Niveau 2" } },
       },
     },
   },

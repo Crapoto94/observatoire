@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { Card, Kpi } from './Dashboard';
+import { SourceBadge } from '../badges';
 
 interface Suggestion { libelle: string; [k: string]: unknown }
 interface KpiX extends Kpi { suggestion: Suggestion; adopted: boolean }
@@ -10,6 +11,7 @@ interface Src { statut: string; titre: string; detail: string; lien: string }
 interface Data {
   groups: { theme: string; kpis: KpiX[] }[];
   orphanDatasets: { id: string; label: string; nb_rows: number }[];
+  couches?: { id: string; label: string; theme: string; color: string; doc_url: string | null; stats: { id: string; label: string; formule: string }[]; fiches: string[] }[];
   emploi: { insights: { level: string; text: string }[]; ranking: { period: string; rows: Rank[] } | null; kpis: Kpi[] };
   sources: Src[];
 }
@@ -62,6 +64,28 @@ export default function Autres() {
           </div>
         </div>
       ))}
+
+      {d.couches && d.couches.length > 0 && (
+        <>
+          <h2>Couches géographiques du Val-de-Marne (lecture en direct) <SourceBadge kind="live" /></h2>
+          <p className="muted small">
+            Chaque couche du géoportail départemental fournit au moins le nombre d’objets et ce nombre pour 1 000 habitants, souvent des sommes (places, élèves, logements, surfaces…).
+            Les valeurs sont calculées en direct pour la commune choisie ; « Voir et ajouter » ouvre la carte, où « + fiche » crée l’indicateur dans la conception.
+          </p>
+          <div className="couches-propose">
+            {d.couches.map((c) => (
+              <div key={c.id} className="couche-prop">
+                <div className="couche-prop-head"><span className="couches-swatch" style={{ background: c.color }} /><strong>{c.label}</strong><span className="muted small"> · {c.theme}</span></div>
+                <div className="small">{c.stats.map((s) => <span key={s.id} className="chip" title={s.formule}>{s.label}</span>)}</div>
+                <div className="small">
+                  {c.fiches.length > 0 && <span className="trend-up">✓ {c.fiches.length} fiche(s) · </span>}
+                  <Link to={`/couches?couche=${c.id}`}>Voir et ajouter →</Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {d.orphanDatasets.length > 0 && (
         <>
