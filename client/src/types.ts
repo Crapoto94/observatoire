@@ -51,6 +51,8 @@ export interface Indicator {
   parent_id: number | null;
   origine: Origine | null;
   cartographie: Carto | null;
+  mode_calcul: 'direct' | 'calcule' | null; // donnée lue telle quelle ou calculée (formule)
+  couche_id: string | null; // couche géographique lue en direct (géoportail du Val-de-Marne)
   dataset_ids: string[];
   kpi_ids?: string[]; // KPI du tableau de bord correspondants
 }
@@ -143,4 +145,10 @@ export interface Job {
   scope?: string;
   current?: { id: string; label: string; done: number; total: number; attempt: number; method: string } | null;
   deferred?: string[];
+}
+
+export interface CoucheStat { id: string; label: string; unit: string | null; formule: string }
+export interface Couche {
+  id: string; label: string; theme: string; kind: 'point' | 'line' | 'polygon'; color: string; choropleth: string | null; choroLabel: string | null; unit: string | null;
+  source: string; layer: string; doc_url: string | null; live: true; stats: CoucheStat[];
 }

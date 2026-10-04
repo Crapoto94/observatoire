@@ -74,7 +74,8 @@ function buildWorkbook(items) {
   const cols = [
     ['Thème', (i) => i.theme_label], ['Rubrique', (i) => i.groupe_label], ['Niveau', (i) => i.niveau], ['Indicateur', (i) => i.libelle],
     ['Libellé carte', (i) => i.libelle_carte], ['Priorité', (i) => i.priorite], ['Statut', (i) => STATUT[i.statut] || 'Brouillon'],
-    ['Décision / arbitrage', (i) => i.decision], ['Définition', (i) => i.definition], ['Formule de calcul', (i) => i.formule],
+    ['Décision / arbitrage', (i) => i.decision], ['Définition', (i) => i.definition], ['Nature', (i) => ({ direct: 'Donnée directe', calcule: 'Calculé' })[i.mode_calcul] || ''], ['Formule de calcul', (i) => i.formule],
+    ['Accès aux données', (i) => [i.dataset_ids?.length ? 'Importé' : '', i.couche_id ? `Live (${i.couche_id})` : ''].filter(Boolean).join(' + ')],
     ['Unité', (i) => i.unite], ['Périmètre', (i) => i.perimetre], ['Porteur', (i) => i.porteur], ['Cible / seuil', (i) => i.cible],
     ['Faisabilité', (i) => FAISA[i.faisabilite] || ''], ['Origine de la donnée', (i) => ORIGINE[i.origine] || ''], ['Cartographiable', (i) => CARTO[i.cartographie] || ''], ['Source', (i) => i.source], ["Lien d'origine", (i) => i.lien_origine],
     ['Lien corrigé', (i) => i.lien_corrige], ['Périodicité', (i) => i.periodicite], ['Proposition', (i) => i.proposition],

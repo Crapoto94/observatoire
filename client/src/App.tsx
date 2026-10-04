@@ -6,6 +6,7 @@ import Donnees from './pages/Donnees';
 import Pilotage from './pages/Pilotage';
 import Catalogue from './pages/Catalogue';
 import Cartographie from './pages/Cartographie';
+import Couches from './pages/Couches';
 import Nouveautes from './pages/Nouveautes';
 import Dashboard from './pages/Dashboard';
 import MonTableau from './pages/MonTableau';
@@ -51,6 +52,7 @@ export default function App() {
           <NavLink to="/carte">Carte mentale</NavLink>
           <NavLink to="/donnees">Données</NavLink>
           <NavLink to="/cartographie">Cartographie</NavLink>
+          <NavLink to="/couches" title="Couches géographiques du Val-de-Marne lues en direct">Couches 94</NavLink>
           <NavLink to="/catalogue">Catalogue</NavLink>
           <a className="nav-sig" href="http://sig.ivry.local/" target="_blank" rel="noreferrer" title="Ouvrir le SIG de la Ville dans un nouvel onglet">SIG Ville ↗</a>
           {admin && <NavLink to="/parametres">Paramètres</NavLink>}
@@ -76,6 +78,7 @@ export default function App() {
           <Route path="/carte" element={<Carte />} />
           <Route path="/donnees" element={<Donnees />} />
           <Route path="/cartographie" element={<Cartographie />} />
+          <Route path="/couches" element={<Couches />} />
           <Route path="/catalogue" element={<Catalogue />} />
           <Route path="/imports" element={<Navigate to="/parametres" replace />} />
           <Route path="/nouveautes" element={<Nouveautes />} />

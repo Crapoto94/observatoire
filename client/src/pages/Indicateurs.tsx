@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
-import { CARTOS, Carto, Dataset, FAISABILITES, HistoryEntry, Indicator, NIVEAUX, NIVEAU_FILL, Niveau, ORIGINES, Origine, STATUTS, Statut } from '../types';
+import { NatureBadge, SourceBadge } from '../badges';
+import { CARTOS, Carto, Couche, Dataset, FAISABILITES, HistoryEntry, Indicator, NIVEAUX, NIVEAU_FILL, Niveau, ORIGINES, Origine, STATUTS, Statut } from '../types';
 
 type SortKey = 'theme' | 'niveau' | 'libelle' | 'priorite' | 'source';
 
@@ -52,6 +53,9 @@ export default function Indicateurs() {
   const [faisa, setFaisa] = useState(params.get('faisa') ?? '');
   const [origine, setOrigine] = useState(params.get('origine') ?? '');
   const [carto, setCarto] = useState(params.get('carto') ?? '');
+  const [nature, setNature] = useState(params.get('nature') ?? '');
+  const [acces, setAcces] = useState(params.get('acces') ?? '');
+  const [couches, setCouches] = useState<Couche[]>([]);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [editing, setEditing] = useState<Partial<Indicator> | null>(null);
 
@@ -59,6 +63,7 @@ export default function Indicateurs() {
     // La liste est prioritaire : ne pas la bloquer sur le chargement du catalogue de jeux.
     api<Indicator[]>('/indicators').then(setItems).catch((e) => setError(e.message));
     setDatasetsReady(false);
+    api<{ couches: Couche[] }>('/couches').then((r) => setCouches(r.couches)).catch(() => setCouches([]));
     api<Dataset[]>('/datasets').then(setDatasets).catch((e) => setError((current) => current || e.message)).finally(() => setDatasetsReady(true));
   };
   useEffect(() => { load(); }, []);
@@ -94,6 +99,13 @@ export default function Indicateurs() {
       if (faisa === 'none' ? i.faisabilite : faisa && i.faisabilite !== Number(faisa)) return false;
       if (origine && i.origine !== origine) return false;
       if (carto === 'carte' ? i.cartographie !== 'oui' && i.cartographie !== 'possible' : carto && i.cartographie !== carto) return false;
+      const fed = i.dataset_ids.length > 0 || !!i.couche_id;
+      if (nature === 'direct' && (!fed || i.mode_calcul !== 'direct')) return false;
+      if (nature === 'calcule' && (!fed || i.mode_calcul !== 'calcule')) return false;
+      if (nature === 'sans-donnee' && fed) return false;
+      if (nature === 'sans-formule' && i.formule) return false;
+      if (acces === 'live' && !i.couche_id) return false;
+      if (acces === 'import' && !i.dataset_ids.length) return false;
       if (flag === 'sans-source' && i.source) return false;
       if (flag === 'lien-corrige' && !i.lien_corrige) return false;
       if (flag === 'avec-jeu' && !i.dataset_ids.length) return false;
@@ -103,7 +115,7 @@ export default function Indicateurs() {
       if (flag === 'sans-parent' && (i.niveau === 'contexte' || i.parent_id)) return false;
       if (nq) {
         const hay = norm([i.libelle, i.libelle_carte, i.source, i.proposition, i.notes, i.periodicite, i.theme_label, i.groupe_label,
-          i.definition, i.porteur, i.decision].join(' '));
+          i.definition, i.formule, i.porteur, i.decision].join(' '));
         if (!nq.split(/\s+/).every((t) => hay.includes(t))) return false;
       }
       return true;
@@ -114,16 +126,17 @@ export default function Indicateurs() {
       r = [...r].sort((a, b) => (val(a) > val(b) ? dir : val(a) < val(b) ? -dir : 0));
     }
     return r;
-  }, [items, q, theme, groupe, niveau, prio, flag, statut, faisa, origine, carto, sort]);
+  }, [items, q, theme, groupe, niveau, prio, flag, statut, faisa, origine, carto, nature, acces, sort]);
 
   const toggleSort = (key: SortKey) =>
     setSort((s) => (s?.key === key ? (s.dir === 1 ? { key, dir: -1 } : null) : { key, dir: 1 }));
   const arrow = (key: SortKey) => (sort?.key === key ? (sort.dir === 1 ? ' ▲' : ' ▼') : '');
   const dsLabel = (id: string) => datasets.find((d) => d.id === id)?.label || id;
+  const coucheLabel = (id: string) => couches.find((c) => c.id === id)?.label || id;
 
   const exportCsv = () => {
-    const cols: (keyof Indicator)[] = ['theme_label', 'groupe_label', 'niveau', 'libelle', 'priorite', 'statut', 'definition', 'formule', 'unite', 'perimetre',
-      'porteur', 'cible', 'decision', 'faisabilite', 'origine', 'cartographie', 'source', 'lien_origine', 'lien_corrige', 'periodicite', 'proposition', 'lien_donnees', 'notes'];
+    const cols: (keyof Indicator)[] = ['theme_label', 'groupe_label', 'niveau', 'libelle', 'priorite', 'statut', 'definition', 'mode_calcul', 'formule', 'unite', 'perimetre',
+      'porteur', 'cible', 'decision', 'faisabilite', 'origine', 'cartographie', 'source', 'lien_origine', 'lien_corrige', 'periodicite', 'proposition', 'lien_donnees', 'couche_id', 'notes'];
     const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const csv = [cols.join(';'), ...rows.map((r) => cols.map((c) => esc(r[c])).join(';'))].join('\n');
     const a = document.createElement('a');
@@ -176,6 +189,18 @@ export default function Indicateurs() {
           <option value="carte">Consultables sur une carte (oui + possible)</option>
           {CARTOS.map((c) => <option key={c.key} value={c.key}>{c.key === 'oui' ? 'Cartographiables' : c.key === 'possible' ? 'Cartographie possible' : 'Non cartographiables'}</option>)}
         </select>
+        <select value={nature} onChange={(e) => setNature(e.target.value)} title="Donnée directe ou calculée">
+          <option value="">Toute nature</option>
+          <option value="direct">Donnée directe</option>
+          <option value="calcule">Calculé (formule)</option>
+          <option value="sans-donnee">Sans donnée</option>
+          <option value="sans-formule">Formule non documentée</option>
+        </select>
+        <select value={acces} onChange={(e) => setAcces(e.target.value)} title="Données importées ou lues en direct">
+          <option value="">Tout accès</option>
+          <option value="import">Données importées</option>
+          <option value="live">Données en direct (live)</option>
+        </select>
         <select value={statut} onChange={(e) => setStatut(e.target.value)}>
           <option value="">Tous statuts</option>
           {STATUTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
@@ -206,7 +231,7 @@ export default function Indicateurs() {
               <th onClick={() => toggleSort('theme')} className="sortable">Thème{arrow('theme')}<span className="th-sub"> · niveau</span></th>
               <th onClick={() => toggleSort('libelle')} className="sortable">Indicateur{arrow('libelle')}</th>
               <th onClick={() => toggleSort('priorite')} className="sortable">Suivi{arrow('priorite')}<span className="th-sub"> · prio, statut, faisabilité</span></th>
-              <th>Nature<span className="th-sub"> · origine, carto</span></th>
+              <th>Nature<span className="th-sub"> · calcul, accès, origine, carto</span></th>
               <th onClick={() => toggleSort('source')} className="sortable">Source{arrow('source')}<span className="th-sub"> · périodicité</span></th>
               <th>Liens</th>
               <th>Proposition</th>
@@ -228,6 +253,7 @@ export default function Indicateurs() {
                   </button>
                   {i.libelle_carte && i.libelle_carte.toLowerCase() !== i.libelle.toLowerCase() && <div className="muted small">Carte : {i.libelle_carte}</div>}
                   {i.definition && <div className="small muted clamp2" title={i.definition}>{i.definition}</div>}
+                  {i.formule && i.mode_calcul === 'calcule' && <div className="formule-line clamp2" title={i.formule}>ƒx {i.formule}</div>}
                   {i.notes && <div className="note small">⚠ {i.notes}</div>}
                 </td>
                 <td className="c-stack">
@@ -235,7 +261,12 @@ export default function Indicateurs() {
                   <StatutPill s={i.statut} />
                   {i.faisabilite ? <span className={`faisa faisa-${i.faisabilite}`}>{FAISABILITES.find((f) => f.key === i.faisabilite)?.short}</span> : null}
                 </td>
-                <td className="c-stack"><OrigineChip o={i.origine} /><CartoChip c={i.cartographie} /></td>
+                <td className="c-stack">
+                  <NatureBadge i={i} />
+                  {i.dataset_ids.length > 0 && <SourceBadge kind="import" title={`Données importées : ${i.dataset_ids.map(dsLabel).join(', ')}`} />}
+                  {i.couche_id && <SourceBadge kind="live" title={`Lu en direct : ${coucheLabel(i.couche_id)} (géoportail du Val-de-Marne)`} />}
+                  <OrigineChip o={i.origine} /><CartoChip c={i.cartographie} />
+                </td>
                 <td className="clamp" title={i.source || ''}>
                   <div className="clamp2">{i.source || <span className="muted">—</span>}</div>
                   {i.periodicite && <div className="muted small">{i.periodicite}</div>}
@@ -251,8 +282,9 @@ export default function Indicateurs() {
                   {i.dataset_ids.map((d) => (
                     <Link key={d} className="chip ds" to={`/donnees?ds=${d}`} title="Voir les données">{dsLabel(d)}</Link>
                   ))}
+                  {i.couche_id && <Link className="chip ds live" to={`/couches?couche=${i.couche_id}`} title="Voir la couche (lecture en direct)">⚡ {coucheLabel(i.couche_id)}</Link>}
                   {i.kpi_ids?.map((k) => <Link key={k} className="chip ds" to={`/tableau-de-bord?kpi=${k}`} title="Voir ce KPI dans le tableau de bord">KPI ▸ {k}</Link>)}
-                  {!i.dataset_ids.length && !i.kpi_ids?.length && <span className="muted">—</span>}
+                  {!i.dataset_ids.length && !i.kpi_ids?.length && !i.couche_id && <span className="muted">—</span>}
                 </td>
                 <td><button className="icon" title="Modifier" onClick={() => setEditing(i)}>✎</button></td>
               </tr>
@@ -266,6 +298,7 @@ export default function Indicateurs() {
         <Editor
           value={editing}
           datasets={datasets}
+          couches={couches}
           datasetsReady={datasetsReady}
           themes={themes}
           items={items}
@@ -282,13 +315,14 @@ const FIELD_LABELS: Record<string, string> = {
   lien_corrige: 'Lien corrigé', periodicite: 'Périodicité', proposition: 'Proposition', lien_donnees: 'Lien données', notes: 'Remarques',
   definition: 'Définition', formule: 'Formule', unite: 'Unité', perimetre: 'Périmètre', porteur: 'Porteur', cible: 'Cible',
   statut: 'Statut', decision: 'Décision', faisabilite: 'Faisabilité', parent_id: 'Indicateur parent', niveau: 'Niveau',
-  origine: 'Origine', cartographie: 'Cartographie',
+  origine: 'Origine', cartographie: 'Cartographie', mode_calcul: 'Nature du calcul', couche_id: 'Couche en direct',
   theme: 'Thème', groupe: 'Rubrique',
 };
 
-function Editor({ value, datasets, datasetsReady, themes, items, onClose, onSaved }: {
+function Editor({ value, datasets, couches, datasetsReady, themes, items, onClose, onSaved }: {
   value: Partial<Indicator>;
   datasets: Dataset[];
+  couches: Couche[];
   datasetsReady: boolean;
   themes: [string, string][];
   items: Indicator[];
@@ -402,8 +436,16 @@ function Editor({ value, datasets, datasetsReady, themes, items, onClose, onSave
             {text('libelle', 'Indicateur')}
             {text('libelle_carte', 'Libellé sur la carte mentale (si différent)')}
             {text('definition', 'Définition', true, 'Que mesure l\'indicateur, pourquoi, avec quelle lecture ?')}
+            <label className="field"><span>Nature de l’indicateur</span>
+              <select value={f.mode_calcul ?? ''} onChange={(e) => set('mode_calcul', (e.target.value || null) as Indicator['mode_calcul'])}>
+                <option value="">Non renseignée</option>
+                <option value="direct">Donnée directe : valeur lue telle quelle dans le jeu de données</option>
+                <option value="calcule">Calculé : ratio, différence, projection ou agrégat (formule obligatoire)</option>
+              </select>
+            </label>
+            {f.mode_calcul === 'calcule' && !f.formule?.trim() && <div className="note small">⚠ Indicateur calculé : documentez la formule de calcul.</div>}
+            {text('formule', f.mode_calcul === 'direct' ? 'Mesure lue (jeu, dimension)' : 'Formule de calcul', true, 'ex. foyers RSA (caf_rsa FOYERS_RSA) / ménages × 100')}
             <div className="grid2">
-              {text('formule', 'Formule de calcul', false, 'ex. bénéficiaires / population totale × 100')}
               {text('unite', 'Unité', false, 'ex. %, habitants, €/m², jours')}
               {text('perimetre', 'Niveau géographique', false, 'ex. commune, IRIS, quartier prioritaire')}
               {text('porteur', 'Porteur (service)', false, 'ex. Direction de l\'urbanisme')}
@@ -453,6 +495,12 @@ function Editor({ value, datasets, datasetsReady, themes, items, onClose, onSave
                 {datasetsReady && datasets.length === 0 && <span className="muted small">Aucun jeu de données disponible.</span>}
               </div>
             </div>
+            <label className="field"><span>Couche géographique lue en direct (géoportail du Val-de-Marne)</span>
+              <select value={f.couche_id ?? ''} onChange={(e) => set('couche_id', e.target.value || null)}>
+                <option value="">— aucune —</option>
+                {couches.map((c) => <option key={c.id} value={c.id}>{c.theme} · {c.label}</option>)}
+              </select>
+            </label>
             {!isNew && value.excel_sheet != null && (
               <label className="inline">
                 <input type="checkbox" checked={applyRow} onChange={(e) => setApplyRow(e.target.checked)} />

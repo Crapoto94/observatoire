@@ -47,6 +47,7 @@ L'application est organisée autour d'une **navigation principale** et de plusie
 | **Carte mentale** | `/carte` | Vue relationnelle des indicateurs |
 | **Données** | `/donnees` | Explorateur tabulaire et graphique ; chargement/actualisation des jeux sur les 1 266 communes d'Île-de-France si les sources le permettent. Les réponses paginées sont contrôlées ; un lot trop volumineux est subdivisé et réessayé pour éviter qu'une limite d'API ne laisse des communes sans données. |
 | **Cartographie** | `/cartographie` | Carte géographique par couche (contours GOSB, départements, QPV) |
+| **Couches 94** | `/couches` | Couches géographiques du géoportail du Val-de-Marne lues en direct (WFS) : carte d'une commune du département et indicateurs calculés à la volée |
 | **Catalogue** | `/catalogue` | Catalogue des jeux de données |
 | **Nouveautés** | `/nouveautes` | Historique des versions |
 | **Paramètres** | `/parametres` | Administration (réservé aux administrateurs) — inclut l'onglet IA |
@@ -114,11 +115,16 @@ Le **manifest fonctionnel** (`docs/manifest.md`) est servi par le serveur à l'U
 - **Compteur de résultats** : Indication fonctionnelle du nombre d'éléments filtrés/affichés.
 - **État vide** : Message fonctionnel lorsque aucun indicateur ne correspond aux filtres appliqués.
 - **États de chargement/erreur** : Gestion fonctionnelle des états d'attente ou d'erreur d'accès aux données.
+- **Pastille de nature** (colonne Nature) : « ● Donnée directe » (valeur lue telle quelle dans un jeu de données), « ƒx Calculé » (ratio, différence, projection ou agrégat ; la formule s'affiche sous le libellé et en infobulle) ou « Sans donnée » (aucun jeu ni couche rattaché).
+- **Badge d'accès aux données** : « ⬇ Importé » (jeu importé et stocké dans l'observatoire) et/ou « ⚡ Live » (couche géographique lue en direct, lien vers la page Couches 94).
+- **Formule de calcul documentée** : chaque indicateur porte une nature et une formule (mesures et dimensions des jeux utilisés) ; les indicateurs sans données ont un bloc « [Sources identifiées] » dans leur proposition (source ouverte trouvée, lien, faisabilité).
 
 **Critères de filtrage fonctionnels** :
 - **Territoire** : Filtrage par périmètre territorial.
 - **Thématique** : Filtrage par thématique d'indicateurs.
 - **Période** : Filtrage par période de référence.
+- **Nature** : donnée directe, calculé, sans donnée, formule non documentée.
+- **Accès** : données importées ou lues en direct (live).
 - **Autres critères** : Filtrage multi-critères pour affiner l'exploration.
 
 **Comportements** :
@@ -147,6 +153,19 @@ Le **manifest fonctionnel** (`docs/manifest.md`) est servi par le serveur à l'U
 - **Affichage structuré** : Organisation hiérarchisée de l'information (données principales > métadonnées > visualisations).
 - **Gestion des états** : Gestion fonctionnelle des cas "indicateur introuvable" (redirigé ou page d'erreur appropriée), chargement, erreur.
 - **Préservation du contexte de navigation** : Permet un retour cohérent vers la vue d'origine (liste/carte) au travers de la navigation.
+
+### 6.4 bis Couches géographiques du Val-de-Marne – `/couches`
+
+**Objectif fonctionnel** : Exploiter sans import les couches publiées par le Conseil départemental du Val-de-Marne (géoportail geo.valdemarne.fr, service WFS) pour n'importe quelle commune du département (Ivry-sur-Seine par défaut).
+
+**Éléments fonctionnels présents** :
+- **Sélecteur de commune** (47 communes du Val-de-Marne) et lien vers le géoportail.
+- **Liste des couches par thème** (équipements, environnement, urbanisme et logement, mobilité, indicateurs par IRIS Babord), cases à cocher, nombre d'objets lus.
+- **Carte** de la commune (contour communal) avec les couches superposées : points, lignes, polygones, aplats par quantiles pour les indicateurs par IRIS ; zoom à la molette, déplacement par glisser, infobulle au survol.
+- **Cartes d'indicateurs** par couche active : nombre d'objets, nombre pour 1 000 habitants, sommes ou moyennes de champs (élèves, places, logements, surfaces, linéaire cyclable, taux d'EnR…), comparaison avec le Val-de-Marne, formule en infobulle, badge « ⚡ Live » avec l'heure de lecture.
+- **« + fiche »** : crée une fiche brouillon dans la conception des indicateurs (nature « calculé », formule, source, couche rattachée).
+
+**Comportements** : lecture en direct à chaque affichage (cache serveur de 10 minutes) ; objets filtrés par intersection avec le contour communal ; message « API indisponible » si le géoportail ne répond pas ; aucune donnée stockée.
 
 ### 6.5 Pages annexes
 
@@ -196,10 +215,11 @@ Le **manifest fonctionnel** (`docs/manifest.md`) est servi par le serveur à l'U
 
 | Entité | Définition fonctionnelle | Champs fonctionnels |
 |---|---|---|
-| **Indicateur** | Mesure chiffrée décrivant un aspect du territoire, consultable dans le temps et/ou par espace. | `id`, libellé, code, définition, méthodologie, unité, valeur(s), période(s), territoire(s), thématique, source, date de mise à jour, données historiques/comparatives. |
+| **Indicateur** | Mesure chiffrée décrivant un aspect du territoire, consultable dans le temps et/ou par espace. | `id`, libellé, code, définition, nature (donnée directe / calculé), formule de calcul, couche en direct rattachée, méthodologie, unité, valeur(s), période(s), territoire(s), thématique, source, date de mise à jour, données historiques/comparatives. |
 | **Territoire** | Périmètre géographique sur lequel s'appliquent les indicateurs. | Identifiant, nom, code, niveau territorial, géométrie (nécessaire au rendu cartographique). |
 | **Thématique** | Regroupement fonctionnel d'indicateurs par domaine. | Identifiant, nom, description, liste d'indicateurs associés. |
 | **Période** | Temporalité de référence des valeurs d'indicateur. | Identifiant, libellé (année/période), date/intervalle. |
+| **Couche géographique (live)** | Couche du géoportail du Val-de-Marne lue en direct par WFS, jamais importée. | Identifiant, libellé, thème, type de géométrie, couche WFS, lien source, indicateurs calculés (nombre, pour 1 000 hab., sommes). |
 | **Fiche indicateur** | Agrégation fonctionnelle de toutes les informations décrivant un indicateur. | Métadonnées, valeurs, visualisations, éléments liés. |
 
 ## 8. Fonctionnalités transversales

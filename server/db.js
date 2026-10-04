@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS geo_shapes (
 for (const col of [
   'definition TEXT', 'formule TEXT', 'unite TEXT', 'perimetre TEXT', 'porteur TEXT', 'cible TEXT',
   "statut TEXT DEFAULT 'brouillon'", 'decision TEXT', 'faisabilite INTEGER', 'parent_id INTEGER', 'origine TEXT', 'cartographie TEXT',
+  'mode_calcul TEXT', 'couche_id TEXT',
 ]) {
   try { db.exec(`ALTER TABLE indicators ADD COLUMN ${col}`); } catch { /* colonne déjà présente */ }
 }

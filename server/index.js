@@ -11,6 +11,7 @@ const { shapes } = require('./idf');
 seed();
 require('./groups').ensureGroups();
 try { const n = require('./propositions').apply(); if (n) console.log(`[propositions] ${n} fiche(s) mise(s) à jour avec les données disponibles`); } catch (e) { console.warn('[propositions]', e.message); }
+try { const s = require('./formules').apply(); if (s.formules || s.sources || s.liens) console.log(`[formules] ${s.formules} formule(s), ${s.modes} nature(s), ${s.liens} rattachement(s), ${s.sources} bloc(s) de sources`); } catch (e) { console.warn('[formules]', e.message); }
 syncPopulations();
 
 const app = express();
@@ -19,7 +20,7 @@ app.use(require('./auth').attach); // identifie l'utilisateur à partir du jeton
 
 const FIELDS = ['theme', 'theme_label', 'groupe', 'groupe_label', 'niveau', 'libelle', 'libelle_carte', 'priorite', 'source',
   'lien_origine', 'lien_corrige', 'periodicite', 'proposition', 'lien_donnees', 'notes', 'ordre', 'sous_ligne', 'excel_sheet', 'excel_row',
-  'definition', 'formule', 'unite', 'perimetre', 'porteur', 'cible', 'statut', 'decision', 'faisabilite', 'parent_id', 'origine', 'cartographie'];
+  'definition', 'formule', 'unite', 'perimetre', 'porteur', 'cible', 'statut', 'decision', 'faisabilite', 'parent_id', 'origine', 'cartographie', 'mode_calcul', 'couche_id'];
 const ROW_FIELDS = ['source', 'lien_origine', 'lien_corrige', 'periodicite', 'proposition', 'lien_donnees'];
 // champs dont les modifications sont historisées
 const TRACKED = FIELDS.filter((f) => !['ordre', 'sous_ligne', 'excel_sheet', 'excel_row', 'theme_label', 'groupe_label'].includes(f));
@@ -140,6 +141,12 @@ app.get('/api/cartographie/layer/:id', (req, res) => {
     d ? res.json(d) : res.status(404).json({ error: 'couche introuvable' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Couches géographiques du Val-de-Marne lues en direct (WFS du géoportail départemental, aucun import)
+const couchesErr = (res, e) => res.status(e.status || 502).json({ error: e.message });
+app.get('/api/couches', (req, res) => res.json(require('./couches').list()));
+app.get('/api/couches/communes', async (req, res) => { try { res.json(await require('./couches').communeList()); } catch (e) { couchesErr(res, e); } });
+app.get('/api/couches/contour/:code', async (req, res) => { try { res.json(await require('./couches').outline(req.params.code)); } catch (e) { couchesErr(res, e); } });
+app.get('/api/couches/:id', async (req, res) => { try { res.json(await require('./couches').layer(req.params.id, String(req.query.commune || REF_GEO.code))); } catch (e) { couchesErr(res, e); } });
 // Quartiers prioritaires de la politique de la ville (contours simplifiés, chargés au premier appel)
 app.get('/api/qpv', async (req, res) => {
   try {
@@ -241,6 +248,7 @@ const checkStatut = (b) => {
   if (b.statut != null && !STATUTS.includes(b.statut)) return 'statut inconnu';
   if (b.origine != null && b.origine !== '' && !ORIGINES.includes(b.origine)) return 'origine inconnue';
   if (b.cartographie != null && b.cartographie !== '' && !CARTOS.includes(b.cartographie)) return 'valeur de cartographie inconnue';
+  if (b.mode_calcul != null && b.mode_calcul !== '' && !['direct', 'calcule'].includes(b.mode_calcul)) return 'nature de calcul inconnue';
   return null;
 };
 
