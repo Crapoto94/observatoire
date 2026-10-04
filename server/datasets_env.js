@@ -5,8 +5,8 @@ const mesure = (values) => ({ MESURE: { label: 'Mesure', values } });
 module.exports = [
   {
     id: 'sinoe_dma', provider: 'sinoe',
-    label: 'Collecte des déchets ménagers et assimilés (ADEME SINOE®)',
-    description: "ADEME, SINOE® Déchets : flux de collecte des déchets ménagers et assimilés (DMA) par collectivité compétente et par année : tonnages (DMA, ordures ménagères résiduelles, biodéchets, emballages et papiers, verre), population desservie, ratios en kg par habitant, part de valorisation matière. Depuis 2016 la collecte relève de l'EPT Grand-Orly Seine Bièvre : les valeurs (2016-2024) sont celles de l'EPT, reportées sur chacune de ses communes ; la série communale d'Ivry (2009-2015, commune compétente) est conservée à part.",
+    label: 'Collecte des déchets ménagers et assimilés du Grand-Orly Seine Bièvre (ADEME SINOE®)',
+    description: "Grand-Orly Seine Bièvre (EPT T12, compétent pour la collecte des déchets) : tonnages déclarés chaque année à l'ADEME et publiés dans SINOE® Déchets. Flux de collecte des déchets ménagers et assimilés (DMA) par collectivité compétente et par année : tonnages (DMA, ordures ménagères résiduelles, biodéchets, emballages et papiers, verre), population desservie, ratios en kg par habitant, part de valorisation matière. Depuis 2016 la collecte relève de l'EPT Grand-Orly Seine Bièvre : les valeurs (2016-2024) sont celles de l'EPT, reportées sur chacune de ses communes ; la série communale d'Ivry (2009-2015, commune compétente) est conservée à part.",
     themes: ['environnement'], doc_url: 'https://data.ademe.fr/datasets/rsqxbwsxhk-ngmmu5fcasf5t',
     link: [{ groupe: 'environnement', re: /dechet|tri\b|biodechet/ }],
     config: {

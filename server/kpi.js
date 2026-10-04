@@ -599,7 +599,7 @@ const PISTES = [
   [/trafic/, { label: 'Comptages routiers du Département', dossier: '08-cd94-comptages-routiers.md' }],
   [/trajet|accessibilite|liaisons|part modale|desserte/, { label: 'IDFM et Institut Paris Region', dossier: '09-idfm-ipr-mobilite.md' }],
   [/impayes|acces aux droits/, { label: 'Extraction Millésime (CCAS)', dossier: '11-interne-millesime.md' }],
-  [/dechets?|tri|biodechets/, { label: 'Tonnages de collecte par commune (EPT Grand-Orly Seine Bièvre)', dossier: null }],
+  [/dechets?|tri|biodechets/, { label: 'Tonnages de collecte par commune (EPT Grand-Orly Seine Bièvre)', dossier: '12-gosb.md' }],
   [/adherents|associations?|benevoles|salaries/, { label: 'Recueil auprès des associations (dossiers de subvention)', dossier: null }],
   [/dia/, { label: 'Logiciel d’urbanisme de la Ville (DIA reçues)', dossier: null }],
   [/qpv/, { label: 'Revenus Filosofi des QPV (INSEE)', dossier: null }],

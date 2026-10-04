@@ -22,7 +22,8 @@ Demandes externes et extractions internes pour alimenter les fiches indicateurs 
 | 3 | CAF du Val-de-Marne | Allocataires infracommunaux | Courrier (CTG) | 1 à 3 mois | 3 |
 | 3 | CPAM du Val-de-Marne | C2S, AME, ALD à la commune | Convention | 2 à 6 mois | 3 |
 | 3 | France Travail | Demandeurs d'emploi par QPV, métiers | Courrier | 1 à 2 mois | 2 |
-| 4 | Airparif | Historique des indices | Courriel | 1 mois | 1 |
+| 3 | Grand-Orly Seine Bièvre | Déchets par commune, PLUi, couches SIG | Courrier | 1 à 2 mois | 7 |
+| 4 | Airparif | Dépassements réglementaires, population exposée (historique de l'indice déjà intégré) | Courriel | 1 mois | 1 |
 | 4 | Département 94 | Comptages routiers | Courriel | 1 mois | 1 |
 | 4 | IDFM, Institut Paris Region | Temps de trajet, accessibilité | Courriel | 1 à 3 mois | 5 |
 
@@ -39,6 +40,7 @@ Délais habituellement observés, à confirmer auprès de chaque organisme. Proc
 - [Airparif : historique de la qualité de l'air à Ivry](07-airparif.md) — Priorité 4
 - [Département du Val-de-Marne : comptages routiers](08-cd94-comptages-routiers.md) — Priorité 4
 - [IDFM et Institut Paris Region : temps de trajet et accessibilité](09-idfm-ipr-mobilite.md) — Priorité 4
+- [Grand-Orly Seine Bièvre : données de l'EPT](12-gosb.md) — Priorité 3
 - [Pelehas : demandes et attributions](10-interne-pelehas.md) — Service logement
 - [Millésime : impayés, aides et accès aux droits](11-interne-millesime.md) — CCAS
 

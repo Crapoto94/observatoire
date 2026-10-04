@@ -141,7 +141,7 @@ Ces valeurs sont signalées par un badge « Non public » dans l'application (ca
 
 ## 2 bis. Portails du GOSB, du Val-de-Marne et de la Région : ce qui a été trouvé
 
-- **Grand-Orly Seine Bièvre** : aucun portail de données ouvertes. Le profil [data.gouv.fr du GOSB](https://www.data.gouv.fr/organizations/grand-orly-seine-bievre/) ne publie aucun jeu. Des couches cartographiques « ept12 » (structures de l'emploi, ports fluviaux, syndicats de déchets, bus structurants) existent via l'Apur sur geo.data.gouv.fr, mais ne sont plus mises à jour. Le [PLUi, pré-diagnostic socio-économique](https://www.grandorlyseinebievre.fr/fileadmin/PORTAIL/PLUi/Majnov2023/20221110_PLUi_PreDiagnosticSocioEconomique_v2.pdf) est un document PDF exploitable pour le cadrage.
+- **Grand-Orly Seine Bièvre** : pas de portail de données ouvertes. Son profil [data.gouv.fr](https://www.data.gouv.fr/organizations/grand-orly-seine-bievre/) liste 81 jeux, tous moissonnés en janvier 2020 depuis son catalogue cartographique (Isogeo) : couches de l'Apur, cartes de bruit de Bruitparif sur l'EPT, arrêts et lignes de bus, entreprises immatriculées et radiées 2015-2017, structures de l'emploi, équipements culturels et sportifs, quartiers de veille, syndicats de déchets. Les liens de téléchargement passent par le service de conversion de geo.data.gouv.fr, qui ne répond plus : ces jeux ne sont plus téléchargeables et n'ont pas été mis à jour depuis 2020. Le GOSB apparaît néanmoins dans le catalogue comme producteur des tonnages de déchets (déclarés par l'EPT dans SINOE® de l'ADEME) ; les émissions de GES d'Airparif sont aussi publiées à sa maille. Une demande de données lui est préparée (`docs/demandes-donnees/12-gosb.md`). Le [PLUi, pré-diagnostic socio-économique](https://www.grandorlyseinebievre.fr/fileadmin/PORTAIL/PLUi/Majnov2023/20221110_PLUi_PreDiagnosticSocioEconomique_v2.pdf) est un document PDF exploitable pour le cadrage.
 - **Département du Val-de-Marne** : pas de portail ouvert trouvé (les adresses testées ne répondent pas) et aucune organisation du département sur data.gouv.fr.
 - **Résultats au brevet (DNB) par établissement** : publiés par l'Éducation nationale mais seulement jusqu'à la session 2021 ; non intégrés pour cette raison.
 - **Ville d'Ivry** : les adresses data.ivry94.fr et opendata.ivry94.fr répondent « Accès restreint ».
@@ -181,5 +181,6 @@ Il reste 21 fiches sans valeur. Elles relèvent des systèmes d'information de l
 | Trafic routier | Département du Val-de-Marne | `08-cd94-comptages-routiers.md` |
 | Temps de trajet, accessibilité aux pôles | IDFM, Institut Paris Region | `09-idfm-ipr-mobilite.md` |
 | Impayés de loyer et d'énergie, accès aux droits | CCAS (Millésime) | `11-interne-millesime.md` |
+| Déchets par commune, cartes de bruit, données du PLUi | Grand-Orly Seine Bièvre | `12-gosb.md` |
 
 Restent purement internes : la fréquentation des équipements, les publics touchés et l'origine des adhérents des associations (à recueillir avec les dossiers de subvention). Ces fiches sont marquées « interne » dans la liste des indicateurs.

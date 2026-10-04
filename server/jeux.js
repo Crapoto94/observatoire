@@ -12,7 +12,7 @@ const SOURCES = {
   cerema: { label: 'Cerema', icon: '🛰️', color: '#0e7490' },
   ademe: { label: 'ADEME', icon: '🌿', color: '#15803d' },
   ipr: { label: 'Institut Paris Region', icon: '🌳', color: '#4d7c0f' },
-  ademe: { label: 'ADEME (SINOE®)', icon: '♻️', color: '#15803d' },
+  gosb: { label: 'Grand-Orly Seine Bièvre (EPT T12)', icon: '🏛️', color: '#be123c' },
   airparif: { label: 'Airparif', icon: '🌫️', color: '#0e7490' },
   urssaf: { label: 'URSSAF', icon: '💼', color: '#7c3aed' },
   education: { label: 'Éducation nationale', icon: '🎓', color: '#7c3aed' },
@@ -42,7 +42,7 @@ const PRODUCER = {
   education_annuaire: 'education', education_effectifs: 'education', ips_ecoles: 'education',
   caf_rsa: 'caf', caf_prestations: 'caf', baac: 'interieur', ssmsi: 'interieur', entreprises: 'entreprises',
   ore_conso: 'ore', ore_parc_auto: 'ore', ore_irve: 'ore', velo_stationnement: 'osm', idfm_ferre: 'idfm',
-  associations_api: 'apientreprise', subventions_asso: 'apientreprise', c2s_cnam: 'insee', apl_drees: 'sante', ipr_idh2: 'ipr', ipr_mortalite: 'ipr', sinoe_dma: 'ademe', airparif_ges: 'airparif', atmo_indices: 'airparif', urssaf_effectifs: 'urssaf', caf_qf: 'caf', caf_qf_qpv: 'caf',
+  associations_api: 'apientreprise', subventions_asso: 'apientreprise', c2s_cnam: 'insee', apl_drees: 'sante', ipr_idh2: 'ipr', ipr_mortalite: 'ipr', sinoe_dma: 'gosb', // tonnages déclarés par l'EPT (collectivité compétente) et publiés par l'ADEME (SINOE®) airparif_ges: 'airparif', atmo_indices: 'airparif', urssaf_effectifs: 'urssaf', caf_qf: 'caf', caf_qf_qpv: 'caf',
   ft_defm: 'francetravail', finess: 'sante', sante_pro: 'sante', equipements_sportifs: 'sport', gaspar: 'georisques',
 };
 const producerOf = (d) => PRODUCER[d.id] || (d.provider === 'melodi' ? 'insee' : /grand-?paris|metropolegrandparis/i.test(d.doc_url || '') ? 'mgp' : 'autre');
