@@ -5,6 +5,8 @@
 const DG = (id) => `https://www.data.gouv.fr/datasets/${id}/`;
 const IDF = "https://data.iledefrance.fr/explore/dataset";
 const MGP = "https://metropole-grand-paris.opendata.arcgis.com";
+// le portail arcgis.com ne sert pas les chemins REST : les services sont publiés sur carto-metropolegrandparis.fr
+const MGP_REST = "https://www.carto-metropolegrandparis.fr/server/rest/services";
 const mesure = (values) => ({ MESURE: { label: "Mesure", values } });
 
 const TYPE_VELO = {
@@ -186,7 +188,7 @@ module.exports = [
   {
     id: "trame_verte", provider: "arcgis", label: "Trame verte (composantes par commune, MGP)",
     description: "Métropole du Grand Paris : composantes de la trame verte (sous-trames boisée, ouverte, semi-ouverte et composite) rattachées aux communes, avec le nombre de secteurs et la surface couverte par sous-trame et par rôle (zone de respiration ZR, niveaux N1 et N2). Surfaces converties en hectares. Les 123 communes de la Métropole du Grand Paris uniquement.",
-    themes: ["environnement"], doc_url: `${MGP}/server/rest/services/opendata_trameVerte_composantesCommune/FeatureServer/8`,
+    themes: ["environnement"], doc_url: `${MGP_REST}/opendata_trameVerte_composantesCommune/FeatureServer/8`,
     link: [{ theme: "environnement", re: /espaces verts|espaces naturels/ }],
     config: {
       url: "https://www.carto-metropolegrandparis.fr/server/rest/services/opendata_trameVerte_composantesCommune/FeatureServer",

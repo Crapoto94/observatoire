@@ -115,6 +115,7 @@ Le **manifest fonctionnel** (`docs/manifest.md`) est servi par le serveur à l'U
 - **Compteur de résultats** : Indication fonctionnelle du nombre d'éléments filtrés/affichés.
 - **État vide** : Message fonctionnel lorsque aucun indicateur ne correspond aux filtres appliqués.
 - **États de chargement/erreur** : Gestion fonctionnelle des états d'attente ou d'erreur d'accès aux données.
+- **Colonne Valeur · Ivry** : dernière valeur calculée pour Ivry-sur-Seine (KPI rattaché à la fiche), avec la période, l'unité et un lien vers l'indicateur calculé dans le tableau de bord ; pour les fiches « évolution… », variation par rapport à la valeur précédente (en points pour un pourcentage) ; « ⚡ en direct » pour une couche géographique ; « — » sinon (infobulle : aucune donnée, calcul pas encore défini, ou projection/analyse sans valeur automatique).
 - **Pastille de nature** (colonne Nature) : « ● Donnée directe » (valeur lue telle quelle dans un jeu de données), « ƒx Calculé » (ratio, différence, projection ou agrégat ; la formule s'affiche sous le libellé et en infobulle) ou « Sans donnée » (aucun jeu ni couche rattaché).
 - **Badge d'accès aux données** : « ⬇ Importé » (jeu importé et stocké dans l'observatoire) et/ou « ⚡ Live » (couche géographique lue en direct, lien vers la page Couches 94).
 - **Formule de calcul documentée** : chaque indicateur porte une nature et une formule (mesures et dimensions des jeux utilisés) ; les indicateurs sans données ont un bloc « [Sources identifiées] » dans leur proposition (source ouverte trouvée, lien, faisabilité).
@@ -261,6 +262,23 @@ L'application manipule des **indicateurs territoriaux** structurés. Les éléme
 - **Carte** : Données géoréférencées par territoire + valeur/indicateur sélectionné + légende (définition des classes/modalités).
 - **Liste** : Collection d'indicateurs avec métadonnées de filtrage/recherche (thématique, territoire, période).
 - **Fiche** : Données complètes d'un indicateur (définition, méthodologie, source, historique si disponible, séries de données pour visualisations).
+
+### 11.1 Sources communales récemment intégrées
+
+Quatre sources agrégées par commune alimentent désormais le tableau de bord, la carte et les fiches indicateurs :
+
+| Source | Restitution | Couverture | Indicateurs rattachés |
+|---|---|---|---|
+| Aménagements cyclables (OpenStreetMap, Région Île-de-France) | nombre de segments et linéaire par type de voie | communes d'Île-de-France | stationnements vélo, accessibilité en modes actifs |
+| Licences sportives par fédération (Région Île-de-France, millésime 2011) | licences par fédération, tranche d'âge et sexe | communes du Val-de-Marne | accès, fréquentation, accessibilité et besoins en équipements |
+| Lieux et équipements culturels (base Basilic, Région Île-de-France) | nombre de lieux par domaine et par type | communes d'Île-de-France | accès, fréquentation, accessibilité et besoins en équipements |
+| Trame verte (composantes communales, Métropole du Grand Paris) | nombre de secteurs et surface en hectares par sous-trame et par rôle | communes de la Métropole du Grand Paris | espaces verts par habitant, évolution, accessibilité, besoins, espaces naturels |
+
+Règles fonctionnelles associées :
+
+- Un **KPI dont la source ne couvre pas tout un territoire de comparaison** n'affiche **ni valeur départementale ni régionale** : seul le cumul sur les communes réellement couvertes est proposé. La trame verte (MGP) est concerned sur les deux territoires, les licences sportives uniquement sur la région.
+- Les **licences sportives** sont un millésime 2011 : la comparaison départementale (Val-de-Marne complet) reste affichée, la valeur régionale est masquée.
+- Une **source à couverture partielle** reste consultable dans l'onglet Catalogue de données et rattachée à ses indicateurs.
 
 ## 12. Instructions destinées à Google Stitch
 

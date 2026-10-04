@@ -321,16 +321,20 @@ ol.rank li:hover { background: color-mix(in srgb, var(--accent) 10%, transparent
 .ind-table th, .ind-table td { overflow-wrap: anywhere; }
 .ind-table th { white-space: normal; }
 .ind-table .th-sub { font-weight: 400; font-size: 11px; color: var(--muted, #64748b); }
-.ind-table th:nth-child(1), .ind-table td:nth-child(1) { width: 11%; }
-.ind-table th:nth-child(2), .ind-table td:nth-child(2) { width: 25%; }
+.ind-table th:nth-child(1), .ind-table td:nth-child(1) { width: 10%; }
+.ind-table th:nth-child(2), .ind-table td:nth-child(2) { width: 21%; }
 .ind-table th:nth-child(3), .ind-table td:nth-child(3) { width: 9%; }
 .ind-table th:nth-child(4), .ind-table td:nth-child(4) { width: 8%; }
-.ind-table th:nth-child(5), .ind-table td:nth-child(5) { width: 12%; }
+.ind-table th:nth-child(5), .ind-table td:nth-child(5) { width: 8%; }
 .ind-table th:nth-child(6), .ind-table td:nth-child(6) { width: 11%; }
-.ind-table th:nth-child(7), .ind-table td:nth-child(7) { width: 14%; }
-.ind-table th:nth-child(8), .ind-table td:nth-child(8) { width: 9%; }
-.ind-table th:nth-child(9), .ind-table td:nth-child(9) { width: 3%; }
+.ind-table th:nth-child(7), .ind-table td:nth-child(7) { width: 9%; }
+.ind-table th:nth-child(8), .ind-table td:nth-child(8) { width: 12%; }
+.ind-table th:nth-child(9), .ind-table td:nth-child(9) { width: 9%; }
+.ind-table th:nth-child(10), .ind-table td:nth-child(10) { width: 3%; }
 .ind-table td.lib { min-width: 0; }
+.ind-table td.c-val { white-space: nowrap; }
+.val-link { color: inherit; text-decoration: none; display: inline-block; }
+.val-link:hover strong { text-decoration: underline; }
 .ind-table td.clamp, .ind-table td.prop { max-width: none; }
 .ind-table .clamp2 { max-width: none; }
 .clamp3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -898,3 +902,4 @@ button.fiche-btn:hover { background: rgba(37, 99, 235, .08); }
 .couche-prop { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--panel); display: flex; flex-direction: column; gap: 4px; }
 .couche-prop-head { display: flex; align-items: center; gap: 6px; }
 .couche-prop .chip { margin: 1px 3px 1px 0; }
+.evo-up, .evo-down { color: #475569; }

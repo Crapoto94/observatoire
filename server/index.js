@@ -587,4 +587,6 @@ app.listen(PORT, '0.0.0.0', () => {
   require('./qpv').bootstrap().catch((e) => console.warn('[qpv]', e.message));
   // recalcul des agrégats de l'EPT (GOSB) à chaque démarrage : suit d'éventuelles corrections de règles
   setTimeout(() => { try { require('./groups').aggregateAll(); } catch (e) { console.warn('[groupes]', e.message); } }, 15000);
+  // préchauffage du cache des KPI (tableau de bord, valeurs de la conception, Autres)
+  setTimeout(() => { require('./kpi').computeAsync().catch((e) => console.warn('[kpi]', e.message)); }, 20000);
 });

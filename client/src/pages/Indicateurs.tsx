@@ -37,6 +37,37 @@ export function StatutPill({ s }: { s: Statut | null }) {
   return <span className="chip" style={{ background: st.color, color: '#fff' }}>{st.label}</span>;
 }
 
+interface KpiVal { id: string; label: string; unit: string; value: number | null; period: string | null; prev: { period: string; value: number } | null; dep: { value: number } | null; dataset: string }
+const fmtVal = (v: number) => v.toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2 }).replace(/\u202f/g, '\u00a0');
+
+// Valeur d'Ivry : KPI calculé correspondant à la fiche (lien vers le tableau de bord), sinon couche en direct, sinon raison de l'absence
+function ValeurCell({ i, kpis }: { i: Indicator; kpis: Map<string, KpiVal> | null }) {
+  if (kpis === null && i.kpi_ids?.length) return <span className="muted small">…</span>;
+  const k = i.kpi_ids?.map((id) => kpis?.get(id)).find((x) => x && x.value != null);
+  if (k) {
+    return (
+      <Link className="val-link" to={`/tableau-de-bord?kpi=${k.id}`} title={`${k.label}${k.dep ? ` · Val-de-Marne : ${fmtVal(k.dep.value)}${k.unit ? ' ' + k.unit : ''}` : ''} · voir l’indicateur calculé`}>
+        <strong>{fmtVal(k.value!)}</strong>{k.unit && <span className="muted"> {k.unit}</span>}
+        <div className="muted small">{k.period}{(i.kpi_ids?.length ?? 0) > 1 ? ` · ${i.kpi_ids!.length} calculs` : ''} ↗</div>
+        {/^[ée]volution/i.test(i.libelle) && k.prev && <Evolution k={k} />}
+      </Link>
+    );
+  }
+  if (i.couche_id) return <Link className="val-link small" to={`/couches?couche=${i.couche_id}`} title="Valeur calculée en direct sur la carte des couches du Val-de-Marne">⚡ en direct ↗</Link>;
+  const why = i.dataset_ids.length
+    ? (i.niveau === 'prospective' || i.niveau === 'evaluation' ? 'Projection ou analyse : pas de valeur automatique (formule documentée dans la fiche)' : 'Données rattachées, calcul automatique pas encore défini')
+    : 'Aucune donnée rattachée';
+  return <span className="muted small" title={why}>—</span>;
+}
+
+// fiches « évolution… » : variation par rapport à la valeur précédente (en points pour un pourcentage, en % sinon)
+function Evolution({ k }: { k: KpiVal }) {
+  const d = k.value! - k.prev!.value;
+  const pts = k.unit === '%';
+  const txt = pts ? `${d >= 0 ? '+' : ''}${fmtVal(d)} pt` : k.prev!.value ? `${d >= 0 ? '+' : ''}${fmtVal((d / Math.abs(k.prev!.value)) * 100)} %` : '';
+  return <div className={`small ${d > 0 ? 'evo-up' : d < 0 ? 'evo-down' : ''}`} title={`Précédent : ${fmtVal(k.prev!.value)} (${k.prev!.period})`}>{d > 0 ? '▲' : d < 0 ? '▼' : '►'} {txt} vs {k.prev!.period}</div>;
+}
+
 export default function Indicateurs() {
   const [params, setParams] = useSearchParams();
   const [items, setItems] = useState<Indicator[]>([]);
@@ -56,6 +87,7 @@ export default function Indicateurs() {
   const [nature, setNature] = useState(params.get('nature') ?? '');
   const [acces, setAcces] = useState(params.get('acces') ?? '');
   const [couches, setCouches] = useState<Couche[]>([]);
+  const [kpis, setKpis] = useState<Map<string, KpiVal> | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null);
   const [editing, setEditing] = useState<Partial<Indicator> | null>(null);
 
@@ -63,6 +95,7 @@ export default function Indicateurs() {
     // La liste est prioritaire : ne pas la bloquer sur le chargement du catalogue de jeux.
     api<Indicator[]>('/indicators').then(setItems).catch((e) => setError(e.message));
     setDatasetsReady(false);
+    api<{ kpis: KpiVal[] }>('/kpi', { timeoutMs: 60000 }).then((r) => setKpis(new Map(r.kpis.map((k) => [k.id, k])))).catch(() => setKpis(new Map()));
     api<{ couches: Couche[] }>('/couches').then((r) => setCouches(r.couches)).catch(() => setCouches([]));
     api<Dataset[]>('/datasets').then(setDatasets).catch((e) => setError((current) => current || e.message)).finally(() => setDatasetsReady(true));
   };
@@ -230,6 +263,7 @@ export default function Indicateurs() {
             <tr>
               <th onClick={() => toggleSort('theme')} className="sortable">Thème{arrow('theme')}<span className="th-sub"> · niveau</span></th>
               <th onClick={() => toggleSort('libelle')} className="sortable">Indicateur{arrow('libelle')}</th>
+              <th title="Dernière valeur calculée pour Ivry-sur-Seine ; cliquer pour ouvrir l’indicateur calculé">Valeur<span className="th-sub"> · Ivry</span></th>
               <th onClick={() => toggleSort('priorite')} className="sortable">Suivi{arrow('priorite')}<span className="th-sub"> · prio, statut, faisabilité</span></th>
               <th>Nature<span className="th-sub"> · calcul, accès, origine, carto</span></th>
               <th onClick={() => toggleSort('source')} className="sortable">Source{arrow('source')}<span className="th-sub"> · périodicité</span></th>
@@ -256,6 +290,7 @@ export default function Indicateurs() {
                   {i.formule && i.mode_calcul === 'calcule' && <div className="formule-line clamp2" title={i.formule}>ƒx {i.formule}</div>}
                   {i.notes && <div className="note small">⚠ {i.notes}</div>}
                 </td>
+                <td className="c-val"><ValeurCell i={i} kpis={kpis} /></td>
                 <td className="c-stack">
                   <PrioPill p={i.priorite} />
                   <StatutPill s={i.statut} />
@@ -289,7 +324,7 @@ export default function Indicateurs() {
                 <td><button className="icon" title="Modifier" onClick={() => setEditing(i)}>✎</button></td>
               </tr>
             ))}
-            {!rows.length && <tr><td colSpan={9} className="empty">Aucun indicateur ne correspond aux filtres.</td></tr>}
+            {!rows.length && <tr><td colSpan={10} className="empty">Aucun indicateur ne correspond aux filtres.</td></tr>}
           </tbody>
         </table>
       </div>

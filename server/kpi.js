@@ -9,6 +9,7 @@ const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,
 // dir : sens favorable (up = une hausse est positive, down = une hausse est défavorable, none = neutre)
 // where : modalités retenues ; les autres dimensions doivent valoir _T (total). ratio : num / den sur une dimension.
 // cmp : comparaison pertinente avec le Val-de-Marne et l'Île-de-France (taux, prix, niveaux de vie ; pas les effectifs bruts)
+// diff : différence num − den (ex. naissances − décès) au lieu d'un rapport
 // cumul : série de flux annuels transformée en stock (somme cumulée ; les lignes sans date comptent dans le stock initial)
 // sum : dimensions additionnées (toutes modalités) au lieu d'exiger leur total _T (jeux sans modalité totale, ex. Flores par activité)
 // partial : la source ne couvre pas tout le territoire (true = aucun cumul, ou liste de clés 'dep'/'reg' à ne pas cumuler)
@@ -44,21 +45,21 @@ const KPIS = [
   { id: 'dpe_ab', label: 'Part de logements classés A ou B (DPE)', theme: 'Logement', dataset: 'dpe', where: {}, ratio: { dim: 'MESURE', num: ['DPE_A', 'DPE_B'], den: ['NB_DPE'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
   { id: 'catnat', label: 'Arrêtés de catastrophe naturelle sur 10 ans', theme: 'Environnement', dataset: 'gaspar', where: { MESURE: 'ARRETES_10ANS', CATNAT_TYPE: '_T' }, dir: 'down', ind: /risque|catastrophe|inondation/ },
   { id: 'risques_recenses', label: 'Risques majeurs recensés dans la commune', theme: 'Environnement', dataset: 'gaspar', where: { MESURE: 'RISQUES_RECENSES', RISQUE_TYPE: '_T' }, dir: 'down', ind: /risques recenses|risques majeurs/ },
-  { id: 'allocataires_caf', label: 'Foyers allocataires CAF (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_ALLOCATAIRES' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'allocataires_caf', label: 'Foyers allocataires CAF (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_ALLOCATAIRES' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /beneficiaires d aides sociales/ },
   { id: 'ppa', label: 'Foyers percevant la prime d’activité (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_PPA' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
   { id: 'aides_logement', label: 'Foyers percevant l’APL (pour 1 000 hab.)', theme: 'Logement', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_APL' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
   { id: 'ips_public', label: 'IPS moyen des écoles publiques', theme: 'Éducation', dataset: 'ips_ecoles', where: { MESURE: 'IPS_MOYEN', SECTEUR: 'public' }, cmp: true, dir: 'up', ind: /^$/ },
   { id: 'foyers_imposes', label: 'Part des foyers fiscaux imposés', theme: 'Cohésion sociale', dataset: 'ircom', where: { TRANCHE: '_T' }, ratio: { dim: 'MESURE', num: ['FOYERS_IMPOSES'], den: ['FOYERS_FISCAUX'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
   { id: 'rfr_moyen', label: 'Revenu fiscal de référence moyen par foyer', theme: 'Cohésion sociale', dataset: 'ircom', where: { TRANCHE: '_T' }, ratio: { dim: 'MESURE', num: ['RFR'], den: ['FOYERS_FISCAUX'] }, factor: 1000, unit: '€', cmp: true, fromCommunes: true, dir: 'up', ind: /revenu median|revenus medians/ },
-  { id: 'bas_revenus', label: 'Part des foyers fiscaux sous 10 000 € de revenu fiscal de référence', theme: 'Cohésion sociale', dataset: 'ircom', where: { MESURE: 'FOYERS_FISCAUX' }, ratio: { dim: 'TRANCHE', num: ['T1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
-  { id: 'generalistes', label: 'Médecins généralistes libéraux (pour 1 000 hab.)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: 'GENERALISTE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
+  { id: 'bas_revenus', label: 'Part des foyers fiscaux sous 10 000 € de revenu fiscal de référence', theme: 'Cohésion sociale', dataset: 'ircom', where: { MESURE: 'FOYERS_FISCAUX' }, ratio: { dim: 'TRANCHE', num: ['T1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /part des bas revenus|projection des bas revenus/ },
+  { id: 'generalistes', label: 'Médecins généralistes libéraux (pour 1 000 hab.)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: 'GENERALISTE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /densite medicale|rapport entre l offre et la demande en soins/ },
   { id: 'dentistes', label: 'Chirurgiens-dentistes (pour 1 000 hab.)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: 'DENTISTE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
   { id: 'specialistes', label: 'Autres médecins spécialistes (pour 1 000 hab.)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: 'AUTRE_SPECIALISTE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
   { id: 'logements', label: 'Logements', theme: 'Logement', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: '_T' }, dir: 'none', ind: /nombre de logements|parc de logements/ },
   { id: 'vacance', label: 'Part de logements vacants (parc privé)', theme: 'Logement', dataset: 'lovac', where: {}, ratio: { dim: 'MESURE', num: ['PP_VACANT'], den: ['PP_TOTAL'] }, unit: '%', cmp: true, dir: 'down', ind: /vacan/ },
   { id: 'sru', label: 'Taux de logements sociaux (SRU)', theme: 'Logement', dataset: 'sru', where: { MESURE: 'TAUX_SRU' }, unit: '%', cmp: true, dir: 'up', ind: /sru|logements sociaux/ },
   { id: 'rpls', perK: true, label: 'Logements locatifs sociaux (RPLS)', theme: 'Logement', dataset: 'rpls', where: { MESURE: 'LOGEMENTS_SOCIAUX', CRITERE: 'TOTAL', MODALITE: '_T' }, dir: 'up', ind: /logements sociaux|logement social/ },
-  { id: 'autorises', perK: true, label: 'Logements autorisés', theme: 'Logement', dataset: 'sitadel', where: { MESURE: 'LGT_AUTORISES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' }, skipCurrent: true, dir: 'up', ind: /permis|autorises/ },
+  { id: 'autorises', perK: true, label: 'Logements autorisés', theme: 'Logement', dataset: 'sitadel', where: { MESURE: 'LGT_AUTORISES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' }, skipCurrent: true, dir: 'up', ind: /permis|autorises|projets de construction/ },
   { id: 'commences', perK: true, label: 'Logements commencés', theme: 'Logement', dataset: 'sitadel', where: { MESURE: 'LGT_COMMENCES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' }, skipCurrent: true, dir: 'up', ind: /commences/ },
   { id: 'prix', label: 'Prix médian des appartements (€/m²)', theme: 'Logement', dataset: 'dvf', where: { MESURE: 'PRIX_M2_MEDIAN', TYPE_LOCAL: 'Appartement' }, unit: '€/m²', cmp: true, dir: 'none', ind: /prix|evolution des prix/ },
   { id: 'loyer', label: 'Loyer médian des appartements (€/m²)', theme: 'Logement', dataset: 'loyers', where: { MESURE: 'LOYER_M2', TYPE_BIEN: 'APPARTEMENT' }, unit: '€/m²', cmp: true, dir: 'none', ind: /loyer/ },
@@ -76,7 +77,7 @@ const KPIS = [
   // autres jeux importés encore peu exploités
   { id: 'immigres', label: 'Part des immigrés dans la population', theme: 'Démographie', dataset: 'rp_immigration', where: { SEX: '_T', AGE: '_T', EMPSTA_ENQ: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'IMMI', num: ['1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
   { id: 'travail_commune', label: 'Part des actifs occupés travaillant dans leur commune de résidence', theme: 'Mobilité', dataset: 'rp_navettes', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', TRANS: '_T', WORK_URBAN_AREA: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'WORK_AREA', num: ['10'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
-  { id: 'modes_actifs', label: 'Part des actifs allant travailler à pied ou à vélo', theme: 'Mobilité', dataset: 'rp_navettes', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', WORK_AREA: '_T', WORK_URBAN_AREA: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'TRANS', num: ['2', '3'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^part modale/ },
+  { id: 'modes_actifs', label: 'Part des actifs allant travailler à pied ou à vélo', theme: 'Mobilité', dataset: 'rp_navettes', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', WORK_AREA: '_T', WORK_URBAN_AREA: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'TRANS', num: ['2', '3'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^part modale|evolution des deplacements par type/ },
   { id: 'transports_commun', label: 'Part des actifs allant travailler en transports en commun', theme: 'Mobilité', dataset: 'rp_navettes', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', WORK_AREA: '_T', WORK_URBAN_AREA: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'TRANS', num: ['6'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
   { id: 'voiture_travail', label: 'Part des actifs allant travailler en voiture', theme: 'Mobilité', dataset: 'rp_navettes', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', WORK_AREA: '_T', WORK_URBAN_AREA: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'TRANS', num: ['5'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
   { id: 'vp_electriques', label: 'Part des voitures particulières électriques', theme: 'Mobilité', dataset: 'ore_parc_auto', where: {}, ratio: { dim: 'MESURE', num: ['VP_ELECTRIQUES'], den: ['VP'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
@@ -88,6 +89,34 @@ const KPIS = [
   { id: 'escroqueries', label: 'Escroqueries (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'ESCROQUERIES' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
   { id: 'vols_vehicules', label: 'Vols de véhicules (pour 1 000 hab.)', theme: 'Sécurité', dataset: 'ssmsi', where: { MESURE: 'NOMBRE', INFRACTION: 'VOL_VEHICULE' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
   { id: 'dgf_hab', label: 'Dotation globale de fonctionnement (€/hab.)', theme: 'Finances locales', dataset: 'finances', where: { MESURE: 'DGF_HAB' }, unit: '€', cmp: true, dir: 'none', ind: /^$/ },
+  // valeurs des fiches de contexte, de suivi et d'évaluation calculables à partir des jeux importés
+  { id: 'moins18', label: 'Part des moins de 18 ans', theme: 'Démographie', dataset: 'rp_pop_agesex', where: { SEX: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'AGE', num: ['Y0', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6', 'Y7', 'Y8', 'Y9', 'Y10', 'Y11', 'Y12', 'Y13', 'Y14', 'Y15', 'Y16', 'Y17'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^part des moins de 18 ans$|^evolution du nombre et de la part des moins de 18 ans$/ },
+  { id: 'plus65', label: 'Part des 65 ans ou plus', theme: 'Démographie', dataset: 'rp_pop_agesex', where: { SEX: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'AGE', num: ['Y65', 'Y66', 'Y67', 'Y68', 'Y69', 'Y70', 'Y71', 'Y72', 'Y73', 'Y74', 'Y75', 'Y76', 'Y77', 'Y78', 'Y79', 'Y80', 'Y81', 'Y82', 'Y83', 'Y84', 'Y85', 'Y86', 'Y87', 'Y88', 'Y89', 'Y90', 'Y91', 'Y92', 'Y93', 'Y94', 'Y95', 'Y96', 'Y97', 'Y98', 'Y99', 'Y_GE100'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^part des 65 ans et plus$|^evolution du nombre et de la part des \+ de 65 ans$|impact de la part des \+ de 65 ans/ },
+  { id: 'vieillissement', label: 'Indice de vieillissement (65 ans ou plus pour 100 jeunes de moins de 20 ans)', theme: 'Démographie', dataset: 'rp_pop_agesex', where: { SEX: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'AGE', num: ['Y65', 'Y66', 'Y67', 'Y68', 'Y69', 'Y70', 'Y71', 'Y72', 'Y73', 'Y74', 'Y75', 'Y76', 'Y77', 'Y78', 'Y79', 'Y80', 'Y81', 'Y82', 'Y83', 'Y84', 'Y85', 'Y86', 'Y87', 'Y88', 'Y89', 'Y90', 'Y91', 'Y92', 'Y93', 'Y94', 'Y95', 'Y96', 'Y97', 'Y98', 'Y99', 'Y_GE100'], den: ['Y0', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6', 'Y7', 'Y8', 'Y9', 'Y10', 'Y11', 'Y12', 'Y13', 'Y14', 'Y15', 'Y16', 'Y17', 'Y18', 'Y19'] }, cmp: true, fromCommunes: true, dir: 'none', ind: /indicateur de vieillissement/ },
+  { id: 'jeunesse', label: 'Indice de jeunesse (moins de 20 ans pour 100 personnes de 60 ans ou plus)', theme: 'Démographie', dataset: 'rp_pop_agesex', where: { SEX: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'AGE', num: ['Y0', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6', 'Y7', 'Y8', 'Y9', 'Y10', 'Y11', 'Y12', 'Y13', 'Y14', 'Y15', 'Y16', 'Y17', 'Y18', 'Y19'], den: ['Y60', 'Y61', 'Y62', 'Y63', 'Y64', 'Y65', 'Y66', 'Y67', 'Y68', 'Y69', 'Y70', 'Y71', 'Y72', 'Y73', 'Y74', 'Y75', 'Y76', 'Y77', 'Y78', 'Y79', 'Y80', 'Y81', 'Y82', 'Y83', 'Y84', 'Y85', 'Y86', 'Y87', 'Y88', 'Y89', 'Y90', 'Y91', 'Y92', 'Y93', 'Y94', 'Y95', 'Y96', 'Y97', 'Y98', 'Y99', 'Y_GE100'] }, cmp: true, fromCommunes: true, dir: 'none', ind: /^indice de jeunesse$/ },
+  { id: 'dependance', label: 'Taux de dépendance démographique ((0-19 ans + 65 ans ou plus) / 20-64 ans)', theme: 'Démographie', dataset: 'rp_pop_agesex', where: { SEX: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'AGE', num: ['Y0', 'Y1', 'Y2', 'Y3', 'Y4', 'Y5', 'Y6', 'Y7', 'Y8', 'Y9', 'Y10', 'Y11', 'Y12', 'Y13', 'Y14', 'Y15', 'Y16', 'Y17', 'Y18', 'Y19', 'Y65', 'Y66', 'Y67', 'Y68', 'Y69', 'Y70', 'Y71', 'Y72', 'Y73', 'Y74', 'Y75', 'Y76', 'Y77', 'Y78', 'Y79', 'Y80', 'Y81', 'Y82', 'Y83', 'Y84', 'Y85', 'Y86', 'Y87', 'Y88', 'Y89', 'Y90', 'Y91', 'Y92', 'Y93', 'Y94', 'Y95', 'Y96', 'Y97', 'Y98', 'Y99', 'Y_GE100'], den: ['Y20', 'Y21', 'Y22', 'Y23', 'Y24', 'Y25', 'Y26', 'Y27', 'Y28', 'Y29', 'Y30', 'Y31', 'Y32', 'Y33', 'Y34', 'Y35', 'Y36', 'Y37', 'Y38', 'Y39', 'Y40', 'Y41', 'Y42', 'Y43', 'Y44', 'Y45', 'Y46', 'Y47', 'Y48', 'Y49', 'Y50', 'Y51', 'Y52', 'Y53', 'Y54', 'Y55', 'Y56', 'Y57', 'Y58', 'Y59', 'Y60', 'Y61', 'Y62', 'Y63', 'Y64'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /dependance demographique/ },
+  { id: 'natalite', label: 'Taux de natalité (naissances pour 1 000 hab.)', theme: 'Démographie', dataset: 'etat_civil_nais', where: { EC_MEASURE: 'LVB' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /taux de natalite/ },
+  { id: 'mortalite', label: 'Taux de mortalité (décès pour 1 000 hab.)', theme: 'Démographie', dataset: 'etat_civil_deces', where: { EC_MEASURE: 'DTH' }, perK: true, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /taux de mortalite/ },
+  { id: 'solde_naturel', label: 'Solde naturel entre deux recensements (naissances − décès)', theme: 'Démographie', dataset: 'rp_serie_historique', where: { OCS: '_T' }, ratio: { dim: 'RP_MEASURE', num: ['BRTH'], den: ['DEATH'] }, diff: true, dir: 'up', ind: /solde naturel/ },
+  { id: 'monoparentaux', label: 'Part des familles monoparentales parmi les ménages', theme: 'Démographie', dataset: 'rp_menages_type', where: { RP_MEASURE: 'DWELLINGS', OCS: 'DW_MAIN', AGE: '_T' }, ratio: { dim: 'TPH', num: ['MF21'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /menages monoparentaux|familles monoparentales/ },
+  { id: 'etrangers', label: 'Part des étrangers dans la population', theme: 'Démographie', dataset: 'rp_nationalite', where: { SEX: '_T', AGE: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'NATIONALITY_TYPE', num: ['100'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /part d etrangers/ },
+  { id: 'taille_menages', label: 'Taille moyenne des ménages (personnes par ménage)', theme: 'Démographie', dataset: 'rp_serie_historique', where: { OCS: 'DW_MAIN' }, ratio: { dim: 'RP_MEASURE', num: ['DWELLINGS_POPSIZE'], den: ['DWELLINGS'] }, factor: 1, cmp: true, dir: 'none', ind: /taille des menages|besoins en logement s et services/ },
+  { id: 'arrivants', label: 'Part des habitants arrivés d’une autre commune dans l’année', theme: 'Démographie', dataset: 'rp_migrations', where: { RP_MEASURE: 'POP', AGE: 'Y_GE1' }, ratio: { dim: 'PREV_RES_AREA', num: ['20_30'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /attractivite residentielle|facteurs d attractivite|solde migratoire/ },
+  { id: 'activite', label: 'Taux d’activité des 15-64 ans', theme: 'Emploi', dataset: 'rp_activite_chomage', where: { SEX: '_T', EDUC: '_T', AGE: 'Y15T64', RP_MEASURE: 'POP' }, ratio: { dim: 'EMPSTA_ENQ', num: ['1T2'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /taux d activite|projection du nombre d actifs/ },
+  { id: 'cadres', label: 'Part des cadres et professions intellectuelles supérieures (15 ans ou plus)', theme: 'Emploi', dataset: 'rp_csp', where: { SEX: '_T', AGE: 'Y_GE15', RP_MEASURE: 'POP' }, ratio: { dim: 'PCS', num: ['3'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /categorie socio.professionnelle|repartition des csp|csp en regression|profils des actifs/ },
+  { id: 'ouvriers_employes', label: 'Part des ouvriers et employés (15 ans ou plus)', theme: 'Emploi', dataset: 'rp_csp', where: { SEX: '_T', AGE: 'Y_GE15', RP_MEASURE: 'POP' }, ratio: { dim: 'PCS', num: ['5', '6'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
+  { id: 'commerces', perK: true, label: 'Établissements du commerce, des transports et de l’hébergement-restauration', theme: 'Emploi', dataset: 'side_stocks', where: { SIDE_MEASURE: 'UNIT_LOC', ACTIVITY: 'GI' }, dir: 'up', ind: /nb de commerces|^evolution en nb$|^ecart a l echelle supra/ },
+  { id: 'etablissements', perK: true, label: 'Établissements (tous secteurs)', theme: 'Emploi', dataset: 'side_stocks', where: { SIDE_MEASURE: 'UNIT_LOC', ACTIVITY: '_T' }, dir: 'up', ind: /entreprises hors commerce|evolution en secteurs d activites/ },
+  { id: 'ess', perK: true, label: 'Établissements de l’économie sociale et solidaire (stock du jour)', theme: 'Emploi', dataset: 'entreprises', where: { MESURE: 'ESS' }, dir: 'up', ind: /structures de l ess|evolution du nb \/ nb entreprises|emplois generes par les structures ess/ },
+  { id: 'praticiens', perK: true, label: 'Professionnels de santé libéraux (toutes professions)', theme: 'Santé', dataset: 'sante_pro', where: { MESURE: 'PROFESSIONNELS', PROFESSION: '_T' }, dir: 'up', ind: /nb de praticiens|evolution du nombre de praticiens|^offre de soin$|evolution de l offre de soins/ },
+  { id: 'personnes_piece', label: 'Personnes par pièce dans les résidences principales (sur-occupation)', theme: 'Logement', dataset: 'rp_logement', where: { OCS: 'DW_MAIN' }, ratio: { dim: 'RP_MEASURE', num: ['DWELLINGS_POPSIZE'], den: ['DWELLINGS_ROOMS'] }, factor: 1, cmp: true, fromCommunes: true, dir: 'down', ind: /sur.occup/ },
+  { id: 'acheves', perK: true, label: 'Logements achevés', theme: 'Logement', dataset: 'sitadel', where: { MESURE: 'LGT_ACHEVES', TYPE_LOGEMENT: '_T', TYPE_DAU: '_T' }, skipCurrent: true, dir: 'up', ind: /programmes livres|commences\/acheves/ },
+  { id: 'motorisation', label: 'Part des ménages disposant d’au moins une voiture', theme: 'Mobilité', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: 'DW_MAIN' }, ratio: { dim: 'CARS', num: ['C_GE1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /taux de motorisation/ },
+  { id: 'validations', perK: true, label: 'Validations dans les gares ferrées de la commune (trimestre)', theme: 'Mobilité', dataset: 'idfm_ferre', where: { MESURE: 'VALIDATIONS' }, dir: 'up', ind: /frequentation des lignes/ },
+  { id: 'places_velo', perK: true, label: 'Places de stationnement vélo (OpenStreetMap)', theme: 'Mobilité', dataset: 'velo_stationnement', where: { MESURE: 'CAPACITE', MOBILIER: '_T' }, dir: 'up', ind: /stationnements velo/ },
+  { id: 'icu_fort', label: 'Part de la surface en aléa fort d’îlot de chaleur la nuit', theme: 'Environnement', dataset: 'icu', where: { MESURE: 'SURFACE_ALEA_NUIT_HA', LCZ: '_T' }, ratio: { dim: 'CLASSE', num: ['3'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /ilots de chaleur identifies|exposition aux ilots de chaleur/ },
+  { id: 'points_noirs', label: 'Part des mailles de 500 m en point noir environnemental (cumul de nuisances)', theme: 'Environnement', dataset: 'nuisances', where: { MESURE: 'MAILLES_500M', NB_NUISANCES: '_T' }, ratio: { dim: 'POINT_NOIR', num: ['1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /exposition aux nuisances sonores|qualite de l air/ },
+  { id: 'flux_artif', label: 'Surface nouvellement artificialisée (ha)', theme: 'Environnement', dataset: 'artificialisation', where: { MESURE: 'FLUX_HA' }, dir: 'down', ind: /taux annuel de sol|rapidite d evolution|consommation des espaces naturels/ },
   { id: 'familles_af', perK: true, label: 'Foyers percevant les allocations familiales (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_AF' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
 { id: 'licences_sport', perK: true, label: 'Licences sportives (pour 1 000 hab.)', theme: 'Sport', dataset: 'licences_sportives', where: { MESURE: 'LICENCES', FEDERATION: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, partial: ['reg'], dir: 'up', ind: /licences/ },
 { id: 'lieux_culturels', perK: true, label: 'Lieux et équipements culturels (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'equipements_culturels', where: { MESURE: 'NB_LIEUX', DOMAINE: '_T', TYPE: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'up', ind: /lieux et equipements culturels|equipements culturels/ },
@@ -113,7 +142,7 @@ function seriesOf(rows, spec) {
   }
   const out = [];
   for (const [period, m] of by) {
-    if (spec.ratio) { if (m.den) out.push({ period, value: (m.num / m.den) * (spec.factor ?? 100) }); } else if (m.n) out.push({ period, value: m.num * (spec.factor ?? 1) });
+    if (spec.ratio && spec.diff) { if (m.num || m.den) out.push({ period, value: m.num - m.den }); } else if (spec.ratio) { if (m.den) out.push({ period, value: (m.num / m.den) * (spec.factor ?? 100) }); } else if (m.n) out.push({ period, value: m.num * (spec.factor ?? 1) });
   }
   // année en cours : données encore incomplètes pour certaines sources (déclarations tardives)
   const thisYear = new Date().getFullYear();
@@ -126,7 +155,7 @@ function seriesOf(rows, spec) {
   return out.filter((p) => !spec.skipCurrent || Number(String(p.period).slice(0, 4)) < thisYear).sort((a, b) => (a.period < b.period ? -1 : 1));
 }
 
-function build() {
+function compute() {
   const geos = [[REF_GEO.code, 'ref'], ['GOSB', 'ept'], ['94', 'dep'], ['11', 'reg']];
   const indicators = all('SELECT id, libelle, statut, priorite, theme_label FROM indicators');
   const dsInfo = Object.fromEntries(all('SELECT id, label, last_import FROM datasets').map((d) => [d.id, d]));
@@ -194,7 +223,8 @@ function formulaOf(spec) {
   const filt = Object.entries(spec.where).filter(([, v]) => v !== '_T').map(([d, v]) => `${d} = ${v}`).join(', ');
   const base = `${spec.dataset}${filt ? ` [${filt}]` : ''}`;
   let f, mode = 'direct';
-  if (spec.ratio) { mode = 'calcule'; f = `${base} : ${spec.ratio.dim} ∈ {${spec.ratio.num.join(', ')}} / ${spec.ratio.dim} ∈ {${spec.ratio.den.join(', ')}} × ${spec.factor ?? 100}`; }
+  const list = (c) => (c.length > 6 ? `${c[0]} … ${c[c.length - 1]} (${c.length} modalités)` : c.join(', '));
+  if (spec.ratio) { mode = 'calcule'; f = spec.diff ? `${base} : ${spec.ratio.dim} = ${list(spec.ratio.num)} − ${spec.ratio.dim} = ${list(spec.ratio.den)}` : `${base} : ${spec.ratio.dim} ∈ {${list(spec.ratio.num)}} / ${spec.ratio.dim} ∈ {${list(spec.ratio.den)}} × ${spec.factor ?? 100}`; }
   else f = spec.sum ? `${base}, somme sur ${spec.sum.join(', ')}` : base;
   if (spec.sum) mode = 'calcule';
   if (spec.cumul) { mode = 'calcule'; f += ' ; cumul des mises en service (stock)'; }
@@ -209,4 +239,30 @@ function kpiIdsFor(libelle) {
   return KPIS.filter((k) => k.ind.test(t)).map((k) => k.id);
 }
 
-module.exports = { build, KPIS, kpiIdsFor, seriesOf, matches, totalOnly, formulaOf };
+// Le calcul complet parcourt de nombreuses séries (plus de 100 KPI × 4 territoires, agrégats recalculés à partir des
+// 1 266 communes) : il tourne dans un thread séparé pour ne pas figer le serveur, et le résultat est mis en cache 5 minutes.
+// Au-delà, la valeur précédente reste servie pendant le recalcul en arrière-plan. Seul le tout premier appel, avant le
+// préchauffage du démarrage, calcule de façon synchrone.
+const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
+let memo = null, running = null;
+function computeAsync() {
+  if (running) return running;
+  running = new Promise((resolve, reject) => {
+    const w = new Worker(__filename, { workerData: { kpiCompute: true } });
+    w.once('message', (m) => (m && m.__error ? reject(new Error(m.__error)) : resolve(m)));
+    w.once('error', reject);
+    w.once('exit', (code) => { if (code) reject(new Error(`calcul des KPI interrompu (code ${code})`)); });
+  }).then((value) => { memo = { at: Date.now(), value }; return value; }).finally(() => { running = null; });
+  return running;
+}
+function build({ fresh = false } = {}) {
+  if (fresh || !memo) { memo = { at: Date.now(), value: compute() }; return memo.value; }
+  if (Date.now() - memo.at > 5 * 60 * 1000) computeAsync().catch((e) => console.warn('[kpi]', e.message));
+  return memo.value;
+}
+if (!isMainThread && workerData && workerData.kpiCompute) {
+  // différé : les exports du module doivent exister avant que cartographie.js (dépendance circulaire) ne les lise
+  setImmediate(() => { try { parentPort.postMessage(compute()); } catch (e) { parentPort.postMessage({ __error: e.message }); } });
+}
+
+module.exports = { build, computeAsync, KPIS, kpiIdsFor, seriesOf, matches, totalOnly, formulaOf };
