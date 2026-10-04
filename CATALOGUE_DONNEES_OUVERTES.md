@@ -114,21 +114,17 @@ Ces valeurs sont signalées par un badge « Non public » dans l'application (ca
 |---|---|---|---|
 | Logements autorisés et commencés, séries officielles | SDES, [logements autorisés et commencés par commune](https://www.statistiques.developpement-durable.gouv.fr/catalogue) (séries annuelles et mensuelles) | l'intégration recalcule les années à partir de Sit@del2 au logement ; les séries officielles serviraient de contrôle | comparer les deux calculs |
 | Parc de véhicules et immatriculations par commune | SDES, [catalogue](https://www.statistiques.developpement-durable.gouv.fr/catalogue) (parc de véhicules, immatriculations) | l'Agence ORE couvre déjà le parc par commune ; le SDES ajouterait énergie et vignette Crit'Air | agréger le CSV par commune et motorisation |
-| Qualité de l'air | [hub Airparif](https://data-airparif-asso.opendata.arcgis.com/) (seuls des indices communaux du jour) ; SDES, indicateurs territoriaux (par agglomération) | pas de série communale ouverte trouvée | convention de données avec Airparif |
-| Émissions de GES | SDES, comptes d'émissions (national) | pas de niveau communal ouvert trouvé | inventaire communal Airparif |
+| Qualité de l'air (jours de dépassement) | [hub Airparif](https://data-airparif-asso.opendata.arcgis.com/) (seuls les indices communaux du jour ; l'inventaire des émissions est intégré) | pas d'historique communal ouvert | demande à Airparif (voir `docs/demandes-donnees/07-airparif.md`) |
 | Bruit | aucun jeu communal ouvert trouvé (Bruitparif, cartes stratégiques) | substitut intégré : multi-exposition et grille de nuisances | demande à Bruitparif |
 | Fréquentation des bus | IDFM, [validations du réseau de surface](https://data.iledefrance-mobilites.fr/explore/dataset/validations-reseau-surface-nombre-validations-par-jour-1er-trimestre/) | publiées par ligne, sans arrêt ni commune | non rattachable |
 | Accessibilité aux équipements (isochrones) | IDFM, [offre de transports GTFS](https://data.iledefrance-mobilites.fr/explore/dataset/offre-de-transports-gtfs/) et indicateurs 981/984/985 | les indicateurs supposent un calcul d'isochrones par arrêt (routage, temps de trajet), pas un simple comptage d'équipements | calculer les isochrones 10/20/30 minutes à partir des arrêts et de la graphine GTFS |
 | Pollution lumineuse | [MGP, `opendata_trameVerte_radiance`](https://www.carto-metropolegrandparis.fr/server/rest/services/opendata_trameVerte_radiance/FeatureServer) (442 910 points de luminance nocturne) | luminance au point, sans code commune | calcul zonal ( moyenne par commune ou par secteur ) |
 | Secteurs scolaires | [Région Île-de-France](https://data.iledefrance.fr/explore/dataset/secteurs-scolaires/) | ne couvre que Paris et ses arrondissements | rattacher les autres communes par le RPE |
-| Parc privé potentiellement indigne (PPPI) | Cerema / ANAH, [fichiers fonciers](https://datafoncier.cerema.fr/) | accès réservé aux collectivités et à l'État | demande d'accès |
-| Offre de soins, densité médicale | DREES, [APL](https://data.drees.solidarites-sante.gouv.fr/explore/dataset/530_l-accessibilite-potentielle-localisee-apl/) | l'API ne renvoie pas d'enregistrements | télécharger le fichier APL |
-| Demandeurs d'emploi | [France Travail, API Open Data](https://francetravail.io/data/api) | API soumise à clé | demande de clé |
-| Collecte des déchets | [SINOE](https://www.sinoe.org/), EPT Grand-Orly Seine Bièvre | pas de série communale ouverte | demande à l'EPT |
+| Parc privé potentiellement indigne (PPPI), vacance des locaux d'activité, foncier mutable | Cerema, [fichiers fonciers et DV3F](https://datafoncier.cerema.fr/) | accès réservé aux collectivités et à l'État | demande d'accès (voir `docs/demandes-donnees/01-cerema-fichiers-fonciers.md`) |
+| Demandeurs d'emploi par QPV et métiers | [France Travail](https://francetravail.io/data/api) (le volume communal est déjà intégré) | API soumise à clé, pas de détail infracommunal ouvert | demande à la direction territoriale (voir `docs/demandes-donnees/06-france-travail.md`) |
 | Résultats au brevet (DNB) par établissement | [Éducation nationale](https://data.education.gouv.fr/explore/dataset/fr-en-dnb-par-etablissement/) | s'arrête à la session 2021 | taux de réussite par commune |
-| Autres prestations CAF | [data.caf.fr](https://data.caf.fr/) | seul le RSA est publié à la commune dans les jeux trouvés | explorer le catalogue par prestation |
 
-- **Quartiers prioritaires (QPV)** : les contours (ANCT, géographie 2024) sont affichés en surcouche sur la cartographie : 298 quartiers en Île-de-France, 47 dans le Val-de-Marne, 36 dans le GOSB, dont 4 à Ivry (Pierre et Marie Curie, Gagarine, Ivry Port, Monmousseau). Les indicateurs propres aux QPV (revenus, population) restent à ajouter.
+- **Quartiers prioritaires (QPV)** : les contours (ANCT, géographie 2024) sont affichés en surcouche sur la cartographie : 298 quartiers en Île-de-France, 47 dans le Val-de-Marne, 36 dans le GOSB, dont 4 à Ivry (Pierre et Marie Curie, Gagarine, Ivry Port, Monmousseau). Les revenus des QPV sont approchés par le quotient familial des allocataires CAF (jeu `caf_qf_qpv`) ; le revenu disponible de l'ensemble des habitants (Filosofi QPV) reste à charger depuis les fichiers de l'INSEE.
 
 ## 2 bis. Portails du GOSB, du Val-de-Marne et de la Région : ce qui a été trouvé
 
@@ -157,6 +153,21 @@ Ces valeurs sont signalées par un badge « Non public » dans l'application (ca
 - **Multi-exposition** : l'échelle des 6 classes est celle de l'Institut Paris Région (voir la documentation du jeu).
 - **Agence ORE** : consommations d'électricité et de gaz de réseau uniquement, soumises au secret statistique. L'adresse `portail.agenceore.fr` refuse les requêtes automatisées ; l'API utilisée est celle de `opendata.agenceore.fr`.
 
-## 4. Indicateurs sans source ouverte exploitable (SI de la collectivité)
+## 4. Indicateurs sans source ouverte exploitable
 
-Fréquentation des équipements, signalements d'impayés, adhérents, bénévoles et salariés des associations, déclarations d'intention d'aliéner, arbres plantés, consommations d'énergie communales, programmes livrés et livraisons prévues. Ils sont marqués « interne » dans la liste des indicateurs.
+Il reste 24 fiches sans valeur. Elles relèvent des systèmes d'information de la Ville ou de données d'organismes accessibles sur demande. Les demandes sont préparées dans `docs/demandes-donnees/` du dépôt (méthode, suivi, un dossier par organisme avec le texte à envoyer) :
+
+| Données | Détenteur | Dossier |
+|---|---|---|
+| Vacance des commerces et locaux d'activité, foncier mutable, PPPI | Cerema (fichiers fonciers, DV3F) | `01-cerema-fichiers-fonciers.md` |
+| Logements vacants à l'adresse | DGALN, Zéro Logement Vacant | `02-zlv-lovac.md` |
+| Demandes et attributions de logements sociaux | DRIHL (Infocentre SNE) ; service logement (Pelehas) | `03-drihl-infocentre-sne.md`, `10-interne-pelehas.md` |
+| Allocataires par quartier, non-recours | CAF du Val-de-Marne | `04-caf-94.md` |
+| AME, C2S et ALD à la commune | CPAM du Val-de-Marne | `05-cpam-94.md` |
+| Demandeurs d'emploi par QPV, métiers | France Travail | `06-france-travail.md` |
+| Jours de dépassement des seuils de pollution | Airparif | `07-airparif.md` |
+| Trafic routier | Département du Val-de-Marne | `08-cd94-comptages-routiers.md` |
+| Temps de trajet, accessibilité aux pôles | IDFM, Institut Paris Region | `09-idfm-ipr-mobilite.md` |
+| Impayés de loyer et d'énergie, accès aux droits | CCAS (Millésime) | `11-interne-millesime.md` |
+
+Restent purement internes : la fréquentation des équipements, les publics touchés et l'origine des adhérents des associations (à recueillir avec les dossiers de subvention). Ces fiches sont marquées « interne » dans la liste des indicateurs.
