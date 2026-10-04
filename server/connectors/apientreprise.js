@@ -109,9 +109,13 @@ function aggregate(extraits, nbListees, year, code) {
   return rows;
 }
 
-/** Une commune (seulement celles listées dans config.communes : accès habilité et limité en débit). */
+// communes analysées : API_ENTREPRISE_COMMUNES (codes INSEE séparés par des virgules) sinon config.communes (Ivry).
+// Une commune de comparaison coûte une fiche par association ayant son siège chez elle (≈ 5 min pour 1 000 associations la première fois).
+const communesOf = (config) => (process.env.API_ENTREPRISE_COMMUNES || '').split(/[,\s]+/).filter((c) => /^\d[\dAB]\d{3}$/.test(c)).concat(config.communes || []);
+
+/** Une commune (seulement celles analysées : accès habilité et limité en débit). */
 async function fetchGeo(config, geo) {
-  if ((geo.level || 'COM') !== 'COM' || !(config.communes || []).includes(geo.code)) return null;
+  if ((geo.level || 'COM') !== 'COM' || !communesOf(config).includes(geo.code)) return null;
   const s = settings();
   const list = await associationsOf(geo.code);
   const cached = new Map(all('SELECT siren, fetched_at, extrait FROM asso_fiches WHERE commune = ?', geo.code).map((r) => [r.siren, r]));

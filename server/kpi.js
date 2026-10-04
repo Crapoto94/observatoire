@@ -67,7 +67,7 @@ const KPIS = [
   { id: 'loyer', label: 'Loyer médian des appartements (€/m²)', theme: 'Logement', dataset: 'loyers', where: { MESURE: 'LOYER_M2', TYPE_BIEN: 'APPARTEMENT' }, unit: '€/m²', cmp: true, dir: 'none', ind: /loyer/ },
   { id: 'conso', perK: true, label: "Consommation d'énergie résidentielle (MWh)", theme: 'Environnement', dataset: 'ore_conso', where: { MESURE: 'CONSO_MWH', FILIERE: '_T', SECTEUR: 'RESIDENTIEL' }, dir: 'down', ind: /consommation energetique|consommations d energie|renovation energetique/ },
   { id: 'accidents', perK: true, label: 'Accidents corporels', theme: 'Mobilité', dataset: 'baac', where: { MESURE: 'ACCIDENTS', LUMINOSITE: '_T', AGGLOMERATION: '_T' }, dir: 'down', ind: /accident/ },
-  { id: 'associations', perK: true, label: 'Associations (stock du jour)', theme: 'Vie associative', dataset: 'entreprises', where: { MESURE: 'ASSOCIATIONS' }, dir: 'none', ind: /association/ },
+  { id: 'associations', perK: true, label: 'Établissements d’associations présents dans la commune (sièges et antennes, stock du jour)', theme: 'Vie associative', dataset: 'entreprises', where: { MESURE: 'ASSOCIATIONS' }, dir: 'none', ind: /^$/ },
   // formes d'emploi, diplômes, effectifs salariés (jeux INSEE ajoutés pour nourrir la conception)
   { id: 'precaires', label: 'Part des salariés en contrat précaire (CDD, intérim, apprentissage…)', theme: 'Emploi', dataset: 'rp_formes_emploi', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', WKTIME: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'EMPFORM', num: ['22T27'], den: ['211', '22T27'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /contrats precaires/ },
   { id: 'temps_partiel', label: 'Part des actifs occupés à temps partiel', theme: 'Emploi', dataset: 'rp_formes_emploi', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', EMPFORM: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'WKTIME', num: ['PT'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
@@ -75,7 +75,7 @@ const KPIS = [
   { id: 'sans_diplome', label: 'Part des 15 ans ou plus non scolarisés sans diplôme', theme: 'Éducation', dataset: 'rp_diplomes', where: { SEX: '_T', AGE: 'Y_GE15', RP_MEASURE: 'POP' }, ratio: { dim: 'EDUC', num: ['001T100_RP'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /^$/ },
   { id: 'diplomes_sup', label: 'Part des 15 ans ou plus non scolarisés diplômés du supérieur', theme: 'Éducation', dataset: 'rp_diplomes', where: { SEX: '_T', AGE: 'Y_GE15', RP_MEASURE: 'POP' }, ratio: { dim: 'EDUC', num: ['500T702_RP'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'up', ind: /^$/ },
   { id: 'salaries', label: 'Effectifs salariés des établissements (Flores)', theme: 'Emploi', dataset: 'flores', where: { FLORES_MEASURE: 'EMPL3112', LEGAL_FORM_WITH_PUBLIC: '1T9X7' }, sum: ['ACTIVITY'], dir: 'up', ind: /^$/ },
-  { id: 'salaries_asso', perK: true, label: 'Salariés des organisations associatives (Flores)', theme: 'Vie associative', dataset: 'flores', where: { FLORES_MEASURE: 'EMPL3112', LEGAL_FORM_WITH_PUBLIC: '1T9X7', ACTIVITY: '94' }, dir: 'none', ind: /^nb de salaries$/ },
+  { id: 'salaries_asso', perK: true, label: 'Salariés des organisations associatives (Flores)', theme: 'Vie associative', dataset: 'flores', where: { FLORES_MEASURE: 'EMPL3112', LEGAL_FORM_WITH_PUBLIC: '1T9X7', ACTIVITY: '94' }, dir: 'none', ind: /^$/ },
   // autres jeux importés encore peu exploités
   { id: 'immigres', label: 'Part des immigrés dans la population', theme: 'Démographie', dataset: 'rp_immigration', where: { SEX: '_T', AGE: '_T', EMPSTA_ENQ: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'IMMI', num: ['1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
   { id: 'travail_commune', label: 'Part des actifs occupés travaillant dans leur commune de résidence', theme: 'Mobilité', dataset: 'rp_navettes', where: { EMPSTA_ENQ: '1', SEX: '_T', AGE: 'Y_GE15', TRANS: '_T', WORK_URBAN_AREA: '_T', RP_MEASURE: 'POP' }, ratio: { dim: 'WORK_AREA', num: ['10'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
@@ -120,14 +120,17 @@ const KPIS = [
   { id: 'points_noirs', label: 'Part des mailles de 500 m en point noir environnemental (cumul de nuisances)', theme: 'Environnement', dataset: 'nuisances', where: { MESURE: 'MAILLES_500M', NB_NUISANCES: '_T' }, ratio: { dim: 'POINT_NOIR', num: ['1'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'down', ind: /exposition aux nuisances sonores|qualite de l air/ },
   { id: 'flux_artif', label: 'Surface nouvellement artificialisée (ha)', theme: 'Environnement', dataset: 'artificialisation', where: { MESURE: 'FLUX_HA' }, dir: 'down', ind: /taux annuel de sol|rapidite d evolution|consommation des espaces naturels/ },
   // vie associative (API Entreprise : données NON PUBLIQUES, Ivry uniquement ; ressources humaines et comptes = déclarations, donc minima)
-  { id: 'asso_actives', perK: true, label: 'Associations actives ayant leur siège à Ivry', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'NB_ASSOCIATIONS', OBJET: '_T' }, dir: 'up', ind: /nb d associations par type/ },
-  { id: 'asso_adherents', label: 'Adhérents déclarés par les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'ADHERENTS', OBJET: '_T' }, dir: 'up', ind: /^nb d adherents$/ },
-  { id: 'asso_benevoles', label: 'Bénévoles déclarés par les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'BENEVOLES', OBJET: '_T' }, dir: 'up', ind: /benevoles/ },
-  { id: 'asso_salaries', label: 'Salariés déclarés par les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'SALARIES', OBJET: '_T' }, dir: 'up', ind: /^nb de salaries$|^evolution du nombre de salaries$/ },
+  { id: 'asso_adherents_moy', declaratif: true, label: 'Adhérents par association (moyenne, associations ayant leur siège dans la commune et déclarant leurs effectifs)', theme: 'Vie associative', dataset: 'associations_api', where: { OBJET: '_T' }, ratio: { dim: 'MESURE', num: ['ADHERENTS'], den: ['NB_RH_DECLAREES'] }, factor: 1, dir: 'up', ind: /^nb d adherents$/ },
+  { id: 'asso_salaries_moy', declaratif: true, label: 'Salariés par association (moyenne, associations ayant leur siège dans la commune et déclarant leurs effectifs)', theme: 'Vie associative', dataset: 'associations_api', where: { OBJET: '_T' }, ratio: { dim: 'MESURE', num: ['SALARIES'], den: ['NB_RH_DECLAREES'] }, factor: 1, dir: 'none', ind: /^nb de salaries$/ },
+  { id: 'asso_benevoles_moy', declaratif: true, label: 'Bénévoles par association (moyenne, associations ayant leur siège dans la commune et déclarant leurs effectifs)', theme: 'Vie associative', dataset: 'associations_api', where: { OBJET: '_T' }, ratio: { dim: 'MESURE', num: ['BENEVOLES'], den: ['NB_RH_DECLAREES'] }, factor: 1, dir: 'up', ind: /^$/ },
+  { id: 'asso_actives', perK: true, label: 'Associations actives ayant leur siège dans la commune', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'NB_ASSOCIATIONS', OBJET: '_T' }, dir: 'up', ind: /nb d associations par type/ },
+  { id: 'asso_adherents', declaratif: true, label: 'Adhérents déclarés par les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'ADHERENTS', OBJET: '_T' }, dir: 'up', ind: /^$/ },
+  { id: 'asso_benevoles', declaratif: true, label: 'Bénévoles déclarés par les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'BENEVOLES', OBJET: '_T' }, dir: 'up', ind: /benevoles/ },
+  { id: 'asso_salaries', declaratif: true, label: 'Salariés déclarés par les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'SALARIES', OBJET: '_T' }, dir: 'up', ind: /^evolution du nombre de salaries$/ },
   { id: 'asso_affiliees', label: 'Associations affiliées à une fédération ou un réseau', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'NB_AFFILIEES', OBJET: '_T' }, dir: 'up', ind: /^$/ },
   { id: 'asso_employeuses', label: 'Part des associations employeuses', theme: 'Vie associative', dataset: 'associations_api', where: { OBJET: '_T' }, ratio: { dim: 'MESURE', num: ['NB_EMPLOYEUSES'], den: ['NB_FICHES'] }, unit: '%', dir: 'none', ind: /^$/ },
-  { id: 'asso_subventions', label: 'Subventions perçues par les associations (€, comptes déclarés)', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'SUBVENTIONS', OBJET: '_T' }, unit: '€', dir: 'none', ind: /^$/ },
-  { id: 'asso_volontaires', label: 'Volontaires (service civique…) dans les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'VOLONTAIRES', OBJET: '_T' }, dir: 'up', ind: /^$/ },
+  { id: 'asso_subventions', declaratif: true, label: 'Subventions perçues par les associations (€, comptes déclarés)', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'SUBVENTIONS', OBJET: '_T' }, unit: '€', dir: 'none', ind: /^$/ },
+  { id: 'asso_volontaires', declaratif: true, label: 'Volontaires (service civique…) dans les associations', theme: 'Vie associative', dataset: 'associations_api', where: { MESURE: 'VOLONTAIRES', OBJET: '_T' }, dir: 'up', ind: /^$/ },
   { id: 'menages_hlm', label: 'Part des ménages locataires du parc social', theme: 'Logement', dataset: 'rp_logement', where: { RP_MEASURE: 'DWELLINGS', OCS: 'DW_MAIN' }, ratio: { dim: 'TSH', num: ['221'], den: ['_T'] }, unit: '%', cmp: true, fromCommunes: true, dir: 'none', ind: /menages en logement social/ },
   { id: 'familles_af', perK: true, label: 'Foyers percevant les allocations familiales (pour 1 000 hab.)', theme: 'Cohésion sociale', dataset: 'caf_prestations', where: { MESURE: 'FOYERS_AF' }, kpiPerK: true, cmp: true, fromCommunes: true, dir: 'none', ind: /^$/ },
 { id: 'licences_sport', perK: true, label: 'Licences sportives (pour 1 000 hab.)', theme: 'Sport', dataset: 'licences_sportives', where: { MESURE: 'LICENCES', FEDERATION: '_T' }, kpiPerK: true, cmp: true, fromCommunes: true, partial: ['reg'], dir: 'up', ind: /licences/ },
@@ -169,7 +172,7 @@ function seriesOf(rows, spec) {
 
 function compute() {
   const geos = [[REF_GEO.code, 'ref'], ['GOSB', 'ept'], ['94', 'dep'], ['11', 'reg']];
-  const indicators = all('SELECT id, libelle, statut, priorite, theme, theme_label, niveau FROM indicators');
+  const indicators = all('SELECT id, libelle, libelle_carte, statut, priorite, theme, theme_label, niveau FROM indicators');
   const dsInfo = Object.fromEntries(all('SELECT id, label, last_import FROM datasets').map((d) => [d.id, d]));
   const withData = new Set(all('SELECT DISTINCT indicator_id FROM indicator_datasets').map((r) => r.indicator_id));
 
@@ -210,7 +213,7 @@ function compute() {
     const year = last ? Number(String(last.period).slice(0, 4)) : null;
     return {
       prive: PRIVES.has(spec.dataset), // jeu à accès habilité : valeur non publique
-      id: spec.id, label: spec.label, theme: spec.theme, unit: spec.unit || '', dir: spec.dir, dataset: spec.dataset, datasetLabel: dsInfo[spec.dataset]?.label || spec.dataset,
+      id: spec.id, label: spec.label, theme: spec.theme, unit: spec.unit || (spec.kpiPerK ? 'pour 1 000 hab.' : ''), dir: spec.dir, dataset: spec.dataset, datasetLabel: dsInfo[spec.dataset]?.label || spec.dataset,
       last_import: dsInfo[spec.dataset]?.last_import || null,
       value: last?.value ?? null, period: last?.period ?? null, prev, series: s.slice(-8),
       ept: last && res.ept ? at(res.ept, last.period) : null, dep: last && res.dep ? at(res.dep, last.period) : null, reg: last && res.reg ? at(res.reg, last.period) : null,
@@ -284,7 +287,8 @@ function matchOne(k, fiche) {
   const t = norm(fiche.libelle);
   if (!k.ind.test(t)) return null;
   if (fiche.theme && THEMES[fiche.theme] && !THEMES[fiche.theme].includes(k.theme)) return null; // thème incompatible
-  const fk = ficheKind(t), kk = kpiKind(k);
+  const carte = norm(fiche.libelle_carte || '');
+  const fk = /par (association|assiociation|asso)\b/.test(carte) || /par association/.test(t) ? 'ratio' : ficheKind(t), kk = kpiKind(k);
   if ((fk === 'pct' || fk === 'ratio') && (kk === 'count' || kk === 'money')) return null; // une part ou un indice ne peut pas être un effectif
   if (fk === 'count' && (kk === 'pct' || kk === 'money' || kk === 'ratio')) return null; // un nombre ne peut pas être un pourcentage
   const why = [];
@@ -294,7 +298,8 @@ function matchOne(k, fiche) {
   if (fk === 'pct' && kk === 'ratio') why.push('rapport ou indice, pas un pourcentage');
   if (fiche.niveau === 'prospective') why.push('valeur actuelle : base de la projection, pas la projection elle-même');
   else if (fiche.niveau === 'evaluation' && !/^(densite|taux|part|indice|indicateur|rapport|attractivite|respect|accidents|nombre de|nb d emplois)/.test(t)) why.push('valeur de contexte : l’évaluation demande une analyse');
-  if (PRIVES.has(k.dataset)) return { id: k.id, fiabilite: why.length ? 'approchee' : 'partielle', raison: [...why, 'données déclaratives non publiques, incomplètes (minimum)'].join(' ; ') };
+  // effectifs et comptes des associations : déclarations partielles (seules certaines associations les renseignent)
+  if (k.declaratif) return { id: k.id, fiabilite: why.length ? 'approchee' : 'partielle', raison: [...why, 'données déclaratives, connues pour une partie des associations seulement'].join(' ; ') };
   return { id: k.id, fiabilite: why.length ? 'approchee' : 'fiable', raison: why.join(' ; ') || null };
 }
 

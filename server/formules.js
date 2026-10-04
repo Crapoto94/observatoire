@@ -54,10 +54,10 @@ const F = [
   ['vie-associative', /^nb d associations par type$/, 'direct', 'Associations actives dont le siège est à Ivry, par objet social (API Entreprise, jeu associations_api MESURE = NB_FICHES par OBJET, non public) ; stock tous établissements : jeu entreprises MESURE = ASSOCIATIONS.', ['associations_api']],
   ['vie-associative', /^beneficiaires et publics touches$/, 'direct', 'Nombre de bénéficiaires déclarés dans les dossiers de subvention et bilans d’activité (SI de la collectivité) ; l’API Entreprise ne fournit pas les publics touchés.'],
   ['vie-associative', /^rayonnement/, 'calcule', 'Adhérents non ivryens / adhérents × 100 (dossiers de subvention).'],
-  ['vie-associative', /^nb d adherents$/, 'direct', 'Somme des adhérents déclarés (dernière année) par les associations ayant leur siège à Ivry (API Entreprise, jeu associations_api MESURE = ADHERENTS, non public) ; minimum : seules les associations ayant déclaré leurs ressources humaines sont comptées.', ['associations_api']],
+  ['vie-associative', /^nb d adherents$/, 'calcule', 'Nombre moyen d’adhérents par association = adhérents déclarés (dernière année, siège) / associations ayant déclaré leurs ressources humaines, pour les associations dont le siège est à Ivry, têtes de réseau nationales exclues (API Entreprise, jeu associations_api ADHERENTS / NB_RH_DECLAREES, non public).', ['associations_api']],
   ['vie-associative', /^nb benevoles impliques$/, 'direct', 'Somme des bénévoles déclarés (dernière année) par les associations ayant leur siège à Ivry (API Entreprise, jeu associations_api MESURE = BENEVOLES, non public).', ['associations_api']],
   ['vie-associative', /^impact local/, 'calcule', 'Adhérents ivryens / adhérents × 100 (dossiers de subvention).'],
-  ['vie-associative', /^nb de salaries$/, 'direct', 'Effectifs salariés au 31/12 des établissements de l’activité « organisations associatives » (Flores A88, ACTIVITY = 94, FLORES_MEASURE = EMPL3112). Les associations employeuses d’autres secteurs (action sociale, sport) ne sont pas isolées.', ['flores']],
+  ['vie-associative', /^nb de salaries$/, 'calcule', 'Effectifs salariés au 31/12 des établissements de l’activité « organisations associatives » (Flores A88, ACTIVITY = 94, FLORES_MEASURE = EMPL3112). Les associations employeuses d’autres secteurs (action sociale, sport) ne sont pas isolées.', ['flores']],
   ['vie-associative', /^evolution du nombre de salaries$/, 'calcule', 'EMPL3112(n) − EMPL3112(n − 1) pour l’activité 94 (Flores A88).', ['flores']],
 
   // ---------------- Démographie ----------------
@@ -291,13 +291,21 @@ function apply() {
   const known = new Set(all('SELECT id FROM datasets').map((d) => d.id));
   const once = !get("SELECT 1 FROM app_settings WHERE key = 'formules_links_v2'");
   const stats = { formules: 0, modes: 0, liens: 0, sources: 0 };
+  let autoMap = {};
+  try { autoMap = JSON.parse(get("SELECT value FROM app_settings WHERE key = 'formules_auto'")?.value || '{}'); } catch { autoMap = {}; }
   tx(() => {
     for (const r of rows) {
       const f = find(F, r);
       if (f) {
         const [, , mode, formule, ds = [], couche] = f;
-        if (!r.formule) { run('UPDATE indicators SET formule = ? WHERE id = ?', formule, r.id); hist(r.id, 'formule', null, formule); stats.formules++; }
-        if (!r.mode_calcul) { run('UPDATE indicators SET mode_calcul = ? WHERE id = ?', mode, r.id); stats.modes++; }
+        // formule vide, ou formule écrite automatiquement et jamais retouchée à la main : (re)mise à la règle courante
+        // registre des formules écrites par l'application (premier passage : formule posée automatiquement, jamais modifiée depuis)
+        const auto = r.formule && (autoMap[r.id] === r.formule
+          || (!(r.id in autoMap) && get("SELECT 1 FROM indicator_history WHERE indicator_id = ? AND field = 'formule' AND old_value IS NULL AND new_value = ?", r.id, r.formule)
+            && !get("SELECT 1 FROM indicator_history WHERE indicator_id = ? AND field = 'formule' AND old_value IS NOT NULL", r.id)));
+        if (!r.formule || (auto && r.formule !== formule)) { run('UPDATE indicators SET formule = ? WHERE id = ?', formule, r.id); hist(r.id, 'formule', r.formule || null, formule); stats.formules++; }
+        if (!r.formule || auto) autoMap[r.id] = formule;
+        if (!r.mode_calcul || (auto && r.mode_calcul !== mode)) { run('UPDATE indicators SET mode_calcul = ? WHERE id = ?', mode, r.id); stats.modes++; }
         if (once) {
           for (const d of ds) if (known.has(d)) stats.liens += run('INSERT OR IGNORE INTO indicator_datasets (indicator_id, dataset_id) VALUES (?,?)', r.id, d).changes;
           if (couche && !r.couche_id) run('UPDATE indicators SET couche_id = ? WHERE id = ?', couche, r.id);
@@ -319,6 +327,7 @@ function apply() {
       }
     }
     if (once) run("INSERT INTO app_settings (key, value) VALUES ('formules_links_v2', ?)", new Date().toISOString());
+    run("INSERT INTO app_settings (key, value) VALUES ('formules_auto', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(autoMap));
   });
   return stats;
 }
