@@ -85,6 +85,16 @@ Le jeu d'équipements sportifs retenu reste [recensement-des-equipements-sportif
 | Complémentaire santé solidaire (C2S, ex-CMU-C et ACS) | [INSEE / Cnam, bénéficiaires du régime général et de la C2S dans les QPV et leurs communes](https://www.insee.fr/fr/statistiques/8736902), fichiers CSV 2023 et 2025 | communes comptant un QPV (26 dans le Val-de-Marne) ; GOSB recalculé | 10 440 bénéficiaires de la C2S en 2025 (9 404 en 2023), 16,2 % de la population couverte par le régime général ; AME non publiée à la commune |
 | Associations et ESS | [API Recherche d'entreprises](https://recherche-entreprises.api.gouv.fr/docs/) | commune | 1 790 associations, 1 768 structures ESS |
 
+### Déchets, émissions et séries du recensement (oct. 2026)
+
+| Jeu | Source | Niveaux | Ce qui est calculé |
+|---|---|---|---|
+| Collecte des déchets ménagers et assimilés | [ADEME SINOE®, flux de collecte](https://data.ademe.fr/datasets/rsqxbwsxhk-ngmmu5fcasf5t) (API Data Fair) | EPT Grand-Orly Seine Bièvre 2016-2024 (collectivité compétente, valeurs reportées sur ses communes) ; Ivry seule 2009-2015 | kg/hab., part des biodéchets, valorisation matière, projection 2030 |
+| Émissions de GES par secteur | [Airparif, inventaire des émissions](https://data-airparif-asso.opendata.arcgis.com/) (FeatureServer ArcGIS) | EPT, Val-de-Marne, Île-de-France ; 2005, 2010, 2015, 2019, 2022 | t éq. CO2/hab. (scopes 1 et 2), transport routier, projection 2030 |
+| Population par grande tranche d'âge, familles, navettes, scolarisation | INSEE, dossiers complets Melodi (`DS_RP_POPULATION_PRINC`, `DS_RP_FAMILLE_COMP`, `DS_RP_NAVETTES_PRINC`, `DS_RP_EDUCATION_PRINC`) | communes, 2012, 2017, 2023 | évolutions par tranche d'âge, familles monoparentales, 6-17 ans non scolarisés, part modale active et sa projection, emplois occupés par des habitants |
+
+KPI dérivés (sans nouveau jeu) : âge moyen, écart de niveau de vie au Val-de-Marne, taux de création d'établissements, prix d'un appartement en années de niveau de vie, foncier disponible ou mutable et surfaces désimperméabilisables (MOS), taux annuel d'artificialisation, projections par tendance (population, demandeurs d'emploi, RSA).
+
 ### Sources à accès habilité, non publiques (2 jeux)
 
 | Jeu | Source et accès | Niveaux | Ce qui est stocké |
