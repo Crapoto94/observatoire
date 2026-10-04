@@ -53,7 +53,7 @@ export default function App() {
           <NavLink to="/donnees">Données</NavLink>
           <NavLink to="/cartographie">Cartographie</NavLink>
           <NavLink to="/couches" title="Couches géographiques du Val-de-Marne lues en direct">Couches 94</NavLink>
-          <NavLink to="/catalogue">Catalogue</NavLink>
+          <NavLink to="/catalogue" title="Catalogue des données : document de référence et liste des jeux de données (sources, périmètre, granularité, champs, indicateurs liés)">Catalogue</NavLink>
           <a className="nav-sig" href="http://sig.ivry.local/" target="_blank" rel="noreferrer" title="Ouvrir le SIG de la Ville dans un nouvel onglet">SIG Ville ↗</a>
           {admin && <NavLink to="/parametres">Paramètres</NavLink>}
         </nav>
@@ -79,6 +79,7 @@ export default function App() {
           <Route path="/donnees" element={<Donnees />} />
           <Route path="/cartographie" element={<Cartographie />} />
           <Route path="/couches" element={<Couches />} />
+          <Route path="/jeux-de-donnees" element={<Navigate to="/catalogue?vue=jeux" replace />} />
           <Route path="/catalogue" element={<Catalogue />} />
           <Route path="/imports" element={<Navigate to="/parametres" replace />} />
           <Route path="/nouveautes" element={<Nouveautes />} />

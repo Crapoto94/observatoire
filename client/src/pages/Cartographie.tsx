@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { quantileBreaks } from '../explorer';
+import { FONDS, fondTiles } from '../fondsDePlan';
 import { useModal } from '../modal';
 
 // Cartographie : couches (jeux disponibles) en légende, carte des communes avec contour du GOSB et flèches de tendance.
+// Fond de plan IGN optionnel (Géoplateforme) peint sous les communes : voir fondsDePlan.ts.
 const PALETTE = ['#eef4fc', '#c6dbf5', '#92bdee', '#5a97df', '#2f6fc7', '#14418a'];
 const NO_DATA = '#e3e5e8';
 const SCOPES = [
@@ -58,6 +60,15 @@ export default function Cartographie() {
   const svgRef = useRef<SVGSVGElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; vx: number; vy: number; moved: boolean } | null>(null);
+
+  // Fond de plan IGN : le fond choisi et l'opacité des communes sont mémorisés d'une visite à l'autre.
+  const [fondId, setFondId] = useState(() => { try { return localStorage.getItem('carto-fond') ?? 'plan'; } catch { return 'plan'; } });
+  const [fillAlpha, setFillAlpha] = useState(() => { try { return Number(localStorage.getItem('carto-fond-alpha')) || 0.5; } catch { return 0.5; } });
+  const fond = FONDS.find((f) => f.id === fondId) ?? null;
+  const alpha = fond ? fillAlpha : 1; // sans fond de plan, les communes restent pleines
+  const [boxPx, setBoxPx] = useState({ w: 0, h: 0 }); // taille écran de la carte : sert à choisir les tuiles IGN
+  useEffect(() => { try { localStorage.setItem('carto-fond', fondId); } catch { /* ignore */ } }, [fondId]);
+  useEffect(() => { try { localStorage.setItem('carto-fond-alpha', String(fillAlpha)); } catch { /* ignore */ } }, [fillAlpha]);
 
   useEffect(() => { api<Layer[]>('/cartographie/layers').then(setLayers).catch((e) => setError(e.message)); }, []);
   useEffect(() => {
@@ -135,6 +146,19 @@ export default function Cartographie() {
     svg.addEventListener('wheel', onWheel, { passive: false });
     return () => svg.removeEventListener('wheel', onWheel);
   }, [shapes]);
+
+  // taille écran de la carte : le fond de plan IGN a besoin du nombre de pixels réellement
+  // affichés pour servir des tuiles à la bonne résolution.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const ro = new ResizeObserver(() => {
+      const r = svg.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setBoxPx((p) => (p.w === r.width && p.h === r.height ? p : { w: r.width, h: r.height }));
+    });
+    ro.observe(svg);
+    return () => ro.disconnect();
+  }, [shapes]);
   const onDown = (e: React.MouseEvent) => { if (vb) drag.current = { x: e.clientX, y: e.clientY, vx: vb[0], vy: vb[1], moved: false }; };
   const onMove = (e: React.MouseEvent) => {
     const r = box.current?.getBoundingClientRect();
@@ -149,6 +173,9 @@ export default function Cartographie() {
 
   const outline = gosbShapes?.items ?? [];
   const showArrows = arrows;
+  // fond de plan IGN : les tuiles sont recalculées à chaque déplacement (l'URL ne change pas pour
+  // une tuile déjà chargée, donc le navigateur sert le cache).
+  const tuiles = useMemo(() => (fond && vb && boxPx.w ? fondTiles(vb, boxPx, fond) : null), [fond, vb, boxPx]);
   const deptCodes = useMemo(() => [...new Set(items.map((s) => s.dept))].sort(), [items]);
   const ivry = gosbShapes?.items.find((s) => s.code === '94041');
   const inView = (c: [number, number] | undefined) => !!c; // pas de filtrage sur le viewBox : la zone réellement visible déborde du viewBox selon le format de l’écran
@@ -195,6 +222,19 @@ export default function Cartographie() {
             <button className="secondary" onClick={() => { const v = gosbView(); if (v) setVb(v); }}>Vue GOSB</button>
             <button className="secondary" onClick={() => shapes && setVb(shapes.viewBox)}>Vue complète</button>
             <label className="inline small"><input type="checkbox" checked={arrows} onChange={(e) => setArrows(e.target.checked)} /> Flèches de tendance par commune</label>
+            <label className="field small"><span>Fond de plan</span>
+              <select value={fondId} onChange={(e) => setFondId(e.target.value)} title="Fond de carte raster sous les communes (Géoplateforme de l'IGN)">
+                <option value="none">Aucun</option>
+                {FONDS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+              </select>
+            </label>
+            {fond && (
+              <label className="inline small" title="Opacité de la couleur des communes : plus elle est faible, plus le fond de plan IGN est visible">
+                <span>Communes</span>
+                <input type="range" className="carto-alpha" min={20} max={100} step={5} value={Math.round(alpha * 100)} onChange={(e) => setFillAlpha(Number(e.target.value) / 100)} />
+                <b>{Math.round(alpha * 100)} %</b>
+              </label>
+            )}
             {layer && <Link className="small" to={`/donnees?ds=${layer.dataset}`}>Voir les données du jeu</Link>}
             <button className="secondary" disabled={!data || !shapes} onClick={addToDashboard} title="Reprend la couche, le périmètre, la période et le zoom affichés">{added ? '✓ ajoutée' : '+ Mon tableau de bord'}</button>
             {loading && <span className="muted small">Chargement…</span>}
@@ -238,11 +278,18 @@ export default function Cartographie() {
                       {outline.map((s) => <path key={s.code} d={s.path} fill="black" />)}
                     </mask>
                   </defs>
+                  {tuiles && (
+                    <g pointerEvents="none" className="fond-ign">
+                      {tuiles.tuiles.map((t) => (
+                        <image key={t.href} href={t.href} x={t.x} y={t.y} width={t.w} height={t.h} preserveAspectRatio="none" />
+                      ))}
+                    </g>
+                  )}
                   {items.map((s) => {
                     const val = values[s.code];
                     return (
                       <path
-                        key={s.code} d={s.path} fill={val ? PALETTE[classOf(val.v)] : NO_DATA} stroke="#fff" strokeWidth={0.6 * u}
+                        key={s.code} d={s.path} fill={val ? PALETTE[classOf(val.v)] : NO_DATA} fillOpacity={alpha} stroke="#fff" strokeWidth={0.6 * u}
                         onMouseEnter={(e) => { const r = box.current!.getBoundingClientRect(); setHover({ code: s.code, x: e.clientX - r.left, y: e.clientY - r.top }); }}
                         onMouseLeave={() => setHover(null)}
                       />
@@ -296,6 +343,9 @@ export default function Cartographie() {
                 {breaks.map((b, i) => <span key={i} className="lg"><i style={{ background: PALETTE[i] }} />≤ {fmt(b)}{unit}</span>)}
                 <span className="lg"><i style={{ background: NO_DATA }} />n.d.</span>
               </div>
+              {fond && (
+                <a className="map-attrib" href={fond.href} target="_blank" rel="noreferrer noopener" title="Source du fond de carte">{fond.attribution}</a>
+              )}
             </div>
 
             <aside className="map-side">

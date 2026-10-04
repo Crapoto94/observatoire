@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { SourceBadge } from '../badges';
+import { FONDS, fondTiles } from '../fondsDePlan';
 import type { Couche, CoucheStat, Indicator } from '../types';
 
 // Couches géographiques du géoportail du Val-de-Marne, lues EN DIRECT (WFS) pour une commune du département :
@@ -15,12 +16,16 @@ interface Outline { code: string; nom: string; population: number; rings: number
 interface Commune { code: string; nom: string; population: number }
 
 const REF = '94041';
+// même projection que la cartographie régionale et le fond de plan IGN (fondsDePlan.ts, server/idf.js) : superposition exacte des tuiles
+const K = 1000, LAT0 = 48.7, LON0 = 1.4, COS = Math.cos((LAT0 * Math.PI) / 180);
+const project = ([lon, lat]: number[]) => [(lon - LON0) * COS * K, (LAT0 - lat) * K];
 const THEME_OF: Record<string, [string, string]> = {
   'Équipements': ['cohesion', 'Cohésion sociale & santé'], 'Environnement': ['environnement', 'Environnement & STE'],
   'Urbanisme et logement': ['logement', 'Logement & urbanisme'], 'Mobilité': ['mobilite', 'Mobilité'], 'Indicateurs par IRIS (Babord)': ['cohesion', 'Cohésion sociale & santé'],
 };
 const CHORO = ['#eef2ff', '#c7d2fe', '#a5b4fc', '#818cf8', '#6366f1', '#4338ca'];
-const fmt = (v: number | null | undefined, d = 1) => (v == null ? '—' : v.toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : d }));
+// séparateur de milliers en espace insécable classique : l'espace fine (U+202F) n'est pas dessinée par toutes les polices
+const fmt = (v: number | null | undefined, d = 1) => (v == null ? '—' : v.toLocaleString('fr-FR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : d }).replace(/ /g, ' '));
 const labelOf = (k: string) => k.replace(/^(lib|nom|code|nb|pro_lib|pro)_/, '').replace(/_/g, ' ');
 
 export default function Couches() {
@@ -39,6 +44,16 @@ export default function Couches() {
   const [error, setError] = useState('');
   const box = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; vb: number[] } | null>(null);
+  const [boxPx, setBoxPx] = useState({ w: 0, h: 0 });
+  const [fondId, setFondId] = useState(() => { try { return localStorage.getItem('couches-fond') ?? 'plan'; } catch { return 'plan'; } });
+  const fond = FONDS.find((f) => f.id === fondId) ?? null;
+  useEffect(() => { try { localStorage.setItem('couches-fond', fondId); } catch { /* ignore */ } }, [fondId]);
+  useEffect(() => {
+    if (!box.current) return;
+    const ro = new ResizeObserver(() => { const r = box.current!.getBoundingClientRect(); setBoxPx({ w: r.width, h: r.height }); });
+    ro.observe(box.current);
+    return () => ro.disconnect();
+  }, []);
   const current = useRef(commune);
   current.current = commune;
 
@@ -76,13 +91,12 @@ export default function Couches() {
   const proj = useMemo(() => {
     if (!outline) return null;
     const [x0, y0, x1, y1] = outline.bbox;
-    const k = Math.cos(((y0 + y1) / 2) * Math.PI / 180);
-    const f = ([lon, lat]: number[]) => [(lon - x0) * 111320 * k, (y1 - lat) * 110540];
-    const w = (x1 - x0) * 111320 * k, h = (y1 - y0) * 110540;
-    return { f, w, h };
+    const [ox, oy] = project([x0, y1]), [ex, ey] = project([x1, y0]);
+    return { f: project, ox, oy, w: ex - ox, h: ey - oy };
   }, [outline]);
-  const view = vb || (proj ? [-proj.w * 0.03, -proj.h * 0.03, proj.w * 1.06, proj.h * 1.06] : [0, 0, 100, 100]);
-  const unit = view[2] / 900; // taille d'un pixel écran environ
+  const view = vb || (proj ? [proj.ox - proj.w * 0.03, proj.oy - proj.h * 0.03, proj.w * 1.06, proj.h * 1.06] : [0, 0, 100, 100]);
+  const tuiles = useMemo(() => (fond && proj && boxPx.w ? fondTiles(view, boxPx, fond) : null), [fond, proj, boxPx, view.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  const unit = view[2] / Math.max(300, boxPx.w || 900); // taille d'un pixel écran environ
 
   const ringPath = (rings: number[][][]) => (proj ? rings.map((r) => 'M' + r.map((p) => proj.f(p).map((v) => v.toFixed(1)).join(' ')).join('L') + 'Z').join('') : '');
   const linePath = (lines: number[][][]) => (proj ? lines.map((l) => 'M' + l.map((p) => proj.f(p).map((v) => v.toFixed(1)).join(' ')).join('L')).join('') : '');
@@ -144,7 +158,7 @@ export default function Couches() {
           }
           const rings = g.type === 'Polygon' ? g.coordinates : g.coordinates.flat();
           const fill = c.choropleth ? choroColor(d, f.p[c.choropleth]) : c.color;
-          return <path key={k} d={ringPath(rings)} fill={fill} fillOpacity={c.choropleth ? 0.85 : 0.45} stroke={c.choropleth ? '#fff' : c.color} strokeWidth={unit * 0.8} fillRule="evenodd" {...ev} />;
+          return <path key={k} d={ringPath(rings)} fill={fill} fillOpacity={c.choropleth ? (fond ? 0.7 : 0.85) : (fond ? 0.4 : 0.45)} stroke={c.choropleth ? '#fff' : c.color} strokeWidth={unit * 0.8} fillRule="evenodd" {...ev} />;
         })}
       </g>
     );
@@ -181,6 +195,12 @@ export default function Couches() {
               {!communes.length && <option value={REF}>Ivry-sur-Seine</option>}
             </select>
           </label>
+          <label className="inline">Fond de plan
+            <select value={fondId} onChange={(e) => setFondId(e.target.value)} title="Fond de carte raster (Géoplateforme de l'IGN)">
+              {FONDS.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+              <option value="aucun">Aucun</option>
+            </select>
+          </label>
           <a className="btn secondary" href="https://geo.valdemarne.fr/explorer/fr/recherche?scope=dataset" target="_blank" rel="noreferrer">Géoportail du Val-de-Marne ↗</a>
         </div>
       </div>
@@ -213,12 +233,18 @@ export default function Couches() {
           {!outline && <div className="empty">Chargement du contour communal…</div>}
           {outline && proj && (
             <svg viewBox={view.join(' ')} preserveAspectRatio="xMidYMid meet">
-              <path d={ringPath(outline.rings)} fill="#f8fafc" stroke="#334155" strokeWidth={unit * 1.6} fillRule="evenodd" />
+              {tuiles && (
+                <g pointerEvents="none" className="fond-ign">
+                  {tuiles.tuiles.map((t) => <image key={t.href} href={t.href} x={t.x} y={t.y} width={t.w} height={t.h} preserveAspectRatio="none" />)}
+                </g>
+              )}
+              <path d={ringPath(outline.rings)} fill={fond ? 'none' : '#f8fafc'} stroke="#0f172a" strokeWidth={unit * 2.2} strokeDasharray={fond ? `${unit * 6} ${unit * 3}` : undefined} fillRule="evenodd" pointerEvents="none" />
               {active.filter((id) => data[id]?.couche.kind === 'polygon').map(renderLayer)}
               {active.filter((id) => data[id]?.couche.kind === 'line').map(renderLayer)}
               {active.filter((id) => data[id]?.couche.kind === 'point').map(renderLayer)}
             </svg>
           )}
+          {fond && <a className="map-attrib" href={fond.href} target="_blank" rel="noreferrer noopener" title="Source du fond de carte">{fond.attribution}</a>}
           {hover && (
             <div className="map-tip" style={{ left: hover.x + 14, top: hover.y + 10 }}>
               <strong>{hover.title}</strong>
@@ -242,17 +268,17 @@ export default function Couches() {
             {errors[id] && <div className="error small">API indisponible : {errors[id]}</div>}
             {!d && !errors[id] && <div className="muted small">Lecture en cours…</div>}
             {d && (
-              <table className="grid small">
+              <table className="couches-stats">
                 <thead><tr><th>Indicateur</th><th>{d.commune.nom}</th><th>Val-de-Marne</th><th /></tr></thead>
                 <tbody>
                   {c!.stats.map((s) => (
                     <tr key={s.id}>
-                      <td title={s.formule}>{s.label}{s.unit ? <span className="muted"> ({s.unit})</span> : null}</td>
+                      <td title={s.formule}>{s.label}{s.unit && !s.label.toLowerCase().includes(s.unit.replace(/\.$/, '').toLowerCase()) ? <span className="muted"> ({s.unit})</span> : null}</td>
                       <td><strong>{fmt(d.indicators.commune[s.id], 2)}</strong></td>
                       <td>{fmt(d.indicators.dept[s.id], 2)}</td>
                       <td>{adopted(c!, s)
                         ? <Link className="small trend-up" to={`/indicateurs?acces=live`}>✓ fiche</Link>
-                        : <button className="link small" title="Créer une fiche (brouillon) dans la conception des indicateurs" onClick={() => adopt(c!, s)}>+ fiche</button>}</td>
+                        : <button className="fiche-btn" title="Créer une fiche (brouillon) dans la conception des indicateurs" onClick={() => adopt(c!, s)}>+ fiche</button>}</td>
                     </tr>
                   ))}
                 </tbody>

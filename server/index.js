@@ -141,6 +141,15 @@ app.get('/api/cartographie/layer/:id', (req, res) => {
     d ? res.json(d) : res.status(404).json({ error: 'couche introuvable' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+// Catalogue des jeux de données (menu accessible à tous) : sources, périmètre, granularité, champs, indicateurs liés
+let jeuxCache = null;
+app.get('/api/jeux', (req, res) => {
+  try {
+    if (!jeuxCache || Date.now() - jeuxCache.at > 60000) jeuxCache = { at: Date.now(), value: require('./jeux').build() };
+    res.json(jeuxCache.value);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/jeux/:id/champs', async (req, res) => { try { res.json(await require('./jeux').liveFields(req.params.id)); } catch (e) { res.status(e.status || 502).json({ error: e.message }); } });
 // Couches géographiques du Val-de-Marne lues en direct (WFS du géoportail départemental, aucun import)
 const couchesErr = (res, e) => res.status(e.status || 502).json({ error: e.message });
 app.get('/api/couches', (req, res) => res.json(require('./couches').list()));

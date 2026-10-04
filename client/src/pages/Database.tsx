@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api, fmtDate } from '../api';
 
 interface DsStat { id: string; label: string; provider: string; last_import: string | null; rows: number; geos: number | null; idf: number | null; errors: number; last_error: string | null }
@@ -37,7 +38,6 @@ export default function Database({ embedded = false }: { embedded?: boolean }) {
   const geoStatsAvailable = s.datasets.some((d) => d.idf !== null);
   const covered = s.datasets.filter((d) => d.idf !== null && s.totals.idfCommunes && d.idf >= s.totals.idfCommunes * 0.95).length;
   const worst = s.alerts.some((a) => a.level === 'erreur') ? 'erreur' : s.alerts.some((a) => a.level === 'attention') ? 'attention' : 'ok';
-  const maxRows = Math.max(1, ...s.datasets.map((d) => d.rows));
 
   const Card = ({ label, value, sub }: { label: string; value: string; sub?: string }) => (
     <div className="db-card"><div className="muted small">{label}</div><div className="db-val">{value}</div>{sub && <div className="muted small">{sub}</div>}</div>
@@ -74,31 +74,10 @@ export default function Database({ embedded = false }: { embedded?: boolean }) {
       </div>
 
       <h2>Jeux de données</h2>
-      <p className="muted small">Les compteurs affichés proviennent des statistiques d’import pour éviter un parcours complet des observations et préserver la disponibilité de l’application.</p>
-      <div className="table-wrap">
-        <table className="grid compact">
-          <thead><tr><th>Jeu</th><th>Source</th><th className="num">Lignes</th><th className="num">Territoires</th><th className="num">Île-de-France</th><th>Dernier import</th><th>État</th></tr></thead>
-          <tbody>
-            {s.datasets.map((d) => {
-              const idfPct = s.totals.idfCommunes ? Math.round((100 * d.idf) / s.totals.idfCommunes) : 0;
-              return (
-                <tr key={d.id}>
-                  <td title={d.id}>{d.label}<div className="muted small">{d.id}</div></td>
-                  <td className="small">{d.provider}</td>
-                  <td className="num"><div>{nf(d.rows)}</div><div className="db-bar"><i style={{ width: `${(100 * d.rows) / maxRows}%` }} /></div></td>
-                  <td className="num">{d.geos == null ? <span className="muted">—</span> : nf(d.geos)}</td>
-                  <td className="num">{d.idf ? `${nf(d.idf)} (${idfPct} %)` : <span className="muted">—</span>}</td>
-                  <td className="small">{fmtDate(d.last_import)}</td>
-                  <td className="small">
-                    {!d.rows ? <span className="al-attention">vide</span> : d.errors ? <span className="al-attention" title={d.last_error ?? ''}>{d.errors} erreur(s)</span> : <span className="trend-up">ok</span>}
-                    {d.errors > 0 && d.last_error && <div className="muted small">{d.last_error.slice(0, 90)}</div>}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <p className="muted small">
+        Le détail des jeux (source, périmètre, granularité, champs, indicateurs liés, état de l’import) est désormais dans le menu{' '}
+        <Link to="/catalogue?vue=jeux">Catalogue → Liste des jeux de données</Link>, accessible à tous. {s.alerts.length === 0 && s.datasets.every((d) => d.rows) ? 'Tous les jeux contiennent des données.' : ''}
+      </p>
 
       <h2>Tables</h2>
       <div className="table-wrap short">
