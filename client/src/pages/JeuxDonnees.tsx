@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
 import { SourceBadge } from '../badges';
+import DocSource from './DocSource';
 
 // Liste des jeux de données (vue du menu Catalogue, accessible à tous) : catalogue des jeux importés et des couches lues en direct,
 // avec source (icône par producteur), périmètre, granularité, champs disponibles et indicateurs qui y font référence.
@@ -120,7 +121,7 @@ export default function JeuxDonnees({ embedded = false }: { embedded?: boolean }
                   {j.description && <p>{j.description}</p>}
                   <div className="jeu-grid">
                     <dl>
-                      <dt>Source</dt><dd><SourceIcon s={j.source} withLabel /> {j.doc_url && <a href={j.doc_url} target="_blank" rel="noreferrer">documentation ↗</a>}</dd>
+                      <dt>Source</dt><dd><SourceIcon s={j.source} withLabel /> {j.doc_url && <a href="#doc-source" onClick={(e) => { e.preventDefault(); document.getElementById(`doc-${j.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>documentation ↓</a>}</dd>
                       <dt>Accès</dt><dd>{j.mode === 'live' ? 'Lecture en direct' : 'Import'} · connecteur {j.connecteur}{j.portail ? ` · ${j.portail}` : ''}</dd>
                       <dt>Périmètre</dt><dd>{j.perimetre.couverture}<div className="muted small">{j.perimetre.stocke}</div></dd>
                       <dt>Granularité</dt><dd>{j.granularite.geo}{j.granularite.maille && <div className="muted small">{j.granularite.maille}</div>}</dd>
@@ -130,6 +131,9 @@ export default function JeuxDonnees({ embedded = false }: { embedded?: boolean }
                     </dl>
                     <div className="jeu-actions"><Link className="btn secondary" to={j.link}>{j.mode === 'live' ? 'Voir sur la carte' : 'Explorer les données'} →</Link></div>
                   </div>
+
+                  <h3 id={`doc-${j.id}`}>Documentation de la source</h3>
+                  <DocSource id={j.id} />
 
                   <h3>Champs disponibles</h3>
                   {typeof fields === 'string' && <div className="error small">Champs indisponibles : {fields}</div>}

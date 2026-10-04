@@ -149,6 +149,7 @@ app.get('/api/jeux', (req, res) => {
     res.json(jeuxCache.value);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+app.get('/api/jeux/:id/doc', async (req, res) => { try { res.json(await require('./docs').docOf(req.params.id)); } catch (e) { res.status(e.status || 502).json({ error: e.message }); } });
 app.get('/api/jeux/:id/champs', async (req, res) => { try { res.json(await require('./jeux').liveFields(req.params.id)); } catch (e) { res.status(e.status || 502).json({ error: e.message }); } });
 // Couches géographiques du Val-de-Marne lues en direct (WFS du géoportail départemental, aucun import)
 const couchesErr = (res, e) => res.status(e.status || 502).json({ error: e.message });

@@ -97,6 +97,9 @@ export default function Couches() {
   const view = vb || (proj ? [proj.ox - proj.w * 0.03, proj.oy - proj.h * 0.03, proj.w * 1.06, proj.h * 1.06] : [0, 0, 100, 100]);
   const tuiles = useMemo(() => (fond && proj && boxPx.w ? fondTiles(view, boxPx, fond) : null), [fond, proj, boxPx, view.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
   const unit = view[2] / Math.max(300, boxPx.w || 900); // taille d'un pixel écran environ
+  // taille des points en pixels écran : lisible à l'échelle de la commune, un peu plus grande quand on zoome
+  const zoom = proj ? Math.min(8, Math.max(1, (proj.w * 1.06) / view[2])) : 1;
+  const pointPx = (n: number) => (n > 800 ? 5 : 7) * (1 + 0.3 * Math.log2(zoom));
 
   const ringPath = (rings: number[][][]) => (proj ? rings.map((r) => 'M' + r.map((p) => proj.f(p).map((v) => v.toFixed(1)).join(' ')).join('L') + 'Z').join('') : '');
   const linePath = (lines: number[][][]) => (proj ? lines.map((l) => 'M' + l.map((p) => proj.f(p).map((v) => v.toFixed(1)).join(' ')).join('L')).join('') : '');
@@ -151,10 +154,10 @@ export default function Couches() {
           const ev = { onMouseMove: (e: React.MouseEvent) => showTip(e, d, f), onMouseLeave: () => setHover(null) };
           if (g.type === 'Point' || g.type === 'MultiPoint') {
             const pts: number[][] = g.type === 'Point' ? [g.coordinates] : g.coordinates;
-            return pts.map((p, j) => { const [x, y] = proj.f(p); return <circle key={`${k}-${j}`} cx={x} cy={y} r={unit * (d.features.length > 800 ? 2.2 : 3.6)} fill={c.color} stroke="#fff" strokeWidth={unit * 0.6} {...ev} />; });
+            return pts.map((p, j) => { const [x, y] = proj.f(p); return <circle key={`${k}-${j}`} className="couche-point" cx={x} cy={y} r={unit * pointPx(d.features.length)} fill={c.color} stroke="#fff" strokeWidth={unit * 1.6} {...ev} />; });
           }
           if (g.type === 'LineString' || g.type === 'MultiLineString') {
-            return <path key={k} d={linePath(g.type === 'LineString' ? [g.coordinates] : g.coordinates)} fill="none" stroke={c.color} strokeWidth={unit * 2.4} strokeLinecap="round" {...ev} />;
+            return <path key={k} d={linePath(g.type === 'LineString' ? [g.coordinates] : g.coordinates)} fill="none" stroke={c.color} strokeWidth={unit * 3.5} strokeLinecap="round" {...ev} />;
           }
           const rings = g.type === 'Polygon' ? g.coordinates : g.coordinates.flat();
           const fill = c.choropleth ? choroColor(d, f.p[c.choropleth]) : c.color;

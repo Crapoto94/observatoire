@@ -875,3 +875,22 @@ button.fiche-btn:hover { background: rgba(37, 99, 235, .08); }
 .jeu-refs .nat { margin-left: 6px; }
 @media (max-width: 700px) { .jeu-body { padding-left: 16px; } .jeu-grid dl { grid-template-columns: 1fr; } }
 .jeux-subhead { margin: 0 0 6px; }
+.couches-map .couche-point { filter: drop-shadow(0 0 1.5px rgba(15, 23, 42, .55)); cursor: pointer; }
+.couches-map .couche-point:hover { stroke: #0f172a; }
+
+/* documentation lisible de la source d'un jeu de données */
+.doc-source { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--panel-2); }
+.doc-title { margin-bottom: 8px; }
+.doc-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 16px; margin: 0 0 8px; font-size: 13px; }
+.doc-facts dt { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: #64748b; }
+.doc-facts dd { margin: 0; }
+.doc-desc { font-size: 13px; line-height: 1.5; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; margin: 6px 0; }
+.doc-desc.clamped > div { max-height: 11em; overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+.doc-desc p { margin: 0 0 .6em; }
+.doc-block { margin: 6px 0; font-size: 13px; }
+.doc-block summary { cursor: pointer; font-weight: 600; }
+.doc-tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.doc-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+.doc-table th, .doc-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.doc-files { margin: 4px 0; padding-left: 18px; font-size: 13px; }
+.doc-links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 8px; }
