@@ -953,3 +953,39 @@ button.fiche-btn:hover { background: rgba(37, 99, 235, .08); }
 /* besoin de données internes à la collectivité */
 .src-interne { background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }
 .src-interne-mixte { background: #fff7ed; color: #9a3412; border: 1px dashed #fdba74; }
+
+/* Quartiers officiels de la Ville : carte, fiche et tableau */
+.quartiers section { margin-top: 22px; }
+.q-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 980px) { .q-layout { grid-template-columns: 1fr; } }
+.q-map-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 12px 14px; box-shadow: var(--shadow-1); min-width: 0; }
+.q-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+.q-controls select { max-width: 100%; min-width: 0; flex: 1 1 260px; }
+.q-map { width: 100%; height: auto; display: block; }
+.q-zone { stroke: var(--panel); stroke-width: 2; cursor: pointer; transition: opacity .15s; }
+.q-zone:hover { opacity: .85; }
+.q-zone.on { stroke: var(--ink); stroke-width: 3; }
+.q-iris { fill: none; stroke: var(--ink); stroke-width: .7; stroke-dasharray: 3 3; opacity: .45; pointer-events: none; }
+.q-label { pointer-events: none; }
+.q-label text { text-anchor: middle; font-size: 12px; font-weight: 600; fill: var(--ink); paint-order: stroke; stroke: var(--panel); stroke-width: 5px; stroke-linejoin: round; }
+.q-label text.v { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.q-fiche { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-xl); padding: 12px 16px; box-shadow: var(--shadow-1); min-width: 0; max-height: 640px; overflow: auto; }
+.q-fiche h2 { margin: 0 0 4px; }
+.q-cmp, .q-table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.q-cmp th, .q-cmp td, .q-table th, .q-table td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.q-cmp td.num, .q-table td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.q-cmp tr, .q-table tbody tr { cursor: pointer; }
+.q-cmp tr.on td, .q-table tr.on td:first-child { font-weight: 600; }
+.q-cmp { table-layout: fixed; }
+.q-cmp th:first-child { width: 48%; }
+.q-ecart { display: block; width: fit-content; margin: 2px 0 0 auto; font-size: 11px; font-weight: 600; padding: 0 5px; border-radius: 8px; }
+.q-ecart.up { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+.q-ecart.down { background: var(--panel-3); color: var(--muted); }
+.q-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius-xl); background: var(--panel); }
+.q-table { min-width: 860px; }
+.q-table td:first-child { min-width: 240px; }
+.q-table th.on, .q-table td.on { outline: 2px solid var(--ink); outline-offset: -2px; }
+.q-table tr.q-theme td { background: var(--panel-3); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; cursor: default; }
+.q-table th button.link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+.q-compo { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.q-compo ul { margin: 6px 0 0; padding-left: 18px; }

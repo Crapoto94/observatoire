@@ -164,6 +164,11 @@ app.get('/api/jeux/:id/champs', async (req, res) => { try { res.json(await requi
 // Couches géographiques du Val-de-Marne lues en direct (WFS du géoportail départemental, aucun import)
 const couchesErr = (res, e) => res.status(e.status || 502).json({ error: e.message });
 app.get('/api/couches', (req, res) => res.json(require('./couches').list()));
+// Quartiers officiels de la Ville : composition en IRIS et indicateurs par quartier (recensement, Filosofi, CAF)
+app.get('/api/quartiers', (req, res) => { try { res.json(require('./quartiers').build()); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/quartiers/rafraichir', auth.requireAdmin, async (req, res) => {
+  try { res.json(await require('./quartiers').refresh()); } catch (e) { res.status(502).json({ error: e.message }); }
+});
 app.get('/api/couches/valeurs', async (req, res) => { try { res.json(await require('./couches').valeursFiches()); } catch (e) { couchesErr(res, e); } });
 app.get('/api/couches/communes', async (req, res) => { try { res.json(await require('./couches').communeList()); } catch (e) { couchesErr(res, e); } });
 app.get('/api/couches/contour/:code', async (req, res) => { try { res.json(await require('./couches').outline(req.params.code)); } catch (e) { couchesErr(res, e); } });
@@ -615,4 +620,7 @@ app.listen(PORT, '0.0.0.0', () => {
   setTimeout(() => { require('./live').mesurerTout().catch((e) => console.warn('[live]', e.message)); }, 90000);
   // valeurs des fiches rattachées à une couche en direct : calcul et mise en cache (affichage immédiat dans la conception)
   setTimeout(() => { require('./couches').valeursFiches().catch((e) => console.warn('[couches]', e.message)); }, 45000);
+  // quartiers : chargement des IRIS au premier démarrage, puis une fois par mois
+  setTimeout(() => { const q = require('./quartiers'); if (q.isEmpty()) q.refresh().catch((e) => console.warn('[quartiers]', e.message)); }, 60000);
+  setInterval(() => { require('./quartiers').refreshIfOld(30).catch((e) => console.warn('[quartiers]', e.message)); }, 24 * 3600 * 1000); // vérification quotidienne (un délai de 30 jours dépasserait la limite de setInterval)
 });

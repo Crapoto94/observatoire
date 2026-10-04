@@ -99,6 +99,17 @@ Le jeu d'équipements sportifs retenu reste [recensement-des-equipements-sportif
 
 KPI dérivés (sans nouveau jeu) : âge moyen, écart de niveau de vie au Val-de-Marne, taux de création d'établissements, prix d'un appartement en années de niveau de vie, foncier disponible ou mutable et surfaces désimperméabilisables (MOS), taux annuel d'artificialisation, projections par tendance (population, demandeurs d'emploi, RSA).
 
+### Quartiers officiels de la Ville (données à l'IRIS, oct. 2026)
+
+| Jeu | Source | Niveaux | Usage |
+|---|---|---|---|
+| Contours des IRIS | [IGN, Contours… IRIS®](https://geoservices.ign.fr/contoursiris) (service WFS de la Géoplateforme) | 22 IRIS d'Ivry | composition des 6 quartiers officiels (parts de surface) |
+| Recensement 2022 à l'IRIS | [INSEE, bases infracommunales](https://www.insee.fr/fr/statistiques/8647014) (population, activité, logement, familles, diplômes) | IRIS | indicateurs par quartier |
+| Revenus Filosofi 2021 à l'IRIS | [INSEE](https://www.insee.fr/fr/statistiques/8229323) (revenus disponibles ; dernier millésime publié) | IRIS (communes de 5 000 habitants ou plus) | niveau de vie médian, taux de pauvreté, prestations sociales (moyennes pondérées) |
+| Allocataires CAF à l'IRIS | [CAF, data.caf.fr](https://data.caf.fr/explore/dataset/ndur_s_qf_400_iris_f/) (RSA, aides au logement, quotient familial) | IRIS, décembre 2024 | foyers au RSA et aux aides au logement, quotient familial |
+
+Les quartiers (fichier fourni par la Ville) sont reconstitués en répartissant chaque IRIS au prorata de sa surface dans chaque quartier.
+
 ### Sources à accès habilité, non publiques (2 jeux)
 
 | Jeu | Source et accès | Niveaux | Ce qui est stocké |

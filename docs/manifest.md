@@ -47,6 +47,7 @@ L'application est organisée autour d'une **navigation principale** et de plusie
 | **Carte mentale** | `/carte` | Vue relationnelle des indicateurs |
 | **Données** | `/donnees` | Explorateur tabulaire et graphique ; chargement/actualisation des jeux sur les 1 266 communes d'Île-de-France si les sources le permettent. Les réponses paginées sont contrôlées ; un lot trop volumineux est subdivisé et réessayé pour éviter qu'une limite d'API ne laisse des communes sans données. |
 | **Cartographie** | `/cartographie` | Carte géographique par couche (contours GOSB, départements, QPV), avec fonds IGN optionnels et réglage d'opacité des communes mémorisé localement |
+| **Quartiers** | `/quartiers` | Les 6 quartiers officiels de la Ville (Centre-ville, Ivry-Port, Louis-Bertrand – Mirabeau, Marat – Parmentier, Monmousseau – Vérollot, Petit-Ivry) reconstitués à partir des 22 IRIS de l'INSEE : carte colorée selon un indicateur, fiche du quartier comparée à Ivry, tableau complet et composition en IRIS |
 | **Couches 94** | `/couches` | Couches géographiques du géoportail du Val-de-Marne lues en direct (WFS) : carte d'une commune du département sur fond de plan IGN (plan ou photographies aériennes) et indicateurs calculés à la volée |
 | **Catalogue** | `/catalogue` | Catalogue des données : document de référence des données ouvertes et bouton « Liste des jeux de données » (`/catalogue?vue=jeux`, ancienne adresse `/jeux-de-donnees` redirigée) : jeux importés et couches lues en direct, avec source (icône par producteur : INSEE, DGFiP, géoportail du Val-de-Marne, MGP…), périmètre, granularité géographique et temporelle, champs et modalités dépliables, indicateurs et KPI qui y font référence ; recherche et filtres par source et par mode (importé / live) ; « Documentation de la source » : métadonnées publiées par la source (Melodi, data.gouv.fr, Opendatasoft, Data Fair, DiDo, géoportail du Val-de-Marne) lues en direct et mises en forme (producteur, couverture, résolution, période, fréquence, licence, description, champs, fichiers, liens), les métadonnées brutes restant accessibles par un lien ; badge « 🔒 Non public » pour les jeux à accès habilité (API Entreprise : vie associative), également affiché dans Données, sur les cartes KPI et dans la conception ; mode des jeux importés : temps de réponse de la source mesuré pour Ivry (renouvelé chaque semaine), « ⚡ live proposé » si la source répond en 300 ms ou moins, sélecteur Base / Live (administrateurs) ; en mode live, la page Données relit la source à l'affichage (délai 1,5 s), met la base à jour et se replie sur la base si la source ne répond pas (« ⚠ source injoignable : repli sur la base ») ; KPI et cartographie régionale restent calculés sur la base |
 | **Nouveautés** | `/nouveautes` | Historique des versions |
@@ -175,6 +176,25 @@ Le **manifest fonctionnel** (`docs/manifest.md`) est servi par le serveur à l'U
 - **« + fiche »** : crée une fiche brouillon dans la conception des indicateurs (nature « calculé », formule, source, couche rattachée).
 
 **Comportements** : lecture en direct à chaque affichage (cache serveur de 10 minutes) ; objets filtrés par intersection avec le contour communal ; message « API indisponible » si le géoportail ne répond pas ; aucune donnée stockée.
+
+### 6.4 ter Quartiers – `/quartiers`
+
+**Objectif fonctionnel** : Disposer des indicateurs des quartiers officiels de la Ville, qui regroupent chacun plusieurs IRIS.
+
+**Éléments fonctionnels présents** :
+- **Carte des 6 quartiers** colorée selon l'indicateur choisi (sélecteur groupé par thème), avec le nom et la valeur de chaque quartier ; option « Limites des IRIS » en surimpression.
+- **Fiche quartier** (clic sur la carte ou sur l'en-tête du tableau) : IRIS qui composent le quartier (avec leur part quand l'IRIS est partagé), tous les indicateurs du quartier comparés à Ivry ; écarts d'au moins 2 points signalés.
+- **Tableau de tous les indicateurs** : une ligne par indicateur, une colonne par quartier et une colonne Ivry, teinte proportionnelle à la position entre le minimum et le maximum des quartiers, source et millésime.
+- **Composition et méthode** : liste des IRIS de chaque quartier et sources.
+- **Mettre à jour les données** (administrateurs) : recharge les contours des IRIS, la composition et les données.
+
+**Indicateurs** : démographie (population, moins de 15 ans, 15-29 ans, 65 et 75 ans ou plus, immigrés, étrangers), familles (ménages d'une personne, familles monoparentales, taille des ménages), emploi et revenus (chômage, activité, contrats précaires, cadres, ouvriers et employés, niveau de vie médian, taux de pauvreté, part des prestations sociales), formation (sans diplôme, diplômés du supérieur, 18-24 ans scolarisés), logement (logements, vacance, locataires HLM, propriétaires, suroccupation, petits logements), mobilité (ménages sans voiture, marche et vélo, transports en commun), cohésion sociale (foyers au RSA et aux aides au logement pour 1 000 habitants, allocataires au quotient familial inférieur à 800 €).
+
+**Comportements** :
+- **Sources à l'IRIS** : recensement 2022 (bases infracommunales de l'INSEE), revenus Filosofi 2021 (INSEE), allocataires CAF de décembre 2024 ; contours des IRIS de l'IGN.
+- **Reconstitution des quartiers** : les limites des quartiers ne suivent pas toujours celles des IRIS ; un IRIS partagé est réparti entre les quartiers au prorata de sa surface (population supposée uniforme dans l'IRIS).
+- **Effectifs additionnés, taux recalculés** ; les médianes et taux de Filosofi sont des moyennes des IRIS pondérées par leur population (ordre de grandeur, signalé par un astérisque).
+- **Mise à jour automatique** : chargement au premier démarrage, puis vérification quotidienne et rechargement si les données ont plus de 30 jours.
 
 ### 6.5 Pages annexes
 
