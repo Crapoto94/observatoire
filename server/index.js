@@ -626,7 +626,7 @@ app.listen(PORT, '0.0.0.0', () => {
     setTimeout(() => require('./calendrier').tick().catch((e) => console.warn('[calendrier]', e.message)), 10 * 60000);
     setInterval(() => require('./calendrier').tick().catch((e) => console.warn('[calendrier]', e.message)), 24 * 3600 * 1000);
   }
-  // quartiers : chargement des IRIS au premier démarrage, puis une fois par mois
-  setTimeout(() => { const q = require('./quartiers'); if (q.isEmpty()) q.refresh().catch((e) => console.warn('[quartiers]', e.message)); }, 60000);
+  // quartiers : chargement des IRIS au premier démarrage (ou si une source manque), puis une fois par mois
+  setTimeout(() => { const q = require('./quartiers'); if (q.incomplete()) q.refresh().catch((e) => console.warn('[quartiers]', e.message)); }, 60000);
   setInterval(() => { require('./quartiers').refreshIfOld(30).catch((e) => console.warn('[quartiers]', e.message)); }, 24 * 3600 * 1000); // vérification quotidienne (un délai de 30 jours dépasserait la limite de setInterval)
 });

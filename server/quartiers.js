@@ -355,10 +355,12 @@ function build() {
 }
 
 const isEmpty = () => (get('SELECT COUNT(*) AS n FROM iris_values').n === 0);
+// une source attendue est absente (premier démarrage ou source ajoutée depuis le dernier chargement)
+const incomplete = () => isEmpty() || !get("SELECT 1 FROM iris_values WHERE source = 'qpv' LIMIT 1") || !get("SELECT 1 FROM app_settings WHERE key = 'quartiers_arrets'");
 /** Recharge si la dernière mise à jour date de plus de `days` jours. */
 function refreshIfOld(days) {
   const maj = get("SELECT value FROM app_settings WHERE key = 'quartiers_maj'")?.value;
   return !maj || Date.now() - Date.parse(maj) > days * 86400000 ? refresh() : Promise.resolve(null);
 }
 
-module.exports = { build, refresh, refreshIfOld, isEmpty, INDICATEURS, QUARTIERS, sharesOf };
+module.exports = { build, refresh, refreshIfOld, isEmpty, incomplete, INDICATEURS, QUARTIERS, sharesOf };
