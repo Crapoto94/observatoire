@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, fmtDate } from '../api';
-import { InterneBadge, MailleBadge, MultiBadge, NatureBadge, PriveBadge, SourceBadge, besoinInterne } from '../badges';
+import { MailleBadge, MultiBadge, NatureBadge, PriveBadge, besoinInterne } from '../badges';
 import { KpiVal, LiveVal, evolutionOf, fiabOf, fmtVal, isEvolution } from '../fiabilite';
 import { CARTOS, Carto, Couche, Dataset, FIABILITES, FAISABILITES, HistoryEntry, Indicator, NIVEAUX, NIVEAU_FILL, Niveau, ORIGINES, Origine, STATUTS, Statut } from '../types';
 
@@ -22,20 +22,40 @@ function PrioPill({ p }: { p: number | null }) {
   return p ? <span className={`prio prio-${p}`}>P{p}</span> : <span className="muted">—</span>;
 }
 
-function OrigineChip({ o }: { o: Origine | null }) {
-  const x = ORIGINES.find((v) => v.key === o);
-  return x ? <span className="chip" style={{ background: x.color, color: '#fff' }} title={x.hint}>{x.label}</span> : <span className="muted">—</span>;
-}
-
-function CartoChip({ c }: { c: Carto | null }) {
-  const x = CARTOS.find((v) => v.key === c);
-  if (!x) return <span className="muted">—</span>;
-  return <span className="chip" style={{ background: c === 'non' ? 'transparent' : x.color, color: c === 'non' ? x.color : '#fff', border: `1px solid ${x.color}` }} title={x.hint}>{c === 'non' ? '—' : '🗺'} {x.label}</span>;
-}
-
 export function StatutPill({ s }: { s: Statut | null }) {
   const st = STATUTS.find((x) => x.key === (s || 'brouillon'))!;
   return <span className="chip" style={{ background: st.color, color: '#fff' }}>{st.label}</span>;
+}
+
+// Colonne « Nature » simplifiée : une pastille de nature, une icône d'accès et, au besoin, une puce « interne ».
+// Tout le détail (importé/direct, non public, origine, carto, jeux concernés) est réuni dans l'infobulle.
+function NatureCell({ i, datasets, dsLabel, coucheLabel }: { i: Indicator; datasets: Dataset[]; dsLabel: (id: string) => string; coucheLabel: (id: string) => string }) {
+  const fed = i.dataset_ids.length > 0 || !!i.couche_id;
+  const prives = i.dataset_ids.filter((d) => datasets.find((x) => x.id === d)?.prive);
+  const bi = besoinInterne(i);
+  const lignes: string[] = [];
+  if (!fed) lignes.push(i.formule ? `Formule (sans donnée rattachée) : ${i.formule}` : 'Aucune donnée rattachée');
+  else {
+    lignes.push(i.mode_calcul === 'calcule' ? `Calculé${i.formule ? ` : ${i.formule}` : ''}` : i.mode_calcul === 'direct' ? 'Donnée directe' : 'Nature non renseignée');
+    if (i.dataset_ids.length) lignes.push(`Importé de ${i.dataset_ids.map(dsLabel).join(', ')}`);
+    if (i.couche_id) lignes.push(`Lu en direct : ${coucheLabel(i.couche_id)}`);
+  }
+  if (prives.length) lignes.push(`Non public : ${prives.map(dsLabel).join(', ')}`);
+  if (bi) lignes.push(bi === 'interne' ? 'Besoin de données internes à la collectivité' : 'Complément interne nécessaire');
+  const ox = ORIGINES.find((v) => v.key === i.origine);
+  if (ox) lignes.push(`Origine : ${ox.label}`);
+  const cx = CARTOS.find((v) => v.key === i.cartographie);
+  if (i.cartographie) lignes.push(`Cartographie : ${cx?.label ?? i.cartographie}`);
+  const title = lignes.join('\n');
+  return (
+    <div className="nature-cell" title={title}>
+      <NatureBadge i={i} />
+      {i.dataset_ids.length > 0 && <span className="acc acc-import" title={`Importé : ${i.dataset_ids.map(dsLabel).join(', ')}`}>⬇</span>}
+      {i.couche_id && <span className="acc acc-live" title={`Lu en direct : ${coucheLabel(i.couche_id)}`}>⚡</span>}
+      {prives.length > 0 && <span className="acc acc-prive" title={`Non public : ${prives.map(dsLabel).join(', ')}`}>🔒</span>}
+      {bi && <span className="acc acc-interne" title={bi === 'interne' ? 'Besoin de données internes' : 'Complément interne nécessaire'}>🏢</span>}
+    </div>
+  );
 }
 
 
@@ -313,6 +333,22 @@ export default function Indicateurs() {
       </div>
       {error && <div className="error">{error}</div>}
 
+      <details className="ind-legende-box">
+        <summary>Légende des pastilles</summary>
+        <div className="ind-legende">
+          <span><b className="nat nat-direct">● Directe</b> valeur lue dans un jeu</span>
+          <span><b className="nat nat-calc">ƒx Calculé</b> formule documentée</span>
+          <span><b className="nat nat-none">Sans donnée</b> aucun jeu rattaché</span>
+          <span><b><span className="acc acc-import">⬇</span></b> importé</span>
+          <span><b><span className="acc acc-live">⚡</span></b> lu en direct</span>
+          <span><b><span className="acc acc-prive">🔒</span></b> non public</span>
+          <span><b><span className="acc acc-interne">🏢</span></b> données internes requises</span>
+          <span><b className="prio prio-1">P1</b> priorité (1 = haute)</span>
+          <span><b className="chip">Brouillon</b> statut de la fiche</span>
+        </div>
+        <div className="muted small">Le détail complet d’un indicateur (jeux, origine, cartographie) apparaît au survol de sa cellule « Nature ».</div>
+      </details>
+
       <div className="table-wrap">
         <table className="grid ind-table">
           <thead>
@@ -350,19 +386,10 @@ export default function Indicateurs() {
                 <td className="c-stack">
                   <PrioPill p={i.priorite} />
                   <StatutPill s={i.statut} />
-                  {i.faisabilite ? <span className={`faisa faisa-${i.faisabilite}`}>{FAISABILITES.find((f) => f.key === i.faisabilite)?.short}</span> : null}
+                  {i.faisabilite ? <span className={`faisa faisa-${i.faisabilite}`} title={`Faisabilité : ${FAISABILITES.find((f) => f.key === i.faisabilite)?.label}`}>{FAISABILITES.find((f) => f.key === i.faisabilite)?.short}</span> : null}
                 </td>
                 <td className="c-nature">
-                  <div className="badge-row">
-                    <NatureBadge i={i} />
-                    {i.dataset_ids.some((d) => datasets.find((x) => x.id === d)?.prive) && <PriveBadge title={`Données non publiques : ${i.dataset_ids.filter((d) => datasets.find((x) => x.id === d)?.prive).map(dsLabel).join(', ')}`} />}
-                  </div>
-                  <div className="badge-row">
-                    {i.dataset_ids.length > 0 && <SourceBadge kind="import" title={`Données importées : ${i.dataset_ids.map(dsLabel).join(', ')}`} />}
-                    {i.couche_id && <SourceBadge kind="live" title={`Lu en direct : ${coucheLabel(i.couche_id)} (géoportail du Val-de-Marne)`} />}
-                    {(() => { const bi = besoinInterne(i); return bi ? <InterneBadge kind={bi} /> : null; })()}
-                  </div>
-                  {(i.origine || i.cartographie) && <div className="badge-row"><OrigineChip o={i.origine} /><CartoChip c={i.cartographie} /></div>}
+                  <NatureCell i={i} datasets={datasets} dsLabel={dsLabel} coucheLabel={coucheLabel} />
                 </td>
                 <td className="clamp" title={i.source || ''}>
                   <div className="clamp2">{i.source || <span className="muted">—</span>}</div>

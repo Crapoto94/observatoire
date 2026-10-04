@@ -45,8 +45,9 @@ export interface Maille { code: string; label: string; nom: string; level: 'DEP'
 // Maille de la valeur affichée : la valeur d'un indicateur peut être départementale (94) ou régionale (IDF)
 // au lieu d'être celle de la commune de référence — le badge évite toute confusion.
 export function MailleBadge({ m }: { m: Maille }) {
-  const kind = m.level === 'REG' ? 'reg' : 'dep';
-  return <span className={`src src-maille src-maille-${kind}`} title={`Valeur à l'échelle ${kind === 'REG' ? 'régionale (Île-de-France)' : 'départementale (Val-de-Marne)'} : ${m.nom}`}>{m.label}</span>;
+  const estRegion = m.level === 'REG';
+  const kind = estRegion ? 'reg' : 'dep';
+  return <span className={`src src-maille src-maille-${kind}`} title={`Valeur à l'échelle ${estRegion ? 'régionale (Île-de-France)' : 'départementale (Val-de-Marne)'} : ${m.nom}`}>{m.label}</span>;
 }
 
 export function PriveBadge({ title }: { title?: string }) {
