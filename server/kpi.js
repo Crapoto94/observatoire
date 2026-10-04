@@ -6,6 +6,8 @@ const { REF_GEO } = require('./seed');
 // jeux NON PUBLICS (accès habilité) : les KPI qui en sont issus sont signalés dans l'interface
 const PRIVES = new Set(require('./datasets').filter((d) => d.prive).map((d) => d.id));
 const IGNORED = new Set(['UNIT_MEASURE', 'UNIT_MULT', 'OBS_STATUS']);
+// Mailles de contexte (calculées à chaque compute) : la valeur d'un KPI départemental ou régional s'affiche avec un badge.
+const GEOS_MAILLE = {};
 const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['’]/g, ' ').toLowerCase();
 
 // dir : sens favorable (up = une hausse est positive, down = une hausse est défavorable, none = neutre)
@@ -195,6 +197,10 @@ function seriesOf(rows, spec) {
 
 function compute() {
   const geos = [[REF_GEO.code, 'ref'], ['GOSB', 'ept'], ['94', 'dep'], ['11', 'reg']];
+  // libellé de la maille d'un territoire de contexte (badge affiché à côté de la valeur : commune, 94, IDF)
+  const nomOf = (code) => all('SELECT nom FROM geos WHERE code = ?', code)[0]?.nom || code;
+  GEOS_MAILLE.dep = { code: '94', label: '94', nom: nomOf('94'), level: 'DEP' };
+  GEOS_MAILLE.reg = { code: '11', label: 'IDF', nom: nomOf('11'), level: 'REG' };
   const indicators = all('SELECT id, libelle, libelle_carte, statut, priorite, theme, theme_label, niveau FROM indicators');
   const dsInfo = Object.fromEntries(all('SELECT id, label, last_import FROM datasets').map((d) => [d.id, d]));
   const withData = new Set(all('SELECT DISTINCT indicator_id FROM indicator_datasets').map((r) => r.indicator_id));
@@ -232,6 +238,8 @@ function compute() {
     }
     // jeux sans donnée communale (ex. Assurance Maladie, maille départementale) : la valeur de contexte
     // (département ou région) tient lieu de valeur principale, à condition de la déclarer (spec.contexteDep).
+    // maille de la valeur affichée : la commune de référence par défaut, sinon le territoire de contexte (94 ou 11)
+    const maille = res.ref?.length ? null : spec.contexteDep ? (spec.contexteDep === 'dep' ? GEOS_MAILLE.dep : GEOS_MAILLE.reg) : null;
     const s = res.ref?.length ? res.ref : (spec.contexteDep && res[spec.contexteDep]?.length ? res[spec.contexteDep] : []);
     const last = s[s.length - 1] || null, prev = s.length > 1 ? s[s.length - 2] : null;
     const at = (list, period) => (list || []).find((p) => p.period === period) || null;
@@ -245,6 +253,7 @@ function compute() {
       concept: spec.concept || spec.id, // KPI de même concept : sources comparables entre elles
       id: spec.id, label: spec.label, theme: spec.theme, unit: spec.unit || (spec.kpiPerK ? 'pour 1 000 hab.' : ''), dir: spec.dir, dataset: spec.dataset, datasetLabel: dsInfo[spec.dataset]?.label || spec.dataset,
       last_import: dsInfo[spec.dataset]?.last_import || null,
+      maille, // maille de la valeur affichée (null = commune de référence ; { code, label, nom, level } sinon)
       value: last?.value ?? null, period: last?.period ?? null, prev, series: s.slice(-8),
       ept: last && res.ept ? at(res.ept, last.period) : null,
       dep: spec.contexteDep === 'dep' ? null : last && res.dep ? at(res.dep, last.period) : null,
