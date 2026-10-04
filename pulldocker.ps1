@@ -85,8 +85,13 @@ if ($plinkCmd) {
     exit 1
 }
 
-& $plinkPath -ssh -P $config.port -batch -pw $config.password "$($config.login)@$($config.ip)" $remoteCommand
+# plink ecrit ses messages (authentification, progression, sortie de docker) sur stderr : avec
+# ErrorActionPreference='Stop', le premier avertissement interromprait le script avant le deploiement.
+$ErrorActionPreference = 'Continue'
+$out = & $plinkPath -ssh -P $config.port -batch -pw $config.password "$($config.login)@$($config.ip)" $remoteCommand 2>&1
 $exitCode = $LASTEXITCODE
+$ErrorActionPreference = 'Stop'
+$out | ForEach-Object { Write-Host $_ }
 
 Write-Host ""
 if ($exitCode -eq 0) {
