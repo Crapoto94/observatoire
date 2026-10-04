@@ -5,7 +5,7 @@ Chaque source retenue a été **interrogée pour Ivry-sur-Seine (94041)** avant 
 
 Principe d'import : on télécharge de préférence le fichier complet, ou filtré sur l'Île-de-France, puis on filtre et on agrège en interne par commune. Les requêtes commune par commune ne servent que lorsqu'aucune autre solution n'existe.
 
-## 1. Jeux intégrés à l'application (53)
+## 1. Jeux intégrés à l'application (57)
 
 ### INSEE, API Melodi (20 jeux, communes + département, métropole, région)
 
@@ -38,6 +38,19 @@ Portail : <https://opendata.agenceore.fr> (API `/data-fair/api/v1`).
 | Cumul de nuisances environnementales | [Institut Paris Région, grille de 500 m](https://data.iledefrance.fr/explore/dataset/cumul-de-nuisances-environnementales-grille-regionale-au-pas-de-500m-dile-de-fra/), agrégation par commune à la source | mailles de 500 m par nombre de nuisances et point noir |
 | Îlots de chaleur urbains | [Institut Paris Région](https://data.iledefrance.fr/explore/dataset/ilots-de-chaleur-urbains-icu-classification-des-imu-en-zone-climatique-locale-lc/), export CSV complet (237 000 îlots), **rattachement à la commune par point dans polygone**, surfaces par zone climatique, aléa et vulnérabilité | surfaces en hectares par zone climatique |
 | Fréquentation du réseau ferré | [Île-de-France Mobilités](https://data.iledefrance-mobilites.fr/explore/dataset/validations-reseau-ferre-nombre-validations-par-jour-1er-trimestre/), validations par lieu d'arrêt rattachées aux communes par le [référentiel des zones d'arrêts](https://data.iledefrance-mobilites.fr/explore/dataset/zones-d-arrets/) | validations du 1er trimestre 2026 et nombre de lieux d'arrêt |
+
+### Île-de-France, OpenStreetMap, base Basilic et Métropole du Grand Paris (oct. 2026)
+
+Requêtes ODSQL groupées par commune (région uniquement pour les jeux OpenStreetMap) pour éviter les 1 266 requêtes communales ; trame verte lue en une seule pagination du FeatureServer MGP puis agrégée en interne.
+
+| Jeu | Source et accès | Niveaux | Valeur lue pour Ivry |
+|---|---|---|---|
+| Aménagements cyclables (OpenStreetMap) | [Région Île-de-France](https://data.iledefrance.fr/explore/dataset/amenagements-velo-en-ile-de-france/), linéaires et nombre de segments par type de voie | commune IdF (1 034 communes couvertes) | 500 segments, 50 414 m (50,4 km) |
+| Licences sportives par fédération | [Région Île-de-France](https://data.iledefrance.fr/explore/dataset/carte-des-licencies-sportifs-dans-le-val-de-marne/), millésime 2011, par fédération, âge et sexe | commune du Val-de-Marne (48 communes) | 5 302 licences, dont 3 027 de moins de 20 ans, 1 258 féminines et 1 034 en zone urbaine sensible |
+| Lieux et équipements culturels | [Région Île-de-France, base Basilic](https://data.iledefrance.fr/explore/dataset/base-des-lieux-et-des-equipements-culturels-ile-de-france/), par domaine et type d'équipement | commune IdF (1 033 communes couvertes) | 27 lieux et équipements |
+| Trame verte (composantes communales) | [Métropole du Grand Paris, FeatureServer](https://www.carto-metropolegrandparis.fr/server/rest/services/opendata_trameVerte_composantesCommune/FeatureServer/8) `opendata_trameVerte_composantesCommune`, surfaces converties en hectares | communes de la MGP (131 communes) | 1 265 secteurs, 169,3 ha (sous-trames et rôles ventilés) |
+
+Le jeu d'équipements sportifs retenu reste [recensement-des-equipements-sportifs](https://data.iledefrance.fr/explore/dataset/recensement-des-equipements-sportifs/) (112 équipements à Ivry) : il est plus complet que le *recensement régional* (86 équipements), qui n'apporte que le nombre de places et la nature publique ou privée de la gestion.
 
 ### Emploi, sécurité, finances locales, santé et sport (oct. 2026)
 
@@ -81,6 +94,9 @@ Portail : <https://opendata.agenceore.fr> (API `/data-fair/api/v1`).
 | Émissions de GES | SDES, comptes d'émissions (national) | pas de niveau communal ouvert trouvé | inventaire communal Airparif |
 | Bruit | aucun jeu communal ouvert trouvé (Bruitparif, cartes stratégiques) | substitut intégré : multi-exposition et grille de nuisances | demande à Bruitparif |
 | Fréquentation des bus | IDFM, [validations du réseau de surface](https://data.iledefrance-mobilites.fr/explore/dataset/validations-reseau-surface-nombre-validations-par-jour-1er-trimestre/) | publiées par ligne, sans arrêt ni commune | non rattachable |
+| Accessibilité aux équipements (isochrones) | IDFM, [offre de transports GTFS](https://data.iledefrance-mobilites.fr/explore/dataset/offre-de-transports-gtfs/) et indicateurs 981/984/985 | les indicateurs supposent un calcul d'isochrones par arrêt (routage, temps de trajet), pas un simple comptage d'équipements | calculer les isochrones 10/20/30 minutes à partir des arrêts et de la graphine GTFS |
+| Pollution lumineuse | [MGP, `opendata_trameVerte_radiance`](https://www.carto-metropolegrandparis.fr/server/rest/services/opendata_trameVerte_radiance/FeatureServer) (442 910 points de luminance nocturne) | luminance au point, sans code commune | calcul zonal ( moyenne par commune ou par secteur ) |
+| Secteurs scolaires | [Région Île-de-France](https://data.iledefrance.fr/explore/dataset/secteurs-scolaires/) | ne couvre que Paris et ses arrondissements | rattacher les autres communes par le RPE |
 | Parc privé potentiellement indigne (PPPI) | Cerema / ANAH, [fichiers fonciers](https://datafoncier.cerema.fr/) | accès réservé aux collectivités et à l'État | demande d'accès |
 | Offre de soins, densité médicale | DREES, [APL](https://data.drees.solidarites-sante.gouv.fr/explore/dataset/530_l-accessibilite-potentielle-localisee-apl/) | l'API ne renvoie pas d'enregistrements | télécharger le fichier APL |
 | Demandeurs d'emploi | [France Travail, API Open Data](https://francetravail.io/data/api) | API soumise à clé | demande de clé |
@@ -96,7 +112,8 @@ Portail : <https://opendata.agenceore.fr> (API `/data-fair/api/v1`).
 - **Département du Val-de-Marne** : pas de portail ouvert trouvé (les adresses testées ne répondent pas) et aucune organisation du département sur data.gouv.fr.
 - **Résultats au brevet (DNB) par établissement** : publiés par l'Éducation nationale mais seulement jusqu'à la session 2021 ; non intégrés pour cette raison.
 - **Ville d'Ivry** : les adresses data.ivry94.fr et opendata.ivry94.fr répondent « Accès restreint ».
-- **Région Île-de-France** ([data.iledefrance.fr](https://data.iledefrance.fr/)) : portail riche, déjà utilisé (occupation du sol, nuisances, îlots de chaleur, multi-exposition). Intégrés cette fois : FINESS et équipements sportifs. Repérés mais non intégrés : annuaire des professionnels de santé (348 000 lignes, une ligne par acte : à dédoublonner), établissements pour personnes âgées (sans code commune), répertoire des bibliothèques (sans code INSEE), hébergement touristique, mobilités scolaires, registre des cantines, indices de position sociale des lycées (lycées seulement).
+- **Région Île-de-France** ([data.iledefrance.fr](https://data.iledefrance.fr/)) : portail riche, déjà utilisé (occupation du sol, nuisances, îlots de chaleur, multi-exposition). Intégrés cette fois : FINESS, équipements sportifs, aménagements cyclables, licences sportives, base Basilic des lieux culturels. Repérés mais non intégrés : annuaire des professionnels de santé (déjà intégré par ailleurs, dédoublonné), établissements pour personnes âgées (sans code commune), répertoire des bibliothèques (sans code INSEE), hébergement touristique, mobilités scolaires, registre des cantines, indices de position sociale des lycées (lycées seulement).
+- **Métropole du Grand Paris** ([carto-metropolegrandparis.fr](https://www.carto-metropolegrandparis.fr/)) : serveur ArcGIS public inventorié. Intégrée : trame verte (composantes par commune). Services Naturalistes (`opendata_NbObsCommune`, `opendata_NbEspCommune`) et `opendata_energie_geothermie_commune` repérés mais sans couche exploitable ; le service `opendata_trameVerte_radiance` contient 442 910 points de luminance sans code commune.
 
 ## 3. Limites rencontrées (à connaître avant d'exploiter les données)
 
